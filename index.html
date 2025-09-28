@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>La 51 - Lobby y Juego</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="orientation-message">
+  <div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px;"><path d="M16.4 3.6a9 9 0 0 1 0 16.8M3.6 7.6a9 9 0 0 1 16.8 0"/><path d="M21 16H3M21 8H3"/></svg>
+    <p>Por favor, gira tu dispositivo a la posición horizontal para continuar.</p>
+  </div>
+</div>
+
+<div id="lobby-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+  <div class="overlay-content">
+    
+    <div class="lobby-main" role="main">
+    <section class="user-panel" aria-label="Panel de usuario">
+      <h2 class="panel-title">
+        <span class="card left-card"></span>
+        <span class="char" style="--i:1">L</span>
+        <span class="char" style="--i:2">a</span>
+        <span class="char" style="--i:3">&nbsp;</span>
+        <span class="char" style="--i:4">5</span>
+        <span class="char" style="--i:5">1</span>
+        <span class="card right-card"></span>
+      </h2>
+      <div>
+        <div class="avatar-container">
+          <img src="" alt="Avatar del usuario" class="avatar" id="user-avatar" />
+          <label for="avatar-input" class="avatar-label" title="Cambiar avatar">✎</label>
+          <input type="file" id="avatar-input" accept="image/*" aria-label="Seleccionar avatar" />
+        </div>
+        <div class="username" id="user-name">Invitado</div>
+        <div class="credits" id="user-credits">Créditos 0</div>
+        <button class="button orange" id="btn-rules">Reglas del Juego</button>
+        <button class="button orange" id="btn-reload-credits">Recargar Créditos</button>
+      </div>
+      <div class="user-actions">
+        <button class="button secondary" id="btn-logout">Cerrar Sesión</button>
+      </div>
+    </section>
+    <section class="tables-panel" id="rooms-overview" aria-label="Mesas disponibles" tabindex="0">
+    </section>
+    <section class="chat-panel" aria-label="Chat de la sala">
+        <div class="chat-header">Chat Sala</div>
+        <div class="chat-messages" id="lobby-chat" tabindex="0" aria-live="polite" aria-relevant="additions">
+        </div>
+        <div class="chat-input">
+            <textarea rows="2" placeholder="Escribe un mensaje..." id="lobby-chat-input-textarea" aria-label="Escribe un mensaje"></textarea>
+            <button id="btn-send-chat" aria-label="Enviar mensaje">Enviar</button>
+        </div>
+    </section>
+    </div>
+  </div>
+</div>
+
+<div id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
+    <div class="modal-content">
+      <h3 id="rules-modal-title">Reglas del Juego: La 51</h3>
+  
+      <h4>Objetivo del Juego</h4>
+      <p>El objetivo principal es ser el primer jugador en quedarse sin cartas en la mano, bajando combinaciones válidas sobre la mesa.</p>
+  
+      <h4>Desarrollo de la Partida</h4>
+      <ul>
+        <li>Se juega con 2 barajas inglesas (104 cartas). Cada jugador recibe 14 cartas, y el que empieza, 15.</li>
+        <li>En tu turno, debes robar una carta (del mazo o del descarte) y luego descartar una.
+            <ul style="margin-top: 10px; font-size: 0.9em;">
+                <li>- Si robas del mazo y empiezas a bajar tu juego, la suma de todos tus conjuntos tiene que ser 51 o más, añadir cartas a conjuntos ya bajados en mesa de otros jugadores si es el caso y descartar la última carta para ganar obligatoriamente en ese mismo turno.</li>
+                <li>- Si robas del descarte puedes bajar los conjuntos que quieras hasta llegar a 51 puntos o más, añadir cartas a conjuntos ya bajados en la mesa y descartar una carta para seguir el juego (no es necesario ganar en este turno).</li>
+            </ul>
+        </li>
+        <li>Para bajar tu primera combinación, la suma de puntos de las cartas debe ser <strong>51 o más</strong>.</li>
+        <li>Una vez has bajado tus 51 puntos, en turnos posteriores puedes añadir cartas a tus combinaciones o a las de otros jugadores, y bajar nuevas combinaciones sin mínimo de puntos.</li>
+        <li>Gana el primer jugador que se quede sin cartas en la mano.</li>
+      </ul>
+  
+      <h4>Combinaciones Válidas</h4>
+      <ul>
+        <li><strong>Grupos (Tríos/Cuartetos):</strong> 3 o 4 cartas del mismo valor pero de palos diferentes y con colores alternados (Rojo/Negro/Rojo).</li>
+        <li><strong>Escaleras:</strong> 3 o más cartas consecutivas del mismo palo (Ej: 5, 6, 7 de Corazones). El As puede ir con el 2 (A, 2, 3) o con la K (Q, K, A).</li>
+      </ul>
+
+      <h4>Valor de las Cartas</h4>
+      <p>El valor de cada carta es crucial para sumar los 51 puntos necesarios para la primera bajada.</p>
+      <ul>
+        <li><strong>As:</strong> 10 puntos en Grupos (tríos/cuartetos). En Escaleras, vale 10 puntos (si es parte de Q-K-A) o 1 punto (si es parte de A-2-3).</li>
+        <li><strong>K, Q, J:</strong> 10 puntos cada una.</li>
+        <li><strong>Del 2 al 10:</strong> Su valor nominal (un 7 vale 7 puntos, un 2 vale 2, etc.).</li>
+      </ul>
+      <div class="example">
+        <p><strong>Ejemplo de bajada de 51+ puntos:</strong></p>
+        <ul>
+            <li>Un trío de Ases (<strong>10</strong> + <strong>10</strong> + <strong>10</strong> = 30 puntos) y una escalera de 7-8-9 (7+8+9 = 24 puntos) sumarían 54 puntos.</li>
+            <li>Una escalera Q-K-A (<strong>10</strong> + <strong>10</strong> + <strong>10</strong> = 30 puntos) y un trío de 7 (7+7+7 = 21 puntos) sumarían 51 puntos.</li>
+        </ul>
+      </div>
+  
+      <h4>Faltas y Derrota Automática (<span class="penalty">Paga apuesta + multa</span>)</h4>
+      <ul>
+        <li><span class="penalty">Bajar una combinación inválida.</span></li>
+        <li><span class="penalty">No bajar los 51 puntos requeridos en la primera bajada y descartar.</span></li>
+        <li><span class="penalty">Robar del mazo y no ganar en el mismo turno.</span></li>
+        <li><span class="penalty">Robar del descarte y no usar esa carta en la primera nueva combinación para bajar en ese mismo turno.</span></li>
+        <li><span class="penalty">Robar del descarte y descartar una carta sin haber bajado un conjunto con la carta robada.</span></li>
+        <li><span class="penalty">Descartar una carta que puede ser jugada en alguna combinación existente en la mesa.</span></li>
+        <li><span class="penalty">Intentar añadir una carta que no corresponde a un conjunto ya bajado en mesa.</span></li>
+      </ul>
+      
+      <h4>Apuestas, Multas y Comisión</h4>
+      <ul>
+        <li>Al final de la partida, cada jugador perdedor paga el valor de la <strong>apuesta</strong>.</li>
+        <li>Si un jugador perdedor <strong>no ha bajado sus 51 puntos iniciales</strong>, pagará la <strong>apuesta + la multa</strong>.</li>
+        <li>El ganador recoge el total de las apuestas y multas acumuladas.</li>
+        <li>Del monto total recaudado por el ganador, se descontará una <strong>comisión administrativa del 10%</strong>.</li>
+      </ul>
+      <div class="example">
+        <p><strong>Ejemplo:</strong> Partida de 4 jugadores con Apuesta de 100 y Multa de 50.</p>
+        <ul>
+          <li>Jugador A (Ganador).</li>
+          <li>Jugador B (Perdedor, bajó sus 51): Paga 100.</li>
+          <li>Jugador C (Perdedor, no bajó 51): Paga 100 (apuesta) + 50 (multa) = 150.</li>
+          <li>Jugador D (Perdedor, no bajó 51): Paga 100 (apuesta) + 50 (multa) = 150.</li>
+        </ul>
+        <p>Total Recaudado: 100 + 150 + 150 = 400.<br/>
+           Comisión (10% de 400): -40.<br/>
+           <strong>Premio final para el Ganador A: 360.</strong>
+        </p>
+      </div>
+      <button id="btn-close-rules-modal">Cerrar</button>
+    </div>
+</div>
+  
+
+<div id="create-room-modal" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
+  <div class="modal-content">
+    <h3 id="create-room-title">Crear Mesa</h3>
+    <label for="bet-input">Apuesta:</label>
+    <input type="number" id="bet-input" min="1" value="10" />
+    <label for="penalty-input">Multa:</label>
+    <input type="number" id="penalty-input" min="0" value="5" />
+    <div class="error" id="create-room-error"></div>
+    <button id="btn-create-room-confirm">Crear Mesa</button>
+    <button id="btn-create-room-cancel" class="secondary">Volver</button>
+    </div>
+</div>
+
+<div id="credit-modal" role="dialog" aria-modal="true" aria-labelledby="credit-modal-title">
+  <div class="modal-content">
+    <h3 id="credit-modal-title">Recargar Créditos</h3>
+    <p>Para recargar tus créditos, comunícate al WhatsApp: <a href="https://wa.me/34665530984" target="_blank" rel="noopener noreferrer">+34 665 530 984</a></p>
+    <button id="btn-close-credit-modal">Cerrar</button>
+  </div>
+</div>
+
+<div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+  <div class="modal-content">
+    <h3 id="login-modal-title">Iniciar Sesión / Registrarse</h3>
+    <label for="login-username">Nombre:</label>
+    <input type="text" id="login-username" aria-required="true" />
+    <label for="login-password">Contraseña:</label>
+    <input type="password" id="login-password" aria-required="true" />
+    <div class="error" id="login-error"></div>
+    <button id="btn-login">Iniciar Sesión</button>
+    <button id="btn-register" class="secondary">Registrarse</button>
+  </div>
+</div>
+
+<div id="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
+  <div class="modal-content">
+    <h3 id="register-modal-title">Registro de Usuario</h3>
+    <label for="register-name">Nombre:</label>
+    <input type="text" id="register-name" aria-required="true" />
+
+    <label for="register-country">País:</label>
+    <select id="register-country" aria-required="true">
+    <option value="">Selecciona un país</option>
+    </select>
+
+    <label for="register-whatsapp">WhatsApp:</label>
+    <input type="text" id="register-whatsapp" aria-required="true" />
+
+    <label for="register-password">Contraseña:</label>
+    <input type="password" id="register-password" aria-required="true" />
+
+    <label for="register-confirm-password">Confirmar Contraseña:</label>
+    <input type="password" id="register-confirm-password" aria-required="true" />
+
+    <label>Selecciona un Avatar:</label>
+    <div class="avatar-gallery" id="avatar-gallery">
+      </div>
+    <input type="file" id="register-avatar-upload" accept="image/*" style="display: none;" />
+
+    <div class="avatar-preview-container" id="avatar-preview-container" style="display: none;">
+        <img id="avatar-preview" class="avatar-preview" src="" alt="Vista previa del avatar">
+    </div>
+
+    <div class="error" id="register-error"></div>
+    <div class="success" id="register-success"></div>
+
+    <button id="btn-register-submit">Registrarse</button>
+    <button id="btn-register-back" class="secondary">Volver al Login</button>
+  </div>
+</div>
+
+<div id="avatar-crop-modal" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <h3 id="crop-modal-title">Ajusta tu Avatar</h3>
+    <div id="crop-container">
+      <div id="crop-image-wrapper">
+          <img id="crop-image-preview" src="" alt="Previsualización para recortar">
+      </div>
+    </div>
+    <div class="crop-controls">
+        <label for="zoom-slider">Zoom:</label>
+        <input type="range" id="zoom-slider" min="50" max="200" value="100">
+    </div>
+    <button id="btn-save-crop">Guardar Avatar</button>
+    <button id="btn-cancel-crop" class="secondary">Cancelar</button>
+  </div>
+</div>
+
+<div id="game-container" style="display: none;">
+    <div id="rotate-device-overlay">
+        <div class="content">
+        <h2>Gira tu dispositivo</h2>
+        <p>Para una mejor experiencia, por favor juega en modo horizontal.</p>
+        </div>
+    </div>
+
+    <header></header>
+    
+    <div id="chat-container">
+        <div class="top-controls-wrapper">
+            <button id="game-rules-btn">📜 Reglas</button>
+            <button id="chat-toggle-btn">💬 Chat <span id="chat-notification-badge" style="display: none;"></span></button>
+        </div>
+        <div id="chat-window">
+        <div id="chat-ui-content"></div>
+        <ul id="chat-messages"><div id="chat-messages-inner"></div></ul>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Escribe un mensaje...">
+            <button id="chat-send-btn">Enviar</button>
+        </div>
+        </div>
+    </div>
+    <main id="table">
+        
+        <div class="player-area top">
+            <div class="opponents-container">
+                <div class="info-bot" id="info-player1">
+                    <img src="https://placehold.co/50/blue/white?text=B1" class="player-avatar" alt="Avatar de Bot 1">
+                    <div class="player-details">
+                        <span class="player-name">Bot 1</span>
+                        <div class="card-counter" id="counter-bot1">🂠 0</div>
+                    </div>
+                </div>
+                <div class="info-bot" id="info-player2">
+                    <img src="https://placehold.co/50/orange/white?text=B2" class="player-avatar" alt="Avatar de Bot 2">
+                    <div class="player-details">
+                        <span class="player-name">Bot 2</span>
+                        <div class="card-counter" id="counter-bot2">🂠 0</div>
+                    </div>
+                </div>
+                <div class="info-bot" id="info-player3">
+                    <img src="https://placehold.co/50/red/white?text=B3" class="player-avatar" alt="Avatar de Bot 3">
+                    <div class="player-details">
+                        <span class="player-name">Bot 3</span>
+                        <div class="card-counter" id="counter-bot3">🂠 0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="center-area">
+        <div id="melds" class="melds">
+            <div id="melds-display" class="meld-display"></div>
+        </div>
+        <div class="piles-container">
+            <div id="deck" class="pile">Mazo</div>
+            <div id="discard" class="pile">Descarte</div>
+        </div>
+        </div>
+
+        <div class="player-area bottom">
+            <div class="info-bot human-info" id="info-player0">
+                <img src="https://placehold.co/50/green/white?text=P1" class="player-avatar" alt="Avatar de Jugador">
+                <div class="player-details">
+                    <span class="player-name">Jugador</span>
+                    <div class="card-counter" id="counter-human">🂠 0</div>
+                </div>
+            </div>
+            <div class="hand human" id="human-hand">
+                </div>
+                <div class="player-actions">
+                  <button id="start-game-btn" style="display: none;">▶️ Iniciar Partida</button>
+                  
+                  <button onclick="attemptMeld()" id="meld-btn">⬇️ Bajar Combinación</button>
+                  <button onclick="attemptDiscard()" id="discard-btn">🗑️ Descartar</button>
+              </div>
+        </div>
+        </main>
+
+    <div id="ready-overlay" class="overlay">
+        <div class="content">
+            <h2 id="welcome-message"></h2>
+            <p id="bet-info"></p>
+            <p id="penalty-info"></p>
+            <button onclick="startGame()">Sentarse</button>
+            <button onclick="goBackToLobby()" class="secondary">Volver al Lobby</button>
+            </div>
+    </div>
+
+    <div id="victory-overlay" class="overlay hidden">
+        <div class="content">
+            <h2 id="victory-message">¡Victoria!</h2>
+            <div id="final-scores"></div>
+            <button onclick="newGame()">🔄 Nueva Partida</button>
+            <button onclick="goBackToLobby()">🚪 Volver al Lobby</button>
+        </div>
+    </div>
+
+    <div id="elimination-overlay" class="overlay hidden">
+        <div class="content">
+        <h2 style="color:#ff4444;">❌ Eliminación por falta</h2>
+        <div id="elimination-message" style="text-align: left; line-height: 1.5;">Jugador X ha sido eliminado por la falta Y y pagará la multa adicional de Z.</div>
+        <button onclick="closeEliminationOverlay()">Aceptar</button>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <div id="drag-clone-container"></div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="game.js?v=1.1"></script>
+
+</body>
+</html>
