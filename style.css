@@ -306,7 +306,7 @@ html {
 .table-item .actions {
     margin-top: auto;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 8px;
 }
 .table-item .play-button {
@@ -625,7 +625,7 @@ html {
     font-weight: bold;
 }
 #rules-modal .modal-content .example {
-    background: rgba(0,0,0,0.2);
+    background: #3a3a2a; /* <-- LÍNEA MODIFICADA */
     border-left: 3px solid #c5a56a;
     padding: 10px;
     margin-top: 10px;
@@ -882,6 +882,15 @@ html {
     -ms-user-select: none; /* Internet Explorer/Edge */
     user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
 }
+
+/* * >> AÑADE ESTA NUEVA REGLA AQUÍ <<
+ * Esta es la corrección principal. Previene el scroll en TODA la página
+ * únicamente cuando el juego está activo, eliminando el conflicto.
+ */
+body.game-active {
+    touch-action: none;
+}
+
 #game-container {
     height: 100%;
     width: 100%;
@@ -938,7 +947,7 @@ html {
 .bottom-ui-container {
     display: none;
 }
-.info-bot.human-info {
+#game-container .info-bot.human-info {
     flex-shrink: 0;
 }
 .player-actions {
@@ -958,15 +967,16 @@ html {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-x: auto;
+    overflow-x: hidden; /* <-- CAMBIO 1: Ocultamos el scroll nativo */
+    touch-action: none; /* <-- ESTA ES LA CORRECCIÓN DEFINITIVA */
     padding: 12px;
     min-height: 165px; 
     background: rgba(0,0,0,0.2);
     border-radius: 12px;
-    margin: 0; /* REMOVED auto margin */
-    width: auto; /* Let flexbox decide */
-    flex-grow: 1; /* Take up available space */
-    max-width: 70%; /* But not too much */
+    margin: 0;
+    width: auto;
+    flex-grow: 1;
+    max-width: 70%;
 }
 .info-bot {
     display: flex;
@@ -1035,7 +1045,7 @@ html {
 }
 
 #game-container button, #game-container .player-actions button {
-    padding:8px 12px;
+    padding: 5px 10px;
     border-radius:8px;
     border: 2px solid var(--casino-dark-panel);
     background: linear-gradient(to bottom, #d1b47a, #b59458); /* Gradiente dorado */
@@ -1167,6 +1177,13 @@ html {
     box-shadow: 0 3px 7px rgba(0,0,0,0.5);
     transform: translateY(-1px);
 }
+.overlay .content .button-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px; /* Espacio entre los botones */
+    margin-top: 15px;
+}
 
 
 .toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--casino-dark-panel); color:var(--casino-gold); padding:10px 16px; border-radius:8px; border:2px solid var(--casino-gold); z-index:1100; display:none; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
@@ -1225,8 +1242,16 @@ html {
     align-items: flex-end;
 }
 .top-controls-wrapper {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: auto auto; /* Dos columnas de ancho automático */
+    row-gap: 4px; /* Mantiene el espacio vertical */
+    column-gap: 2px; /* Reduce el espacio horizontal para juntar más los botones */
+    justify-items: end; /* Alinea los botones a la derecha de su celda */
+}
+/* AÑADE ESTA NUEVA REGLA */
+#chat-toggle-btn {
+    grid-column: 2; /* Posiciona este botón en la columna 2 */
+    grid-row: 2;    /* Posiciona este botón en la fila 2 */
 }
 .top-controls-wrapper button {
     margin: 0;
@@ -1310,20 +1335,6 @@ html {
     border: 1px solid #00ff00;
     background: rgba(0, 255, 0, 0.1);
     color: #00ff00;
-}
-#spectators-list-host {
-  padding: 10px;
-  font-size: 13px;
-}
-#spectators-list-host .spectator-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-}
-#spectators-list-host .kick-btn {
-  background: #c82333; color: #fff; border: none; font-size: 11px;
-  padding: 3px 6px; border-radius: 4px; cursor: pointer;
 }
 
 /* --- INICIO: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÓN --- */
@@ -1455,8 +1466,8 @@ html {
         min-height: auto;
     }
     
-    .info-bot.human-info {
-        transform: scale(0.8);
+    #game-container .info-bot.human-info {
+        transform: scale(0.75); /* Más pequeño */
     }
 
     .info-bot { 
@@ -1466,8 +1477,8 @@ html {
     }
 
     .player-avatar {
-        width: 3vw;
-        height: 3vw;
+        width: 2.8vw; /* Más pequeño */
+        height: 2.8vw; /* Más pequeño */
         border-width: 0.14vw;
         margin-right: 0.6vw;
     }
@@ -1476,11 +1487,11 @@ html {
     }
     
     .card-counter { 
-        font-size: 1vw;
+        font-size: 0.9vw; /* Más pequeño */
         padding: 0.28vw 0.57vw;
         border-radius: 0.42vw;
     }
-    .player-name { font-size: 1.1vw; }
+    .player-name { font-size: 1vw; } /* Más pequeño */
 
     .card { 
         width: 6.4vw;
@@ -1544,13 +1555,18 @@ html {
         font-size: 0.85vw;
     }
   
+    /* --- INICIO: MODIFICACIÓN DE TAMAÑO DE BOTONES --- */
+    /* Esta regla unificada reduce el tamaño de todos los botones de la interfaz de juego
+       para mejorar la visibilidad de la mesa en dispositivos pequeños. */
+    .top-controls-wrapper button,
     .player-actions button {
-        padding: 0.4vw 0.7vw;
-        border-radius: 0.57vw;
+        padding: 0.4vw 0.8vw;       /* Reducimos el padding para hacer el botón más compacto */
+        font-size: 0.75vw;          /* Unificamos y reducimos el tamaño de la fuente */
+        border-radius: 0.5vw;
         border-width: 0.14vw;
         margin: 0;
-        font-size: 0.85vw;
     }
+    /* --- FIN: MODIFICACIÓN DE TAMAÑO DE BOTONES --- */
 
     #turn-indicator, #points-indicator, #debug-info {
         font-size: 0.85vw;
@@ -1595,11 +1611,6 @@ html {
     .top-controls-wrapper {
         gap: 0.5vw;
     }
-    #game-rules-btn, #chat-toggle-btn {
-        padding: 0.6vw 1.2vw;
-        font-size: 1.1vw;
-        border-radius: 0.57vw;
-    }
     #chat-window {
         width: 28vw;
         max-width: 300px;
@@ -1624,15 +1635,6 @@ html {
     #chat-input {
         padding: 0.6vw;
         font-size: 1vw;
-    }
-    #spectator-controls, #spectators-list-host {
-        padding: 0.7vw;
-    }
-    #spectator-controls button {
-        font-size: 1vw;
-    }
-    #spectators-list-host .kick-btn {
-        font-size: 0.8vw;
     }
 
     #game-container header {
@@ -1664,3 +1666,81 @@ html {
   }
 }
 /* --- FIN DE ESTILOS DE INDEX.HTML --- */
+
+/* Añadir a tu archivo CSS */
+.meld-group.temporary-meld {
+    box-shadow: 0 0 15px rgba(255, 235, 59, 0.8);
+    border: 2px solid #FFEB3B;
+}
+
+/* --- INICIO: Estilos para jugador en espera --- */
+.info-bot.player-waiting {
+    position: relative; /* Necesario para el pseudo-elemento */
+    /* Opcional: Bajar un poco la opacidad general */
+    /* opacity: 0.8; */ 
+}
+
+.info-bot.player-waiting::after {
+    content: 'Esperando...';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65); /* Capa oscura semitransparente */
+    color: #c5a56a;
+    font-weight: bold;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px; /* Mismo borde que el .info-bot */
+    border: 2px dashed #c5a56a;
+    backdrop-filter: blur(1px);
+    text-align: center;
+}
+/* --- FIN: Estilos para jugador en espera --- */
+
+/* --- INICIO: Estilos para asiento vacío y botón de sentarse --- */
+.info-bot.empty-seat {
+    border-style: dashed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+}
+
+/* REGLA ACTUALIZADA PARA CENTRAR */
+.info-bot.empty-seat .player-details {
+    flex-grow: 1; /* Permite que ocupe todo el espacio vertical */
+    justify-content: center; /* Centra verticalmente */
+    align-items: center; /* Centra horizontalmente */
+    width: 100%;
+}
+
+.info-bot.empty-seat .player-name {
+    margin-bottom: 10px;
+}
+
+/* REGLA ACTUALIZADA PARA EL ESTILO DEL BOTÓN */
+/* --- FIN: Estilos para asiento vacío y botón de sentarse --- */
+
+#btn-back-to-lobby-ingame {
+    margin: 0px;
+}
+
+/* --- INICIO: Animación para resaltar carta añadida --- */
+@keyframes highlight-added-card {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    50% {
+        transform: scale(1.25); /* Hacemos que la carta "salte" visualmente */
+        box-shadow: 0 0 25px 10px #6bff6b, 0 0 10px white; /* Brillo verde y blanco de éxito */
+    }
+}
+
+.card.highlight-add {
+    position: relative; /* Necesario para que z-index y transform funcionen correctamente */
+    z-index: 100; /* Asegura que la carta se vea por encima de las demás */
+    animation: highlight-added-card 4s ease-in-out; /* Duración aumentada a 4 segundos */
+}
+/* --- FIN: Animación para resaltar carta añadida --- */

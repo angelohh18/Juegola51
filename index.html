@@ -61,78 +61,103 @@
 
 <div id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
     <div class="modal-content">
-      <h3 id="rules-modal-title">Reglas del Juego: La 51</h3>
-  
-      <h4>Objetivo del Juego</h4>
-      <p>El objetivo principal es ser el primer jugador en quedarse sin cartas en la mano, bajando combinaciones válidas sobre la mesa.</p>
-  
-      <h4>Desarrollo de la Partida</h4>
-      <ul>
-        <li>Se juega con 2 barajas inglesas (104 cartas). Cada jugador recibe 14 cartas, y el que empieza, 15.</li>
-        <li>En tu turno, debes robar una carta (del mazo o del descarte) y luego descartar una.
-            <ul style="margin-top: 10px; font-size: 0.9em;">
-                <li>- Si robas del mazo y empiezas a bajar tu juego, la suma de todos tus conjuntos tiene que ser 51 o más, añadir cartas a conjuntos ya bajados en mesa de otros jugadores si es el caso y descartar la última carta para ganar obligatoriamente en ese mismo turno.</li>
-                <li>- Si robas del descarte puedes bajar los conjuntos que quieras hasta llegar a 51 puntos o más, añadir cartas a conjuntos ya bajados en la mesa y descartar una carta para seguir el juego (no es necesario ganar en este turno).</li>
+    <h3>Reglas Completas de La 51</h3>
+
+    <h4>1. El Objetivo</h4>
+    <p>
+        El objetivo es ser el primer jugador en quedarse sin cartas en la mano. Para ganar, un jugador debe bajar o acomodar todas sus cartas y descartar su última carta en el montón de descarte.
+    </p>
+
+    <h4>2. Las Combinaciones (Bajadas)</h4>
+    <p>Para deshacerte de tus cartas, debes "bajarlas" a la mesa en combinaciones válidas. Hay tres acciones posibles:</p>
+    
+    <h5>Grupos (Tríos o Cuartetos)</h5>
+    <ul>
+        <li>Formados por 3 o 4 cartas del <strong>mismo valor</strong> pero de <strong>diferente palo</strong>.</li>
+        <li><strong>Importante:</strong> No puede haber dos cartas del mismo color (rojo/negro) seguidas.</li>
+    </ul>
+    <div class="example">
+        <strong>Válido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:black;">♠</span> 7<span style="color:red;">♦</span> (Colores alternados: Rojo, Negro, Rojo)<br>
+        <strong>Inválido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:red;">♦</span> 7<span style="color:black;">♠</span> (Dos rojas seguidas)<br>
+        <strong>Inválido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:black;">♠</span> 7<span style="color:red;">♥</span> (Palo repetido)
+    </div>
+
+    <h5>Escaleras (Corridas)</h5>
+    <ul>
+        <li>Formadas por 3 o más cartas del <strong>mismo palo</strong> en secuencia numérica.</li>
+        <li>El As (A) puede usarse al principio (A-2-3) o al final (Q-K-A).</li>
+        <li>Una escalera con Q-K-A se considera "cerrada" y no se le puede añadir un 2.</li>
+    </ul>
+    <div class="example">
+        <strong>Válido:</strong> 4<span style="color:black;">♣</span> 5<span style="color:black;">♣</span> 6<span style="color:black;">♣</span><br>
+        <strong>Válido:</strong> Q<span style="color:red;">♦</span> K<span style="color:red;">♦</span> A<span style="color:red;">♦</span><br>
+        <strong>Inválido:</strong> K<span style="color:black;">♠</span> A<span style="color:black;">♠</span> 2<span style="color:black;">♠</span> (El As no puede ser intermedio)
+    </div>
+
+    <h5>Añadir a Jugadas Existentes</h5>
+    <ul>
+        <li>Un jugador puede añadir una carta de su mano a una combinación que ya esté en la mesa (suya o de otro jugador).</li>
+        <li>Esta acción solo está permitida si el jugador <strong>ya ha cumplido su requisito de 51 puntos</strong> en un turno anterior.</li>
+    </ul>
+    <h4>3. Requisito Inicial: Los 51 Puntos</h4>
+    <p>
+        La primera vez que un jugador baja cartas en una partida, el valor total de las combinaciones que baje en ese turno debe sumar <strong>51 puntos o más</strong>.
+    </p>
+    <ul>
+        <li>Las figuras (J, Q, K) y el 10 valen 10 puntos.</li>
+        <li>El As (A) vale 10 puntos en la escalera Q-K-A, pero solo 1 punto en la escalera A-2-3. En los grupos de Ases, vale 10.</li>
+        <li>El resto de cartas valen su valor numérico (el 2 vale 2, el 3 vale 3, etc.).</li>
+    </ul>
+    <div class="example">
+        Un jugador baja por primera vez un trío de Reyes (10+10+10=30) y una escalera 5-6-7 (5+6+7=18). El total es 48. No es suficiente, no puede bajar. <br>
+        Si bajara un trío de Reyes y una escalera J-Q-K (10+10+10=30), el total sería 60. ¡Jugada válida!
+    </div>
+
+    <h4>4. El Flujo de un Turno</h4>
+    <p>Cada turno sigue 3 pasos obligatorios en este orden:</p>
+    <ol>
+        <li><strong>Robar:</strong> Debes tomar una (y solo una) carta. Puedes elegir:
+            <ul>
+                <li>La carta superior del <strong>mazo</strong> (boca abajo).</li>
+                <li>La carta superior del montón de <strong>descarte</strong> (boca arriba).</li>
             </ul>
         </li>
-        <li>Para bajar tu primera combinación, la suma de puntos de las cartas debe ser <strong>51 o más</strong>.</li>
-        <li>Una vez has bajado tus 51 puntos, en turnos posteriores puedes añadir cartas a tus combinaciones o a las de otros jugadores, y bajar nuevas combinaciones sin mínimo de puntos.</li>
-        <li>Gana el primer jugador que se quede sin cartas en la mano.</li>
-      </ul>
-  
-      <h4>Combinaciones Válidas</h4>
-      <ul>
-        <li><strong>Grupos (Tríos/Cuartetos):</strong> 3 o 4 cartas del mismo valor pero de palos diferentes y con colores alternados (Rojo/Negro/Rojo).</li>
-        <li><strong>Escaleras:</strong> 3 o más cartas consecutivas del mismo palo (Ej: 5, 6, 7 de Corazones). El As puede ir con el 2 (A, 2, 3) o con la K (Q, K, A).</li>
-      </ul>
-
-      <h4>Valor de las Cartas</h4>
-      <p>El valor de cada carta es crucial para sumar los 51 puntos necesarios para la primera bajada.</p>
-      <ul>
-        <li><strong>As:</strong> 10 puntos en Grupos (tríos/cuartetos). En Escaleras, vale 10 puntos (si es parte de Q-K-A) o 1 punto (si es parte de A-2-3).</li>
-        <li><strong>K, Q, J:</strong> 10 puntos cada una.</li>
-        <li><strong>Del 2 al 10:</strong> Su valor nominal (un 7 vale 7 puntos, un 2 vale 2, etc.).</li>
-      </ul>
-      <div class="example">
-        <p><strong>Ejemplo de bajada de 51+ puntos:</strong></p>
-        <ul>
-            <li>Un trío de Ases (<strong>10</strong> + <strong>10</strong> + <strong>10</strong> = 30 puntos) y una escalera de 7-8-9 (7+8+9 = 24 puntos) sumarían 54 puntos.</li>
-            <li>Una escalera Q-K-A (<strong>10</strong> + <strong>10</strong> + <strong>10</strong> = 30 puntos) y un trío de 7 (7+7+7 = 21 puntos) sumarían 51 puntos.</li>
-        </ul>
-      </div>
-  
-      <h4>Faltas y Derrota Automática (<span class="penalty">Paga apuesta + multa</span>)</h4>
-      <ul>
-        <li><span class="penalty">Bajar una combinación inválida.</span></li>
-        <li><span class="penalty">No bajar los 51 puntos requeridos en la primera bajada y descartar.</span></li>
-        <li><span class="penalty">Robar del mazo y no ganar en el mismo turno.</span></li>
-        <li><span class="penalty">Robar del descarte y no usar esa carta en la primera nueva combinación para bajar en ese mismo turno.</span></li>
-        <li><span class="penalty">Robar del descarte y descartar una carta sin haber bajado un conjunto con la carta robada.</span></li>
-        <li><span class="penalty">Descartar una carta que puede ser jugada en alguna combinación existente en la mesa.</span></li>
-        <li><span class="penalty">Intentar añadir una carta que no corresponde a un conjunto ya bajado en mesa.</span></li>
-      </ul>
+        <li><strong>Bajar (Opcional):</strong> Después de robar, puedes realizar las acciones descritas en el punto 2.</li>
+        <li><strong>Descartar:</strong> Para finalizar tu turno, debes tirar una carta de tu mano al montón de descarte.</li>
+    </ol>
+    
+    <h4 class="penalty">5. Faltas Graves (Causan Eliminación)</h4>
+    <p>
+        Cometer cualquiera de las siguientes faltas resulta en la <strong>eliminación inmediata</strong> del jugador, quien deberá pagar la apuesta más la multa.
+    </p>
+    <ol>
       
-      <h4>Apuestas, Multas y Comisión</h4>
-      <ul>
-        <li>Al final de la partida, cada jugador perdedor paga el valor de la <strong>apuesta</strong>.</li>
-        <li>Si un jugador perdedor <strong>no ha bajado sus 51 puntos iniciales</strong>, pagará la <strong>apuesta + la multa</strong>.</li>
-        <li>El ganador recoge el total de las apuestas y multas acumuladas.</li>
-        <li>Del monto total recaudado por el ganador, se descontará una <strong>comisión administrativa del 10%</strong>.</li>
-      </ul>
-      <div class="example">
-        <p><strong>Ejemplo:</strong> Partida de 4 jugadores con Apuesta de 100 y Multa de 50.</p>
-        <ul>
-          <li>Jugador A (Ganador).</li>
-          <li>Jugador B (Perdedor, bajó sus 51): Paga 100.</li>
-          <li>Jugador C (Perdedor, no bajó 51): Paga 100 (apuesta) + 50 (multa) = 150.</li>
-          <li>Jugador D (Perdedor, no bajó 51): Paga 100 (apuesta) + 50 (multa) = 150.</li>
-        </ul>
-        <p>Total Recaudado: 100 + 150 + 150 = 400.<br/>
-           Comisión (10% de 400): -40.<br/>
-           <strong>Premio final para el Ganador A: 360.</strong>
-        </p>
-      </div>
-      <button id="btn-close-rules-modal">Cerrar</button>
+        <li>
+            <strong>No usar la carta del descarte en la primera bajada:</strong> Si robas del descarte, estás obligado a usar esa carta en la primera combinación que bajes en ese mismo turno.
+            <div class="example">Falta: Robas un 8♠ del descarte. Luego, intentas bajar un trío de Reyes (K-K-K). Es falta, porque tu primera jugada debía incluir obligatoriamente el 8♠.</div>
+        </li>
+        <li>
+            <strong>Robar del descarte y no bajar:</strong> Si robas del descarte, es obligatorio bajar al menos una combinación. No puedes robar del descarte y simplemente tirar otra carta de tu mano.
+        </li>
+        <li>
+            <strong>Bajar una jugada inválida:</strong> Presentar una combinación que no cumpla las reglas de Grupo o Escalera.
+        </li>
+        <li>
+            <strong>No cumplir los 51 puntos:</strong> Bajar combinaciones por primera vez y descartar sin haber alcanzado el mínimo de 51 puntos.
+        </li>
+        <li>
+            <strong>Bajar y no ganar (Regla del Mazo):</strong> Si robas del <strong>mazo</strong> (no del descarte) y decides bajar una combinación, estás <strong>obligado a ganar</strong> en ese mismo turno.
+            <div class="example">Falta: Robas del mazo. Bajas una escalera 5-6-7. Todavía te quedan más cartas en la mano y descartas una para terminar tu turno, serás eliminado.</div>
+        </li>
+        <li>
+            <strong>Descarte Ilegal:</strong> Descartar una carta que podría ser añadida a una combinación ya existente en la mesa. Esta regla no aplica si es tu última carta para ganar.
+             <div class="example">Falta: En la mesa hay una escalera 4♥-5♥-6♥. Intentas descartar el 7♥ de tu mano. Es falta, porque esa carta se podía añadir a la escalera.</div>
+        </li>
+        <li>
+            <strong>Abandonar la partida:</strong> Salir del juego voluntariamente mientras está en curso.
+        </li>
+    </ol>
+    <button id="btn-close-rules-modal" class="secondary">Entendido</button>
     </div>
 </div>
   
@@ -238,6 +263,7 @@
     <div id="chat-container">
         <div class="top-controls-wrapper">
             <button id="game-rules-btn">📜 Reglas</button>
+            <button id="btn-back-to-lobby-ingame">🚪 Volver al Lobby</button>
             <button id="chat-toggle-btn">💬 Chat <span id="chat-notification-badge" style="display: none;"></span></button>
         </div>
         <div id="chat-window">
@@ -311,8 +337,12 @@
             <h2 id="welcome-message"></h2>
             <p id="bet-info"></p>
             <p id="penalty-info"></p>
-            <button onclick="startGame()">Sentarse</button>
-            <button onclick="goBackToLobby()" class="secondary">Volver al Lobby</button>
+            <div id="rematch-status"></div>
+            <div class="button-group">
+                <button id="btn-ready-main">Confirmar Revancha</button>
+                <button id="btn-start-rematch" style="display: none;">▶️ Iniciar Partida</button>
+                <button onclick="goBackToLobby()" class="secondary">Volver al Lobby</button>
+            </div>
             </div>
     </div>
 
@@ -320,8 +350,8 @@
         <div class="content">
             <h2 id="victory-message">¡Victoria!</h2>
             <div id="final-scores"></div>
-            <button onclick="newGame()">🔄 Nueva Partida</button>
-            <button onclick="goBackToLobby()">🚪 Volver al Lobby</button>
+            <button id="btn-setup-rematch">🏆 Revancha</button>
+            <button onclick="goBackToLobby()" class="secondary">🚪 Volver al Lobby</button>
         </div>
     </div>
 
@@ -333,6 +363,18 @@
         </div>
     </div>
     <div id="toast" class="toast"></div>
+
+
+    <div id="confirm-leave-modal" class="overlay" style="display: none;">
+        <div class="content">
+            <h2>Confirmar Salida</h2>
+            <p id="confirm-leave-message">¿Estás seguro de que quieres volver al lobby? Si estás jugando, se contará como una derrota y pagarás la apuesta y la multa.</p>
+            <div class="button-group">
+                <button id="btn-confirm-leave-yes">Sí, salir</button>
+                <button id="btn-confirm-leave-no" class="secondary">No, quedarme</button>
+            </div>
+        </div>
+    </div>
 
     <div id="drag-clone-container"></div>
 </div>
