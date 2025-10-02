@@ -15,22 +15,43 @@ const io = new Server(server, {
 
 const PORT = 3000;
 
+function handleHostLeaving(room, leavingPlayerId, io) {
+    if (room && room.hostId === leavingPlayerId) {
+        // El anfitrión se va; buscamos un nuevo anfitrión entre los jugadores sentados.
+        const newHost = room.seats.find(s => s && s.playerId !== leavingPlayerId);
+        
+        if (newHost) {
+            room.hostId = newHost.playerId;
+            console.log(`Anfitrión ${leavingPlayerId} ha salido. Nuevo anfitrión: ${newHost.playerName}.`);
+            
+            // Notificamos a todos en la sala del cambio para actualizar la UI.
+            io.to(room.roomId).emit('newHostAssigned', {
+                hostName: newHost.playerName,
+                hostId: newHost.playerId
+            });
+        }
+    }
+}
 
 function checkAndCleanRoom(roomId, io) {
     const room = rooms[roomId];
     if (!room) {
+        // Si la sala ya no existe, aun así notificamos a todos para que actualicen su lista.
         io.emit('updateRoomList', Object.values(rooms));
         return;
     }
 
     const playersInSeats = room.seats.filter(s => s !== null).length;
+    const spectatorsCount = room.spectators ? room.spectators.length : 0;
 
-    // UNA SALA ESTÁ VACÍA SI NO HAY NADIE EN LOS ASIENTOS.
-    if (playersInSeats === 0) {
+    // UNA SALA ESTÁ REALMENTE VACÍA SÓLO SI NO HAY NADIE EN LOS ASIENTOS Y NADIE MIRANDO.
+    if (playersInSeats === 0 && spectatorsCount === 0) {
         console.log(`Mesa ${roomId} está completamente vacía. Eliminando...`);
         delete rooms[roomId];
     }
 
+    // Se emite la actualización SIEMPRE que un jugador sale,
+    // para que el contador (ej: 3/4 -> 2/4) se actualice en tiempo real.
     io.emit('updateRoomList', Object.values(rooms));
 }
 
@@ -704,8 +725,13 @@ function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
     console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala ${roomId}.`);
 
+    if (room.spectators) {
+        room.spectators = room.spectators.filter(s => s.id !== leavingPlayerId);
+    }
+
     const seatIndex = room.seats.findIndex(s => s && s.playerId === leavingPlayerId);
     if (seatIndex === -1) {
+        io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
         checkAndCleanRoom(roomId, io);
         return;
     }
@@ -777,6 +803,7 @@ function handlePlayerDeparture(roomId, leavingPlayerId, io) {
         }
     }
     
+    handleHostLeaving(room, leavingPlayerId, io);
     io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
     checkAndCleanRoom(roomId, io);
 }
@@ -879,35 +906,149 @@ io.on('connection', (socket) => {
         return socket.emit('joinError', 'La mesa no existe.');
     }
 
-    // --- NUEVAS VALIDACIONES DE ENTRADA ---
-    if (room.state !== 'waiting') {
-        return socket.emit('joinError', 'La partida ya ha comenzado.');
-    }
-
-    const emptySeatIndex = room.seats.findIndex(seat => seat === null);
-    if (emptySeatIndex === -1) {
-        return socket.emit('joinError', 'La mesa está llena.');
-    }
-    // --- FIN DE VALIDACIONES ---
-
+    // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN COMPLETO AQUÍ ▼▼▼
+    // BARRERA DE SEGURIDAD: Comprobar si el jugador ya está sentado en esta mesa.
     const isAlreadySeated = room.seats.some(s => s && s.playerId === socket.id);
     if (isAlreadySeated) {
         console.log(`Previniendo unión duplicada del jugador ${socket.id} en la mesa ${roomId}.`);
+        // Si ya está, simplemente le reenviamos el estado actual de la sala.
         socket.join(roomId);
         socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
-        return;
+        return; // Detenemos la ejecución para no añadirlo de nuevo.
     }
+    // ▲▲▲ FIN DEL NUEVO BLOQUE ▲▲▲
 
-    if (!room.players) room.players = [];
-    room.players.push({ id: socket.id, name: user.username });
-    room.seats[emptySeatIndex] = { playerId: socket.id, playerName: user.username, avatar: user.userAvatar, active: true, doneFirstMeld: false };
-    socket.join(roomId);
-    socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
-    io.to(roomId).emit('playerJoined', getSanitizedRoomForClient(room));
-    io.emit('updateRoomList', Object.values(rooms));
-    console.log(`Jugador ${user.username} se sentó en la mesa ${roomId}`);
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Si el jugador está en la lista de expulsados, no puede entrar.
+    if (room.kickedPlayers && room.kickedPlayers.has(socket.id)) {
+        return socket.emit('joinError', 'No puedes unirte a esta mesa porque has sido expulsado.');
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
+
+    // Si la partida ya empezó, el jugador entra como espectador
+    if (room.state === 'playing') {
+        if (!room.spectators) room.spectators = [];
+
+        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+        // LIMPIEZA PREVENTIVA: Elimina cualquier instancia fantasma de este espectador antes de añadir la nueva.
+        room.spectators = room.spectators.filter(s => s.id !== socket.id);
+        // ▲▲▲ FIN DE LA LÍNEA AÑADIDA ▲▲▲
+
+        room.spectators.push({ id: socket.id, name: user.username, avatar: user.userAvatar });
+        socket.join(roomId);
+
+        const playerHandCounts = {};
+        if(room.seats) { // Añadir comprobación por si los asientos no existen
+            room.seats.filter(s => s).forEach(p => {
+                playerHandCounts[p.playerId] = room.playerHands[p.playerId]?.length || 0;
+            });
+        }
+
+        // Le enviamos el estado actual del juego para que pueda observar
+        socket.emit('joinedAsSpectator', {
+            ...room,
+            playerHands: null // Nunca enviar las manos de otros jugadores
+        });
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Notificamos a TODOS en la sala (jugadores y otros espectadores) que alguien nuevo está viendo.
+        // Enviamos la lista actualizada de espectadores junto con la notificación.
+        io.to(roomId).emit('spectatorJoined', { 
+            name: user.username,
+            spectators: room.spectators 
+        });
+        // --- FIN DE LA MODIFICACIÓN ---
+        console.log(`Jugador ${user.username} se unió como espectador a la mesa ${roomId}`);
+        return;
+    } // <-- ESTAS LLAVES SON LA CORRECCIÓN
+
+    // Si la partida está en espera y hay sitio
+    const emptySeatIndex = room.seats.findIndex(seat => seat === null);
+    if (room.state === 'waiting' && emptySeatIndex !== -1) {
+        if (!room.players) room.players = [];
+        room.players.push({ id: socket.id, name: user.username });
+        room.seats[emptySeatIndex] = { playerId: socket.id, playerName: user.username, avatar: user.userAvatar, active: true, doneFirstMeld: false };
+        socket.join(roomId);
+        socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
+        io.to(roomId).emit('playerJoined', getSanitizedRoomForClient(room)); // Notifica a otros en la sala
+        io.emit('updateRoomList', Object.values(rooms));
+        console.log(`Jugador ${user.username} se sentó en la mesa ${roomId}`);
+    } else {
+        socket.emit('joinError', 'No se pudo unir a la mesa. Puede que esté llena o en un estado inválido.');
+    }
   });
 
+  socket.on('requestToSit', (roomId) => {
+    const room = rooms[roomId];
+    const playerInfo = room?.spectators?.find(sp => sp.id === socket.id);
+
+    if (!room || !playerInfo) return;
+
+    const emptySeatIndex = room.seats.findIndex(seat => seat === null);
+
+    if (emptySeatIndex !== -1) {
+        // Se encontró un asiento libre. Asignamos al jugador.
+        room.seats[emptySeatIndex] = {
+            playerId: playerInfo.id,
+            playerName: playerInfo.name,
+            avatar: playerInfo.avatar,
+            active: false,
+            doneFirstMeld: false,
+            status: 'waiting' // Estado clave para el cliente
+        };
+
+        // --- INICIO DE LA LÓGICA AÑADIDA ---
+        // 1. Eliminamos al jugador de la lista de espectadores.
+        room.spectators = room.spectators.filter(sp => sp.id !== socket.id);
+
+        // 2. Si estaba en la lista de espera antigua, lo eliminamos también.
+        if (room.waitingForNextGame) {
+            room.waitingForNextGame = room.waitingForNextGame.filter(p => p.id !== socket.id);
+        }
+        // --- FIN DE LA LÓGICA AÑADIDA ---
+
+        console.log(`Jugador ${playerInfo.name} se ha sentado en el asiento ${emptySeatIndex} como 'waiting'.`);
+
+        // Notificamos a TODOS, enviando los asientos y la lista de espectadores actualizada.
+        io.to(roomId).emit('playerSatDownToWait', {
+            seats: room.seats,
+            spectators: room.spectators, // Enviamos la lista actualizada
+            waitingPlayerName: playerInfo.name
+        });
+
+        // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
+        io.emit('updateRoomList', Object.values(rooms)); // Notifica al LOBBY del cambio.
+
+        // ▼▼▼ AÑADE ESTE BLOQUE AQUÍ ▼▼▼
+        // FORZAR ACTUALIZACIÓN DE REVANCHA:
+        // Re-calculamos el estado de la revancha y lo emitimos a todos.
+        const readyPlayerIds = new Set();
+        room.rematchRequests.forEach(id => readyPlayerIds.add(id));
+        room.seats.forEach(seat => {
+            if (seat && seat.status === 'waiting') {
+                readyPlayerIds.add(seat.playerId);
+            }
+        });
+
+        const playersReadyNames = Array.from(readyPlayerIds).map(id => {
+            const seat = room.seats.find(s => s && s.playerId === id);
+            return seat ? seat.playerName : null;
+        }).filter(Boolean);
+
+        const totalPlayersReady = readyPlayerIds.size;
+
+        io.to(roomId).emit('rematchUpdate', {
+          playersReady: playersReadyNames,
+          canStart: totalPlayersReady >= 2,
+          hostId: room.hostId
+        });
+        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
+
+    } else {
+        // Si no hay asientos, solo confirmamos la espera (comportamiento anterior).
+        socket.emit('waitingConfirmed');
+        io.to(roomId).emit('systemMessage', `${playerInfo.name} esperará a la siguiente partida.`);
+    }
+});
 
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
@@ -948,6 +1089,12 @@ io.on('connection', (socket) => {
             playerHandCounts[player.playerId] = room.playerHands[player.playerId].length;
         });
 
+        // ▼▼▼ AÑADE ESTE BLOQUE AQUÍ ▼▼▼
+        // Notifica a TODOS en la sala (jugadores y espectadores) que reseteen su chat y lista de espectadores.
+        io.to(roomId).emit('resetForNewGame', { 
+            spectators: room.spectators || [] // Envía la lista de espectadores actualizada
+        });
+        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
 
         seatedPlayers.forEach(player => {
             io.to(player.playerId).emit('gameStarted', {
@@ -1360,6 +1507,15 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             // Como un jugador solo puede estar en una mesa, rompemos el bucle.
             break;
         }
+
+        // Limpieza adicional por si era espectador
+        if (room.spectators) {
+             const spectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
+             if (spectatorIndex !== -1) {
+                 room.spectators.splice(spectatorIndex, 1);
+                 io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+             }
+        }
     }
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
@@ -1463,6 +1619,15 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             }
         });
 
+        // ▼▼▼ AÑADE ESTE NUEVO BLOQUE DE CÓDIGO AQUÍ ▼▼▼
+        // 2. ✨ LIMPIEZA DEFINITIVA DE LA LISTA DE ESPECTADORES ✨
+        // Eliminamos a cualquiera que vaya a jugar de la lista de espectadores.
+        if (room.spectators && room.spectators.length > 0) {
+            const participantIds = new Set(nextGameParticipants.map(p => p.playerId));
+            room.spectators = room.spectators.filter(spec => !participantIds.has(spec.id));
+            console.log(`[Rematch Cleanup] Espectadores purgados. Quedan: ${room.spectators.length}`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
         // 3. ✨ RESETEO TOTAL DEL ESTADO DE LA SALA ✨
         const newSeats = [null, null, null, null];
@@ -1486,6 +1651,22 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
         // 3. REPARTIR CARTAS Y CONFIGURAR EL JUEGO
 
+        // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+        // LIMPIEZA DEFINITIVA DE ESPECTADORES:
+        // Antes de continuar, validamos que todos en la lista de espectadores sigan conectados.
+        if (room.spectators) {
+            const connectedSocketsInRoom = io.sockets.adapter.rooms.get(roomId);
+            if (connectedSocketsInRoom) {
+                room.spectators = room.spectators.filter(spectator => 
+                    connectedSocketsInRoom.has(spectator.id)
+                );
+                console.log(`Lista de espectadores purgada. Quedan ${room.spectators.length} espectadores válidos.`);
+            } else {
+                // Si por alguna razón la sala no existe en el adapter, la vaciamos.
+                room.spectators = [];
+            }
+        }
+        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
 
         const newDeck = buildDeck();
         shuffle(newDeck);
@@ -1516,6 +1697,12 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             if (player) playerHandCounts[player.playerId] = room.playerHands[player.playerId].length;
         });
 
+        // ▼▼▼ AÑADE ESTE BLOQUE AQUÍ ▼▼▼
+        // Notifica a TODOS en la sala que reseteen su chat y lista de espectadores para la revancha.
+        io.to(roomId).emit('resetForNewGame', { 
+            spectators: room.spectators || [] // Envía la lista de espectadores actualizada
+        });
+        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
 
         seatedPlayers.forEach(player => {
             if (player) {
@@ -1544,6 +1731,25 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
+  socket.on('kickSpectator', (data) => {
+      const { roomId, spectatorId } = data;
+      const room = rooms[roomId];
+
+      if (!room || socket.id !== room.hostId) return;
+
+      if (!room.kickedPlayers) room.kickedPlayers = new Set();
+      room.kickedPlayers.add(spectatorId);
+
+      room.spectators = room.spectators.filter(s => s.id !== spectatorId);
+
+      const spectatorSocket = io.sockets.sockets.get(spectatorId);
+      if (spectatorSocket) {
+          spectatorSocket.leave(roomId);
+          spectatorSocket.emit('kickedFromRoom', { reason: 'Has sido expulsado de la sala por el anfitrión.' });
+      }
+
+      io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+  });
 
 
 }); // <<-- Este es el cierre del 'io.on connection'
