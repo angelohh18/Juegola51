@@ -19,16 +19,45 @@ function handleHostLeaving(room, leavingPlayerId, io) {
     if (room && room.hostId === leavingPlayerId) {
         // El anfitrión se va; buscamos un nuevo anfitrión entre los jugadores sentados.
         const newHost = room.seats.find(s => s && s.playerId !== leavingPlayerId);
-        
+
         if (newHost) {
             room.hostId = newHost.playerId;
             console.log(`Anfitrión ${leavingPlayerId} ha salido. Nuevo anfitrión: ${newHost.playerName}.`);
-            
+
             // Notificamos a todos en la sala del cambio para actualizar la UI.
             io.to(room.roomId).emit('newHostAssigned', {
                 hostName: newHost.playerName,
                 hostId: newHost.playerId
             });
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // Si el cambio de anfitrión ocurre durante la fase de revancha,
+            // el servidor recalcula y envía proactivamente el estado actualizado a todos.
+            if (room.state === 'post-game') {
+                const readyPlayerIds = new Set();
+                room.rematchRequests.forEach(id => readyPlayerIds.add(id));
+                room.seats.forEach(seat => {
+                    if (seat && seat.status === 'waiting') {
+                        readyPlayerIds.add(seat.playerId);
+                    }
+                });
+
+                const playersReadyNames = Array.from(readyPlayerIds).map(id => {
+                    const seat = room.seats.find(s => s && s.playerId === id);
+                    return seat ? seat.playerName : null;
+                }).filter(Boolean);
+
+                const totalPlayersReady = readyPlayerIds.size;
+
+                // Emitimos la actualización con el ID del nuevo anfitrión.
+                io.to(room.roomId).emit('rematchUpdate', {
+                    playersReady: playersReadyNames,
+                    canStart: totalPlayersReady >= 2,
+                    hostId: room.hostId // El ID del nuevo anfitrión.
+                });
+                console.log(`[Re-Host] Actualización de revancha enviada. Nuevo anfitrión: ${room.hostId}`);
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
         }
     }
 }
@@ -37,22 +66,21 @@ function checkAndCleanRoom(roomId, io) {
     const room = rooms[roomId];
     if (!room) {
         // Si la sala ya no existe, aun así notificamos a todos para que actualicen su lista.
-        io.emit('updateRoomList', Object.values(rooms));
+        broadcastRoomListUpdate(io);
         return;
     }
 
     const playersInSeats = room.seats.filter(s => s !== null).length;
-    const spectatorsCount = room.spectators ? room.spectators.length : 0;
 
-    // UNA SALA ESTÁ REALMENTE VACÍA SÓLO SI NO HAY NADIE EN LOS ASIENTOS Y NADIE MIRANDO.
-    if (playersInSeats === 0 && spectatorsCount === 0) {
+    // UNA SALA ESTÁ VACÍA SI NO HAY NADIE EN LOS ASIENTOS.
+    if (playersInSeats === 0) {
         console.log(`Mesa ${roomId} está completamente vacía. Eliminando...`);
         delete rooms[roomId];
     }
 
     // Se emite la actualización SIEMPRE que un jugador sale,
     // para que el contador (ej: 3/4 -> 2/4) se actualice en tiempo real.
-    io.emit('updateRoomList', Object.values(rooms));
+    broadcastRoomListUpdate(io);
 }
 
 // ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA AL INICIO DE TU ARCHIVO ▼▼▼
@@ -88,7 +116,55 @@ function getSanitizedRoomForClient(room) {
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
+// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA AQUÍ ▼▼▼
+function generateRoomId() {
+  // Crea un ID aleatorio y único para cada mesa, ej: 'room-a1b2c3d4'
+  return `room-${Math.random().toString(36).slice(2, 10)}`;
+}
+// ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
+
 let rooms = {}; // Estado de las mesas se mantiene en memoria
+
+// ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
+let lobbyChatHistory = [];
+const LOBBY_CHAT_HISTORY_LIMIT = 50; // Guardaremos los últimos 50 mensajes
+// ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
+// ▼▼▼ AÑADE ESTAS LÍNEAS ▼▼▼
+let users = {}; // Reemplazará a userCredits para guardar más datos
+let exchangeRates = {
+    'EUR': { 'USD': 1.0, 'COP': 4500 },
+    'USD': { 'EUR': 1.0, 'COP': 4500 },
+    'COP': { 'EUR': 1 / 4500, 'USD': 1 / 4500 }
+};
+// ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
+
+let commissionLog = []; // <--- REEMPLAZA totalCommission por esto
+
+// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
+function convertCurrency(amount, fromCurrency, toCurrency, rates) {
+    if (fromCurrency === toCurrency) {
+        return amount;
+    }
+    // Si la tasa directa existe, la usamos.
+    if (rates[fromCurrency] && rates[fromCurrency][toCurrency]) {
+        return amount * rates[fromCurrency][toCurrency];
+    }
+    // Si no, intentamos la inversa (ej. de COP a EUR)
+    if (rates[toCurrency] && rates[toCurrency][fromCurrency]) {
+         return amount / rates[toCurrency][fromCurrency];
+    }
+    // Fallback si no hay tasa (no debería pasar con tu configuración)
+    return amount; 
+}
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
+
+// ▼▼▼ AÑADE ESTA NUEVA FUNCIÓN JUSTO AQUÍ ▼▼▼
+function broadcastRoomListUpdate(io) {
+    io.emit('updateRoomList', Object.values(rooms));
+    console.log('[Broadcast] Se ha actualizado la lista de mesas para todos los clientes.');
+}
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // Servir archivos estáticos
 app.use(express.static(path.join(__dirname)));
@@ -318,7 +394,7 @@ function canBeAddedToServerMeld(card, meld) {
     // "cerrada" (ej. Q-K-A) y no se le puede añadir nada más.
     const hasKing = meld.cards.some(c => c.value === 'K');
     const hasAce = meld.cards.some(c => c.value === 'A');
-    if (hasKing && hasAce) {
+    if (hasKing && hasAce && card.value === '2') {
         return false; // ¡BLOQUEA EL AÑADIDO DE UN '2' A 'Q-K-A'!
     }
 
@@ -355,74 +431,150 @@ function canBeAddedToServerMeld(card, meld) {
   return false; // Si ninguna condición se cumple, no se puede añadir.
 }
 
-// ▼▼▼ REEMPLAZA LA FUNCIÓN endgameAndCalculateScores ENTERA CON ESTA ▼▼▼
 // ▼▼▼ REEMPLAZA LA FUNCIÓN endGameAndCalculateScores ENTERA CON ESTA VERSIÓN ▼▼▼
 function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
+
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    // ▼▼▼ REEMPLAZA EL BLOQUE DE 'isPractice' ENTERO CON ESTE ▼▼▼
+    // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
+    if (room.isPractice) {
+        const humanPlayer = room.seats.find(s => s && !s.isBot);
+        if (!humanPlayer) return; // Si no hay humano, no hacemos nada
+
+        // ▼▼▼ REEMPLAZA ESTE BLOQUE 'if/else' CON EL NUEVO ▼▼▼
+        if (winnerSeat.isBot) {
+            // Si gana un bot, ahora enviamos un evento CON el nombre del ganador.
+            console.log(`[Práctica] Un bot ha ganado. Notificando al jugador.`);
+            io.to(humanPlayer.playerId).emit('practiceGameBotWin', { winnerName: winnerSeat.playerName });
+        } else {
+            // Si gana el humano, el evento se mantiene igual.
+            console.log(`[Práctica] El jugador humano ha ganado. Enviando señal de victoria.`);
+            io.to(humanPlayer.playerId).emit('practiceGameHumanWin');
+        }
+        // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
+        // Detenemos la ejecución para no aplicar la lógica de mesas reales.
+        return;
+    }
+    // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
+
     if (!room || !winnerSeat || room.state !== 'playing') return;
 
-    console.log(`Partida finalizada. Ganador: ${winnerSeat.playerName}`);
+    // (Esta parte que procesa multas por no bajar no cambia y es correcta)
+    if (room.initialSeats) {
+        room.initialSeats.forEach(seat => {
+            if (!seat || seat.playerId === winnerSeat.playerId) return;
+        const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
+        if (finalSeatState && finalSeatState.active && !finalSeatState.doneFirstMeld) {
+            const penalty = room.settings.penalty || 0;
+            const playerInfo = users[finalSeatState.userId];
+            if (penalty > 0 && playerInfo) {
+                const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+                playerInfo.credits -= penaltyInPlayerCurrency;
+                room.pot = (room.pot || 0) + penalty;
+                console.log(`Jugador ${finalSeatState.playerName} paga multa de ${penalty} por no bajar. Nuevo bote: ${room.pot}`);
+                io.to(finalSeatState.playerId).emit('userStateUpdated', playerInfo);
+                io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+            }
+        }
+        });
+    }
+
+    console.log(`Partida finalizada. Ganador: ${winnerSeat.playerName}. Bote final (tras multas): ${room.pot}`);
     room.state = 'post-game';
     room.lastWinnerId = winnerSeat.playerId;
     room.hostId = winnerSeat.playerId;
 
-    let totalWinnings = 0;
+    const totalPot = room.pot || 0;
+    const commissionInRoomCurrency = totalPot * 0.10; // Comisión en la moneda de la mesa (EUR, USD, etc.)
+    const netWinnings = totalPot - commissionInRoomCurrency; // Las ganancias netas para el jugador siguen en la moneda de la mesa.
+
+    // Convertimos la comisión a COP para el registro del admin
+    const commissionInCOP = convertCurrency(commissionInRoomCurrency, room.settings.betCurrency, 'COP', exchangeRates);
+
+    // Guardamos en el log el valor YA CONVERTIDO a COP.
+    commissionLog.push({ amount: commissionInCOP, timestamp: Date.now() }); // Añade el registro al historial
+    io.to('admin-room').emit('admin:commissionData', commissionLog); // Notifica al admin con el historial completo
+
+    const winnerInfo = users[winnerSeat.userId];
+    if (winnerInfo) {
+        const winningsInWinnerCurrency = convertCurrency(netWinnings, room.settings.betCurrency, winnerInfo.currency, exchangeRates);
+        winnerInfo.credits += winningsInWinnerCurrency;
+        io.to(winnerSeat.playerId).emit('userStateUpdated', winnerInfo);
+    }
+
     let losersInfo = [];
-    
-    const originalPlayerIds = room.initialSeats.map(s => s.playerId);
+    const bet = room.settings.bet || 0;
+    const penalty = room.settings.penalty || 0;
 
-    originalPlayerIds.forEach(playerId => {
-        if (playerId === winnerSeat.playerId) return;
+    if (room.initialSeats) {
+        room.initialSeats.forEach(seat => {
+            // Asegurarse de que el asiento exista y no sea el del ganador
+            if (!seat || seat.playerId === winnerSeat.playerId) return;
 
-        const loserSeat = room.seats.find(s => s && s.playerId === playerId);
-        const loserName = room.initialSeats.find(s => s.playerId === playerId)?.playerName || 'Jugador Desconectado';
+        const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
+        let statusText = '';
+        let amountPaid = 0;
 
-        let lossAmount = room.settings.bet || 0;
-        let penaltyText = '';
+        // Empezamos con el caso por defecto: el jugador perdió pagando solo la apuesta.
+        let baseText = 'Pagó apuesta';
+        let reasonText = '';
+        amountPaid = bet;
+        let color = '#ffff00'; // Amarillo para una pérdida normal
 
-        if (!loserSeat) {
-            lossAmount += (room.settings.penalty || 0);
-            penaltyText = `<span style="color:#ff4444;">Paga apuesta (${room.settings.bet}) + multa (${room.settings.penalty}) por abandonar.</span>`;
-        } else {
-            let paysPenalty = !loserSeat.doneFirstMeld;
-            if (paysPenalty) {
-                lossAmount += (room.settings.penalty || 0);
-                penaltyText = `<span style="color:#ff4444;">Paga apuesta (${room.settings.bet}) + multa (${room.settings.penalty}) por no bajar.</span>`;
-            } else {
-                penaltyText = `<span style="color:#ffcc00;">Paga apuesta (${room.settings.bet}).</span>`;
-            }
+        // Ahora, verificamos si se debe aplicar una multa, lo que sobreescribe el estado por defecto.
+        if (!finalSeatState) {
+            reasonText = 'por abandonar';
+        } else if (finalSeatState.active === false) {
+            reasonText = 'por falta';
+        } else if (!finalSeatState.doneFirstMeld) {
+            reasonText = 'por no bajar';
         }
 
-        totalWinnings += lossAmount;
-        losersInfo.push(`<p>${loserName} | ${penaltyText}</p>`);
-    });
+        // Si hay un motivo de multa, actualizamos el texto y el monto.
+        if (reasonText) {
+            baseText = 'Pagó apuesta y multa';
+            amountPaid = bet + penalty;
+            color = '#ff4444'; // Rojo para indicar una penalización
+        }
 
-    const commission = totalWinnings * 0.10;
-    const netWinnings = totalWinnings - commission;
+        // Construimos el texto final y lo añadimos a la lista.
+        statusText = `<span style="color:${color};">${baseText} ${reasonText}</span>`.trim();
+        losersInfo.push(`<p>${seat.playerName} | ${statusText} = ${amountPaid.toFixed(2)}</p>`);
+        });
+    }
 
+    // --- CORRECCIÓN CLAVE ---
+    // Construimos UN SOLO HTML universal para todos los jugadores.
+    // La línea "GANANCIA" ahora es clara para todos.
     let winningsSummary = `<div style="border-top: 1px solid #c5a56a; margin-top: 15px; padding-top: 10px; text-align: left;">
-                            <p><strong>Total Recaudado:</strong> ${totalWinnings.toFixed(2)}</p>
-                            <p><strong>Comisión (10%):</strong> -${commission.toFixed(2)}</p>
-                            <p style="color: #6bff6b; font-size: 1.2rem;"><strong>GANANCIA TOTAL: ${netWinnings.toFixed(2)}</strong></p>
+                            <p><strong>Bote Total Recaudado:</strong> ${totalPot.toFixed(2)}</p>
+                            <p><strong>Comisión Admin (10%):</strong> -${commissionInRoomCurrency.toFixed(2)}</p>
+                            <p style="color: #6bff6b; font-size: 1.2rem;"><strong>GANANCIA: ${netWinnings.toFixed(2)}</strong></p>
                            </div>`;
 
-    const scoresHTML = `<div style="text-align: left;"><p style="color:#c5a56a; font-weight:bold;">Detalle:</p>`
-                        + losersInfo.join('')
-                        + `</div>`
-                        + winningsSummary;
+    const scoresHTML = `<div style="text-align: left;"><p style="color:#c5a56a; font-weight:bold;">Detalle:</p>${losersInfo.join('')}</div>` + winningsSummary;
 
     const finalSanitizedState = getSanitizedRoomForClient(room);
 
+    // Enviamos el mismo evento con el mismo HTML a TODOS en la sala.
     io.to(room.roomId).emit('gameEnd', {
         winnerName: winnerSeat.playerName,
         scoresHTML: scoresHTML,
         finalRoomState: finalSanitizedState,
-        abandonment: abandonmentInfo // <-- LÍNEA AÑADIDA: Enviamos la info de abandono
+        abandonment: abandonmentInfo,
+        winnerId: winnerSeat.playerId,
+        potData: {
+            pot: totalPot,
+            commission: commissionInRoomCurrency,
+            winnings: netWinnings,
+            currency: room.settings.betCurrency
+        }
     });
+    // --- FIN DE LA CORRECCIÓN ---
 
     room.rematchRequests.clear();
-    io.emit('updateRoomList', Object.values(rooms));
+    broadcastRoomListUpdate(io);
 }
-// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 function checkVictoryCondition(room, roomId, io) {
@@ -442,7 +594,41 @@ function handlePlayerElimination(room, faultingPlayerId, faultReason, io) {
     const roomId = room.roomId;
 
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
+
+    // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
+    if (room.isPractice) {
+        console.log(`[Práctica] Falta cometida por ${playerSeat.playerName}.`);
+        // Busca al jugador humano para enviarle solo a él la notificación.
+        const humanPlayer = room.seats.find(s => s && !s.isBot);
+
+        if (humanPlayer) {
+            // 1. Notifica al humano para que vea el modal de la falta cometida.
+            io.to(humanPlayer.playerId).emit('playerEliminated', {
+                playerId: faultingPlayerId,
+                playerName: playerSeat.playerName,
+                reason: faultReason,
+            });
+            // 2. Envía la señal para que, después de cerrar el modal de falta, aparezca el de reinicio.
+            io.to(humanPlayer.playerId).emit('practiceGameFaultEnd');
+        }
+        // 3. Detiene la ejecución para no aplicar lógica de mesas reales.
+        return; 
+    }
+    // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
     if (playerSeat && playerSeat.active) {
+        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
+        const penalty = room.settings.penalty || 0;
+        const playerInfo = users[playerSeat.userId];
+        if (penalty > 0 && playerInfo) {
+            const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+            playerInfo.credits -= penaltyInPlayerCurrency;
+            room.pot = (room.pot || 0) + penalty;
+            console.log(`Jugador ${playerSeat.playerName} paga multa de ${penalty}. Nuevo bote: ${room.pot}`);
+
+            io.to(faultingPlayerId).emit('userStateUpdated', playerInfo);
+            io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+        }
+        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
         // --- INICIO: LÓGICA PARA GESTIONAR CARTAS DEL JUGADOR ELIMINADO ---
 
         // 1. Recoger las cartas del jugador (mano y bajadas del turno).
@@ -578,6 +764,8 @@ function findAndValidateAllMelds(cards) {
     };
 }
 
+// ▼▼▼ REEMPLAZA ESTAS DOS FUNCIONES EN SERVER.JS ▼▼▼
+
 function findOptimalMelds(hand) {
   let availableCards = [...hand];
   let foundMelds = [];
@@ -591,10 +779,23 @@ function findOptimalMelds(hand) {
       for (const combo of getCombinations(availableCards, size)) {
         const type = validateMeld(combo); // Usa la función de validación del servidor
         if (type) {
-          const points = calculateMeldPoints(combo, type);
-          // Puntuación simple para priorizar: más cartas es mejor, más puntos es mejor
-          const score = combo.length * 100 + points;
-          allPossibleMelds.push({ cards: combo, type, points, score });
+          // Reordenar la escalera si es necesario para el cálculo de puntos y la consistencia
+          let finalComboCards = [...combo];
+          if (type === 'escalera') {
+              const order=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+              const hasAce=finalComboCards.some(c=>c.value==='A'), hasKing=finalComboCards.some(c=>c.value==='K');
+              finalComboCards.sort((a,b)=>{
+                  let rankA=order.indexOf(a.value), rankB=order.indexOf(b.value);
+                  if(hasAce&&hasKing){
+                      if(a.value==='A') rankA=13; // Tratar As como el más alto si hay Rey
+                      if(b.value==='A') rankB=13;
+                  }
+                  return rankA-rankB;
+              });
+          }
+          const points = calculateMeldPoints(finalComboCards, type);
+          const score = finalComboCards.length * 100 + points;
+          allPossibleMelds.push({ cards: finalComboCards, type, points, score });
         }
       }
     }
@@ -617,8 +818,10 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
   const scores = hand.map(card => {
     let score = card.points; // Puntuación base
     // Penalización masiva si la carta se puede añadir a un juego existente
-    if (allMeldsOnTable.some(meld => canBeAddedToServerMeld(card, meld))) {
-        score -= 1000;
+    for(const meld of allMeldsOnTable) {
+        if(canBeAddedToServerMeld(card, meld)) {
+            score -= 1000;
+        }
     }
     // Bonificaciones por sinergia con otras cartas en la mano
     for (const otherCard of hand) {
@@ -637,82 +840,183 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
   return scores[0].card;
 }
 
+// ▼▼▼ REEMPLAZA LA FUNCIÓN botPlay ENTERA EN SERVER.JS CON ESTA VERSIÓN ▼▼▼
 async function botPlay(room, botPlayerId, io) {
-  const botSeat = room.seats.find(s => s.playerId === botPlayerId);
-  if (!botSeat || !botSeat.active) return; // Si el bot fue eliminado, no juega
+    const botSeat = room.seats.find(s => s.playerId === botPlayerId);
+    if (!botSeat || !botSeat.active) return;
 
-  const pause = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  await pause(1500); // Pausa inicial para simular que piensa
+    const pause = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await pause(1500); // Pausa para simular que piensa
 
-  let botHand = room.playerHands[botPlayerId];
+    let botHand = room.playerHands[botPlayerId];
+    let source = 'deck';
+    let cardDrawn = null;
+    let drewFromDiscardPile = false;
 
-  // Lógica de robar carta (inteligente)
-  const topDiscard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
-  let drewFromDiscard = false;
-  if (topDiscard) {
-    const potentialHand = [...botHand, topDiscard];
-    const potentialMelds = findOptimalMelds(potentialHand);
-    const meldsWithDiscard = potentialMelds.filter(m => m.cards.some(c => c.id === topDiscard.id));
-    const canUseDiscard = meldsWithDiscard.length > 0 && 
-                          (botSeat.doneFirstMeld || meldsWithDiscard.reduce((sum, m) => sum + m.points, 0) >= 51);
-
-    if (canUseDiscard) {
-      botHand.push(room.discardPile.pop());
-      drewFromDiscard = true;
+    // 1. --- LÓGICA DE ROBO (INTELIGENTE) ---
+    const topDiscard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
+    if (topDiscard) {
+        const canAddToExisting = botSeat.doneFirstMeld && room.melds.some(m => canBeAddedToServerMeld(topDiscard, m));
+        const potentialHand = [...botHand, topDiscard];
+        const potentialNewMelds = findOptimalMelds(potentialHand);
+        const meldsUsingDiscardCard = potentialNewMelds.filter(m => m.cards.some(c => c.id === topDiscard.id));
+        let canFormAndMeldNewSet = false;
+        if (meldsUsingDiscardCard.length > 0) {
+            if (botSeat.doneFirstMeld) {
+                canFormAndMeldNewSet = true;
+            } else {
+                const totalPoints = potentialNewMelds.reduce((sum, meld) => sum + meld.points, 0);
+                if (totalPoints >= 51) canFormAndMeldNewSet = true;
+            }
+        }
+        if (canAddToExisting || canFormAndMeldNewSet) {
+            cardDrawn = room.discardPile.pop();
+            botHand.push(cardDrawn);
+            drewFromDiscardPile = true;
+            source = 'discard';
+        }
     }
-  }
-  if (!drewFromDiscard && room.deck.length > 0) {
-    botHand.push(room.deck.shift());
-  }
 
-  room.playerHands[botPlayerId] = botHand;
-  io.to(room.roomId).emit('handCountsUpdate', { /* ... actualiza contadores ... */ });
-  await pause(1000);
+    if (!drewFromDiscardPile) {
+        if (room.deck.length === 0) {
+            if (room.discardPile.length > 1) {
+                const topCard = room.discardPile.pop();
+                room.deck = room.discardPile;
+                shuffle(room.deck);
+                room.discardPile = [topCard];
+                io.to(room.roomId).emit('deckShuffled');
+            } else {
+                console.log(`Bot ${botSeat.playerName} no puede robar, no hay cartas.`);
+                // Si no puede robar, debe pasar el turno (esto es un caso raro)
+                // Aquí podrías implementar la lógica para terminar el juego si no hay más movimientos.
+                // Por ahora, simplemente avanzaremos el turno.
+                return advanceTurnAfterAction(room, botPlayerId, null, io);
+            }
+        }
+        cardDrawn = room.deck.shift();
+        botHand.push(cardDrawn);
+    }
 
-  // Lógica de bajar juegos
-  const meldsToPlay = findOptimalMelds(botHand);
-  if (meldsToPlay.length > 0) {
-    // ... (Aquí iría la lógica completa para que el bot baje sus juegos)
-    // Por simplicidad en este paso, nos enfocaremos en el descarte
-  }
+    io.to(room.roomId).emit('playerDrewCard', { playerId: botPlayerId, source: source, card: source === 'discard' ? cardDrawn : null });
+    io.to(room.roomId).emit('handCountsUpdate', { playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
 
-  // Lógica de descarte
-  if (botHand.length > 0) {
-    const cardToDiscard = findWorstCardToDiscard(botHand, room.melds);
-    const cardIndex = botHand.findIndex(c => c.id === cardToDiscard.id);
+    await pause(1500);
 
-    if (cardIndex !== -1) {
-      const [discardedCard] = botHand.splice(cardIndex, 1);
-      room.discardPile.push(discardedCard);
+    // 2. --- LÓGICA PARA AÑADIR A JUEGOS EXISTENTES ---
+    if (botSeat.doneFirstMeld) {
+        let cardWasAdded = true;
+        while (cardWasAdded) {
+            cardWasAdded = false;
+            let cardToAdd = null, targetMeldIndex = -1, cardHandIndex = -1;
+            for (let i = 0; i < botHand.length; i++) {
+                for (let j = 0; j < room.melds.length; j++) {
+                    if (canBeAddedToServerMeld(botHand[i], room.melds[j])) {
+                        cardToAdd = botHand[i];
+                        targetMeldIndex = j;
+                        cardHandIndex = i;
+                        break;
+                    }
+                }
+                if (cardToAdd) break;
+            }
+            if (cardToAdd) {
+                io.to(room.roomId).emit('animateCardAdd', { melderId: botPlayerId, card: cardToAdd, targetMeldIndex: targetMeldIndex });
+                const addPosition = canBeAddedToServerMeld(cardToAdd, room.melds[targetMeldIndex]);
+                if (addPosition === 'prepend') room.melds[targetMeldIndex].cards.unshift(cardToAdd);
+                else room.melds[targetMeldIndex].cards.push(cardToAdd);
+                botHand.splice(cardHandIndex, 1);
+                io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts, highlight: { cardId: cardToAdd.id, meldIndex: targetMeldIndex } });
+                cardWasAdded = true;
+                if (checkVictoryCondition(room, room.roomId, io)) return;
+                await pause(1500);
+            }
+        }
+    }
 
-      // Emitir cambio de turno
-      const currentPlayerIndex = room.seats.findIndex(p => p && p.playerId === botPlayerId);
-      let nextPlayerIndex = (currentPlayerIndex + 1) % room.seats.length;
-      while (!room.seats[nextPlayerIndex] || !room.seats[nextPlayerIndex].active) {
-        nextPlayerIndex = (nextPlayerIndex + 1) % room.seats.length;
-      }
-      const nextPlayer = room.seats[nextPlayerIndex];
-      room.currentPlayerId = nextPlayer.playerId;
+    // 3. --- LÓGICA PARA BAJAR NUEVOS JUEGOS ---
+    const meldsToPlay = findOptimalMelds(botHand);
+    if (meldsToPlay.length > 0) {
+        const totalPoints = meldsToPlay.reduce((sum, meld) => sum + meld.points, 0);
+        if (botSeat.doneFirstMeld || totalPoints >= 51) {
+            for (const meld of meldsToPlay) {
+                io.to(room.roomId).emit('animateNewMeld', { melderId: botPlayerId, cards: meld.cards });
+                room.melds.push({ cards: meld.cards, type: meld.type, points: meld.points, melderId: botPlayerId });
+                const meldedCardIds = new Set(meld.cards.map(c => c.id));
+                botHand = botHand.filter(card => !meldedCardIds.has(card.id));
+                room.playerHands[botPlayerId] = botHand;
+            }
+            botSeat.doneFirstMeld = true;
+            io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
+            if (checkVictoryCondition(room, room.roomId, io)) return;
+            await pause(1500);
+        }
+    }
 
-      const playerHandCounts = {};
-      room.seats.filter(s => s).forEach(p => { playerHandCounts[p.playerId] = room.playerHands[p.playerId]?.length || 0; });
+    // 4. --- LÓGICA DE DESCARTE (INTELIGENTE) ---
+    if (botHand.length > 0) {
+        const cardToDiscard = findWorstCardToDiscard(botHand, room.melds);
 
-      io.to(room.roomId).emit('turnChanged', {
+        // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN COMPLETO AQUÍ ▼▼▼
+        // VALIDACIÓN DE FALTA: Comprobamos si el descarte del bot es ilegal.
+        if (cardToDiscard) {
+            for (const meld of room.melds) {
+                if (canBeAddedToServerMeld(cardToDiscard, meld)) {
+                    const reason = `Descarte ilegal del bot. La carta ${cardToDiscard.value}${getSuitIcon(cardToDiscard.suit)} se podía añadir a un juego en mesa.`;
+                    console.log(`FALTA GRAVE BOT: ${botSeat.playerName} - ${reason}`);
+                    // Si es ilegal, eliminamos al bot y detenemos su turno.
+                    return handlePlayerElimination(room, botPlayerId, reason, io);
+                }
+            }
+        }
+        // ▲▲▲ FIN DEL BLOQUE DE VALIDACIÓN ▲▲▲
+
+        if (cardToDiscard) {
+            const cardIndex = botHand.findIndex(c => c.id === cardToDiscard.id);
+            if (cardIndex !== -1) {
+                const [discardedCard] = botHand.splice(cardIndex, 1);
+                room.discardPile.push(discardedCard);
+                advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+            }
+        } else { // Fallback por si algo falla
+            const [discardedCard] = botHand.splice(0, 1);
+            room.discardPile.push(discardedCard);
+            advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+        }
+    }
+}
+
+function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
+    if (checkVictoryCondition(room, room.roomId, io)) return;
+
+    resetTurnState(room);
+    const seatedPlayers = room.seats.filter(s => s !== null);
+    const currentPlayerIndex = seatedPlayers.findIndex(p => p.playerId === discardingPlayerId);
+    let nextPlayerIndex = (currentPlayerIndex + 1) % seatedPlayers.length;
+    let attempts = 0;
+    while (!seatedPlayers[nextPlayerIndex] || seatedPlayers[nextPlayerIndex].active === false) {
+        nextPlayerIndex = (nextPlayerIndex + 1) % seatedPlayers.length;
+        if (++attempts > seatedPlayers.length * 2) {
+            console.log("Error: No se pudo encontrar un siguiente jugador activo.");
+            return;
+        }
+    }
+    const nextPlayer = seatedPlayers[nextPlayerIndex];
+    room.currentPlayerId = nextPlayer.playerId;
+
+    io.to(room.roomId).emit('turnChanged', {
         discardedCard: discardedCard,
-        discardingPlayerId: botPlayerId,
+        discardingPlayerId: discardingPlayerId,
         newDiscardPile: room.discardPile,
         nextPlayerId: room.currentPlayerId,
-        playerHandCounts: playerHandCounts
-      });
+        playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
+        newMelds: room.melds
+    });
 
-      // Si el siguiente jugador es un bot, llamarse a sí mismo recursivamente
-      if (room.seats.find(s => s && s.playerId === room.currentPlayerId)?.isBot) {
-          botPlay(room, room.currentPlayerId, io);
-      }
+    // Si el siguiente jugador es un bot, se vuelve a llamar a la función botPlay
+    const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
+    if (nextPlayerSeat && nextPlayerSeat.isBot) {
+        setTimeout(() => botPlay(room, room.currentPlayerId, io), 1000);
     }
-  }
-
-  checkVictoryCondition(room, room.roomId, io);
 }
 
 app.use(express.static(path.join(__dirname, '../cliente')));
@@ -721,6 +1025,16 @@ app.use(express.static(path.join(__dirname, '../cliente')));
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
+
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    if (room && room.isPractice) {
+        console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
+        delete rooms[roomId]; // Elimina la sala del servidor
+        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
+        return; // Detiene la ejecución para no aplicar lógica de mesas reales
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
     if (!room) return;
 
     console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala ${roomId}.`);
@@ -736,70 +1050,77 @@ function handlePlayerDeparture(roomId, leavingPlayerId, io) {
         return;
     }
     
-    const playerName = room.seats[seatIndex].playerName;
+    const leavingPlayerSeat = { ...room.seats[seatIndex] };
+    const playerName = leavingPlayerSeat.playerName;
+
     room.seats[seatIndex] = null;
 
     if (room.state === 'playing') {
-        // ▼▼▼ BLOQUE AÑADIDO: Notificación de abandono ▼▼▼
-        // Notificamos a TODOS en la sala (jugadores y espectadores) de la falta.
-        const faultMessage = `${playerName} ha abandonado la partida, cometiendo una falta.`;
-        io.to(roomId).emit('playerAbandoned', { 
-            name: playerName,
-            message: faultMessage 
-        });
-        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
+        // VALIDACIÓN CLAVE: Solo aplicamos lógica de abandono si el jugador estaba ACTIVO.
+        if (leavingPlayerSeat.status !== 'waiting') {
+            // --- JUGADOR ACTIVO: Se aplica multa y se gestiona el turno ---
+            console.log(`Jugador activo ${playerName} ha abandonado. Se aplica multa.`);
 
-        const activePlayers = room.seats.filter(s => s && s.active !== false);
+            const reason = `${playerName} ha abandonado la partida.`;
+            io.to(roomId).emit('playerEliminated', {
+                playerId: leavingPlayerId,
+                playerName: playerName,
+                reason: reason
+            });
 
-        if (activePlayers.length === 1) {
-            console.log(`Abandono de ${playerName}. Solo queda ${activePlayers[0].playerName}. Partida finalizada.`);
-            
-            // ▼▼▼ LÍNEA MODIFICADA: Pasamos la información del abandono ▼▼▼
-            endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
-            // ▲▲▲ FIN DE LA LÍNEA MODIFICADA ▲▲▲
-            return;
-        
-        } else if (activePlayers.length > 1) {
-            if (room.currentPlayerId === leavingPlayerId) {
-                console.log(`El jugador actual (${playerName}) ha abandonado. Avanzando el turno...`);
-                resetTurnState(room);
-
-                let oldPlayerIndex = -1;
-                for(let i=0; i < room.initialSeats.length; i++) {
-                    if (room.initialSeats[i].playerId === leavingPlayerId) {
-                        oldPlayerIndex = i;
-                        break;
-                    }
-                }
-
-                let nextPlayerIndex = oldPlayerIndex;
-                let attempts = 0;
-                let nextPlayer = null;
-
-                while (!nextPlayer && attempts < room.seats.length * 2) {
-                    nextPlayerIndex = (nextPlayerIndex + 1) % room.seats.length;
-                    const potentialNextPlayerSeat = room.seats[nextPlayerIndex];
-                    if (potentialNextPlayerSeat && potentialNextPlayerSeat.active) {
-                        nextPlayer = potentialNextPlayerSeat;
-                    }
-                    attempts++;
-                }
-
-                if (nextPlayer) {
-                    room.currentPlayerId = nextPlayer.playerId;
-                    console.log(`Nuevo turno para: ${nextPlayer.playerName}`);
-                    io.to(roomId).emit('turnChanged', {
-                        discardedCard: null,
-                        discardingPlayerId: leavingPlayerId,
-                        newDiscardPile: room.discardPile,
-                        nextPlayerId: room.currentPlayerId,
-                        playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
-                        newMelds: room.melds
-                    });
-                } else {
-                    console.error("Error crítico: No se pudo encontrar un siguiente jugador activo.");
+            if (leavingPlayerSeat && leavingPlayerSeat.userId) {
+                const penalty = room.settings.penalty || 0;
+                const playerInfo = users[leavingPlayerSeat.userId];
+                if (penalty > 0 && playerInfo) {
+                    const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+                    playerInfo.credits -= penaltyInPlayerCurrency;
+                    room.pot = (room.pot || 0) + penalty;
+                    io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
+                    io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
                 }
             }
+
+            const activePlayers = room.seats.filter(s => s && s.active !== false);
+            if (activePlayers.length === 1) {
+                endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
+                return;
+            } else if (activePlayers.length > 1) {
+                if (room.currentPlayerId === leavingPlayerId) {
+                    resetTurnState(room);
+                    let oldPlayerIndex = -1;
+                    if (room.initialSeats) {
+                        oldPlayerIndex = room.initialSeats.findIndex(s => s && s.playerId === leavingPlayerId);
+                    }
+                    let nextPlayerIndex = oldPlayerIndex !== -1 ? oldPlayerIndex : 0;
+                    let attempts = 0;
+                    let nextPlayer = null;
+                    while (!nextPlayer && attempts < room.seats.length * 2) {
+                        nextPlayerIndex = (nextPlayerIndex + 1) % room.seats.length;
+                        const potentialNextPlayerSeat = room.seats[nextPlayerIndex];
+                        if (potentialNextPlayerSeat && potentialNextPlayerSeat.active) {
+                            nextPlayer = potentialNextPlayerSeat;
+                        }
+                        attempts++;
+                    }
+                    if (nextPlayer) {
+                        room.currentPlayerId = nextPlayer.playerId;
+                        io.to(roomId).emit('turnChanged', {
+                            discardedCard: null,
+                            discardingPlayerId: leavingPlayerId,
+                            newDiscardPile: room.discardPile,
+                            nextPlayerId: room.currentPlayerId,
+                            playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
+                            newMelds: room.melds
+                        });
+                    }
+                }
+            }
+        } else {
+            // --- JUGADOR EN ESPERA: No hay multa, solo se notifica ---
+            console.log(`Jugador ${playerName} ha salido mientras esperaba. No se aplica multa.`);
+            io.to(roomId).emit('playerAbandoned', {
+                message: `${playerName} ha abandonado la mesa antes de empezar la partida.`
+            });
         }
     }
     
@@ -810,43 +1131,8 @@ function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
-io.on('connection', (socket) => {
-  console.log('✅ Un jugador se ha conectado:', socket.id);
-  console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
-
-  socket.emit('updateRoomList', Object.values(rooms));
-
-  socket.on('createRoom', (settings) => {
-    const roomId = `room-${socket.id}`;
-    const newRoom = {
-      roomId: roomId,
-      hostId: socket.id,
-      settings: settings,
-      players: [{ id: socket.id, name: settings.username }],
-      seats: [
-        { playerId: socket.id, playerName: settings.username, avatar: settings.userAvatar, active: true, doneFirstMeld: false },
-        null, null, null
-      ],
-      state: 'waiting',
-      deck: [],
-      discardPile: [],
-      playerHands: {},
-      melds: [], // Combinaciones permanentes
-      turnMelds: [], // NUEVO: Combinaciones temporales de este turno
-      turnPoints: 0, // NUEVO: Puntos acumulados en este turno
-      hasDrawn: false, // <-- AÑADE ESTA LÍNEA
-      drewFromDiscard: null, // <-- AÑADE ESTA LÍNEA
-      firstMeldCompletedByAnyone: false, // <-- AÑADE ESTA LÍNEA
-      rematchRequests: new Set()
-    };
-    rooms[roomId] = newRoom;
-    socket.join(roomId);
-    socket.emit('roomCreatedSuccessfully', newRoom);
-    io.emit('updateRoomList', Object.values(rooms));
-    console.log(`Mesa creada: ${roomId} por ${settings.username}`);
-  });
-
-  socket.on('requestPracticeGame', (username) => {
+// ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
+function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -865,19 +1151,15 @@ io.on('connection', (socket) => {
       deck: [], discardPile: [], playerHands: {}, melds: [], turnMelds: [], turnPoints: 0, hasDrawn: false, drewFromDiscard: null, firstMeldCompletedByAnyone: false, rematchRequests: new Set()
     };
 
-    // Repartir cartas y empezar
     const deck = buildDeck();
     shuffle(deck);
     newRoom.seats.forEach(seat => {
         if (seat) newRoom.playerHands[seat.playerId] = deck.splice(0, 14);
     });
 
-    const startingPlayerId = newRoom.seats[0].playerId; // El humano empieza
+    const startingPlayerId = newRoom.seats[0].playerId;
     newRoom.playerHands[startingPlayerId].push(deck.shift());
-    
-    // --- INICIO DE LA CORRECCIÓN ---
-    newRoom.hasDrawn = true; // El primer jugador ya "robó" su carta inicial.
-    // --- FIN DE LA CORRECCIÓN ---
+    newRoom.hasDrawn = true;
 
     newRoom.discardPile.push(deck.shift());
     newRoom.deck = deck;
@@ -885,10 +1167,12 @@ io.on('connection', (socket) => {
 
     rooms[roomId] = newRoom;
     socket.join(roomId);
+    socket.currentRoomId = roomId; // Aseguramos que la sala actual se actualice
 
-    // Enviar estado inicial al jugador humano
     const playerHandCounts = {};
-    newRoom.seats.forEach(p => { playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length; });
+    newRoom.seats.forEach(p => { 
+        if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length; 
+    });
 
     io.to(socket.id).emit('gameStarted', {
         hand: newRoom.playerHands[socket.id],
@@ -896,131 +1180,340 @@ io.on('connection', (socket) => {
         seats: newRoom.seats,
         currentPlayerId: newRoom.currentPlayerId,
         playerHandCounts: playerHandCounts,
-        melds: newRoom.melds // <-- AÑADE ESTA LÍNEA
+        melds: newRoom.melds,
+        isPractice: true
     });
+}
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
+
+// --- INICIO: SECCIÓN DE ADMINISTRACIÓN ---
+
+// Middleware de autenticación simple para el panel de admin
+const adminAuth = (req, res, next) => {
+    // Define aquí tu usuario y contraseña. ¡Cámbialos por algo seguro!
+    const ADMIN_USER = "angelohh18";
+    const ADMIN_PASS = "ANGELO51"; // <-- CAMBIA ESTA CONTRASEÑA
+
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    if (login && password && login === ADMIN_USER && password === ADMIN_PASS) {
+        // Si las credenciales son correctas, permite el acceso.
+        return next();
+    }
+
+    // Si no, pide las credenciales.
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Autenticación requerida.');
+};
+
+// Ruta para servir el panel de administración
+app.get('/admin', adminAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
+
+io.on('connection', (socket) => {
+  console.log('✅ Un jugador se ha conectado:', socket.id);
+  console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
+
+  // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
+  socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
+
+  socket.emit('updateRoomList', Object.values(rooms));
+
+    // --- INICIO: LÓGICA PARA EL PANEL DE ADMIN ---
+
+    // Escucha la petición del panel de admin para obtener la lista de usuarios
+    socket.on('admin:requestUserList', () => {
+        socket.join('admin-room');
+        console.log(`Socket ${socket.id} se ha unido a la sala de administradores.`);
+
+        socket.emit('admin:commissionData', commissionLog);
+
+        // ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
+        // Ahora leemos del objeto 'users', que es la fuente de datos correcta.
+        if (users && Object.keys(users).length > 0) {
+
+            const userList = Object.keys(users).map(userId => {
+                const username = userId.replace(/^user_/, '');
+                return {
+                    id: userId,
+                    username: username,
+                    credits: users[userId].credits,
+                    currency: users[userId].currency // Incluimos la moneda
+                };
+            });
+
+            // Enviamos la lista correcta a la sala de administradores.
+            io.to('admin-room').emit('admin:userList', userList);
+        } else {
+            // Si no hay usuarios, enviamos un array vacío.
+            io.to('admin-room').emit('admin:userList', []);
+        }
+        // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+    });
+
+    // Escucha la orden del admin para actualizar los créditos de un usuario
+    socket.on('admin:updateCredits', ({ userId, newCredits, newCurrency }) => {
+        const credits = parseFloat(newCredits);
+
+        if (users[userId] && !isNaN(credits) && ['EUR', 'USD', 'COP'].includes(newCurrency)) {
+            console.log(`[Admin] Actualizando datos para ${userId}.`);
+            users[userId].credits = credits;
+            users[userId].currency = newCurrency;
+
+            // Notificar al jugador afectado (si está conectado)
+            for (const [id, socketInstance] of io.of("/").sockets) {
+                if (socketInstance.userId === userId) {
+                    socketInstance.emit('userStateUpdated', users[userId]);
+                    break; 
+                }
+            }
+
+            // Reenviar la lista completa y actualizada al panel de admin
+            const allUsers = Object.keys(users).map(uid => ({
+                id: uid,
+                username: uid.replace(/^user_/, ''),
+                credits: users[uid].credits,
+                currency: users[uid].currency
+            }));
+            io.to('admin-room').emit('admin:userList', allUsers);
+        }
+    });
+
+    // ▼▼▼ AÑADE ESTE LISTENER ▼▼▼
+    socket.on('requestInitialData', () => {
+        socket.emit('exchangeRatesUpdate', exchangeRates);
+    });
+    // ▲▲▲ FIN DEL LISTENER ▲▲▲
+
+    // Escucha cuando un usuario inicia sesión en el lobby
+    socket.on('userLoggedIn', ({ username, currency }) => { // <--- AHORA RECIBE LA MONEDA
+        if (!username || !currency) return;
+
+        const userId = 'user_' + username.toLowerCase();
+        socket.userId = userId;
+
+        // Si el usuario no existe, lo creamos con sus créditos y moneda
+        if (!users[userId]) {
+            console.log(`[Lobby Login] Primer registro de ${userId}. Asignando 0 créditos en ${currency}.`);
+            users[userId] = {
+                credits: 0, // <-- LÍNEA MODIFICADA
+                currency: currency // Guardamos su moneda preferida
+            };
+        } else {
+             console.log(`[Lobby Login] Usuario ${userId} ha vuelto al lobby.`);
+        }
+
+        // Enviamos al cliente su objeto de usuario completo
+        socket.emit('userStateUpdated', users[userId]);
+
+        // Notificar a todos los admins que la lista de usuarios ha cambiado
+        const allUsers = Object.keys(users).map(uid => ({
+            id: uid,
+            username: uid.replace(/^user_/, ''),
+            credits: users[uid].credits,
+            currency: users[uid].currency // Enviamos la moneda al admin
+        }));
+        io.to('admin-room').emit('admin:userList', allUsers);
+    });
+
+    // server.js -> Añade este bloque dentro de io.on('connection', ...)
+    socket.on('admin:resetCommissions', () => {
+        console.log(`[Admin] Se han reiniciado las ganancias acumuladas.`);
+        commissionLog = []; // Vaciamos el array del historial
+        
+        // Notificamos a todos los paneles de admin que los datos han sido reseteados
+        io.to('admin-room').emit('admin:commissionData', commissionLog);
+    });
+
+    // ▼▼▼ AÑADE ESTOS DOS LISTENERS ▼▼▼
+    socket.on('admin:requestRates', () => {
+        socket.emit('admin:exchangeRates', exchangeRates);
+    });
+
+    socket.on('admin:updateRates', (newRates) => {
+        console.log('[Admin] Actualizando tasas de cambio:', newRates);
+        // Actualizamos nuestro objeto en memoria
+        exchangeRates.EUR.COP = newRates.EUR_COP || 4500;
+        exchangeRates.USD.COP = newRates.USD_COP || 4500;
+        // Recalculamos las inversas
+        exchangeRates.COP.EUR = 1 / exchangeRates.EUR.COP;
+        exchangeRates.COP.USD = 1 / exchangeRates.USD.COP;
+
+        // Notificamos a TODOS los clientes (jugadores y admins) de las nuevas tasas
+        io.emit('exchangeRatesUpdate', exchangeRates);
+    });
+    // ▲▲▲ FIN DE LOS LISTENERS ▲▲▲
+
+    // --- FIN: LÓGICA PARA EL PANEL DE ADMIN ---
+
+  socket.on('createRoom', (settings) => {
+    const roomId = generateRoomId();
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Se genera el userId en el servidor para consistencia, igual que al unirse.
+    const userId = 'user_' + settings.username.toLowerCase();
+    console.log(`[Servidor] Asignando userId al creador '${settings.username}': ${userId}`);
+    // --- FIN DE LA CORRECCIÓN ---
+
+    socket.userId = userId;
+
+    const playerInfo = users[userId];
+    const roomBet = settings.bet;
+    const roomPenalty = settings.penalty;
+    const roomCurrency = settings.betCurrency;
+
+    // Calculamos el coste TOTAL (apuesta + multa) en la moneda de la mesa.
+    const totalRequirementInRoomCurrency = roomBet + roomPenalty;
+
+    // Convertimos el coste TOTAL a la moneda del jugador.
+    const requiredAmountInPlayerCurrency = convertCurrency(totalRequirementInRoomCurrency, roomCurrency, playerInfo.currency, exchangeRates);
+
+    if (!playerInfo || playerInfo.credits < requiredAmountInPlayerCurrency) {
+        const friendlyRequired = requiredAmountInPlayerCurrency.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const friendlyBet = roomBet.toLocaleString('es-ES');
+        const friendlyPenalty = roomPenalty.toLocaleString('es-ES');
+
+        return socket.emit('joinError', `Créditos insuficientes. Crear esta mesa de ${friendlyBet} ${roomCurrency} (+${friendlyPenalty} de multa) requiere aprox. ${friendlyRequired} ${playerInfo.currency}.`);
+    }
+
+    const newRoom = {
+      roomId: roomId,
+      hostId: socket.id,
+      settings: settings,
+      players: [{ id: socket.id, name: settings.username }],
+      seats: [
+        { 
+          playerId: socket.id, 
+          playerName: settings.username, 
+          avatar: settings.userAvatar, 
+          active: true, 
+          doneFirstMeld: false,
+          userId: userId // Se usa el ID generado por el servidor
+        },
+        null, null, null
+      ],
+      state: 'waiting',
+      deck: [],
+      discardPile: [],
+      playerHands: {},
+      melds: [],
+      turnMelds: [],
+      turnPoints: 0,
+      hasDrawn: false,
+      drewFromDiscard: null,
+      firstMeldCompletedByAnyone: false,
+      rematchRequests: new Set(),
+      chatHistory: [{ sender: 'Sistema', message: `Mesa de ${settings.username} creada. ¡Buena suerte!` }]
+    };
+    rooms[roomId] = newRoom;
+    socket.join(roomId);
+    
+    socket.currentRoomId = roomId;
+    
+    socket.emit('roomCreatedSuccessfully', newRoom);
+    socket.emit('chatHistory', newRoom.chatHistory);
+    broadcastRoomListUpdate(io);
+    console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  socket.on('joinRoom', ({ roomId, user }) => {
-    const room = rooms[roomId];
-    if (!room) {
-        return socket.emit('joinError', 'La mesa no existe.');
-    }
+  socket.on('requestPracticeGame', (username) => {
+    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTA LÍNEA ▼▼▼
+    createAndStartPracticeGame(socket, username, io);
+  });
 
-    // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN COMPLETO AQUÍ ▼▼▼
-    // BARRERA DE SEGURIDAD: Comprobar si el jugador ya está sentado en esta mesa.
-    const isAlreadySeated = room.seats.some(s => s && s.playerId === socket.id);
-    if (isAlreadySeated) {
-        console.log(`Previniendo unión duplicada del jugador ${socket.id} en la mesa ${roomId}.`);
-        // Si ya está, simplemente le reenviamos el estado actual de la sala.
-        socket.join(roomId);
-        socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
-        return; // Detenemos la ejecución para no añadirlo de nuevo.
-    }
-    // ▲▲▲ FIN DEL NUEVO BLOQUE ▲▲▲
+    socket.on('joinRoom', ({ roomId, user }) => {
+        const room = rooms[roomId];
+        if (!room) {
+            return socket.emit('joinError', 'La mesa no existe.');
+        }
 
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Si el jugador está en la lista de expulsados, no puede entrar.
+        // SOLUCIÓN DEFINITIVA: El servidor maneja completamente los IDs
+        const userId = 'user_' + user.username.toLowerCase();
+        console.log(`[Servidor] Gestionando entrada de '${user.username}' con ID: ${userId}`);
+        
+        socket.userId = userId; // Guardamos el userId en el socket para futuro uso
+
+        // El usuario ya debe existir en users desde userLoggedIn
+
+        // --- LÓGICA ANTI-ROBO DE IDENTIDAD: LIMPIEZA AGRESIVA ---
+        // 1. Limpiamos CUALQUIER asiento que tenga el mismo userId
+        for (let i = 0; i < room.seats.length; i++) {
+            if (room.seats[i] && room.seats[i].userId === userId) {
+                console.log(`[ANTI-ROBO] Eliminando asiento [${i}] del usuario '${user.username}' para prevenir robo de identidad.`);
+                room.seats[i] = null;
+            }
+        }
+        
+        // 2. Limpiamos también por playerName para casos extremos
+        for (let i = 0; i < room.seats.length; i++) {
+            if (room.seats[i] && room.seats[i].playerName === user.username) {
+                console.log(`[ANTI-ROBO] Eliminando asiento [${i}] por nombre duplicado '${user.username}'.`);
+                room.seats[i] = null;
+            }
+        }
+        // --- FIN DE LA LÓGICA ANTI-ROBO ---
+
+        // 3. VALIDACIÓN MEJORADA: Solo prevenir entrada si hay 4 jugadores activos
+        if (room.state === 'playing') {
+            const activePlayers = room.seats.filter(s => s && s.active !== false).length;
+            if (activePlayers >= 4) {
+                console.log(`[ANTI-ROBO] Bloqueando entrada de '${user.username}' - Mesa llena con ${activePlayers} jugadores activos.`);
+                return socket.emit('joinError', 'La mesa está llena. Espera a que termine la partida.');
+            }
+        }
+
     if (room.kickedPlayers && room.kickedPlayers.has(socket.id)) {
         return socket.emit('joinError', 'No puedes unirte a esta mesa porque has sido expulsado.');
     }
-    // --- FIN DE LA MODIFICACIÓN ---
 
-    // Si la partida ya empezó, el jugador entra como espectador
-    if (room.state === 'playing') {
-        if (!room.spectators) room.spectators = [];
-
-        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
-        // LIMPIEZA PREVENTIVA: Elimina cualquier instancia fantasma de este espectador antes de añadir la nueva.
-        room.spectators = room.spectators.filter(s => s.id !== socket.id);
-        // ▲▲▲ FIN DE LA LÍNEA AÑADIDA ▲▲▲
-
-        room.spectators.push({ id: socket.id, name: user.username, avatar: user.userAvatar });
-        socket.join(roomId);
-
-        const playerHandCounts = {};
-        if(room.seats) { // Añadir comprobación por si los asientos no existen
-            room.seats.filter(s => s).forEach(p => {
-                playerHandCounts[p.playerId] = room.playerHands[p.playerId]?.length || 0;
-            });
-        }
-
-        // Le enviamos el estado actual del juego para que pueda observar
-        socket.emit('joinedAsSpectator', {
-            ...room,
-            playerHands: null // Nunca enviar las manos de otros jugadores
-        });
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Notificamos a TODOS en la sala (jugadores y otros espectadores) que alguien nuevo está viendo.
-        // Enviamos la lista actualizada de espectadores junto con la notificación.
-        io.to(roomId).emit('spectatorJoined', { 
-            name: user.username,
-            spectators: room.spectators 
-        });
-        // --- FIN DE LA MODIFICACIÓN ---
-        console.log(`Jugador ${user.username} se unió como espectador a la mesa ${roomId}`);
-        return;
-    } // <-- ESTAS LLAVES SON LA CORRECCIÓN
-
-    // Si la partida está en espera y hay sitio
     const emptySeatIndex = room.seats.findIndex(seat => seat === null);
-    if (room.state === 'waiting' && emptySeatIndex !== -1) {
-        if (!room.players) room.players = [];
-        room.players.push({ id: socket.id, name: user.username });
-        room.seats[emptySeatIndex] = { playerId: socket.id, playerName: user.username, avatar: user.userAvatar, active: true, doneFirstMeld: false };
-        socket.join(roomId);
-        socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
-        io.to(roomId).emit('playerJoined', getSanitizedRoomForClient(room)); // Notifica a otros en la sala
-        io.emit('updateRoomList', Object.values(rooms));
-        console.log(`Jugador ${user.username} se sentó en la mesa ${roomId}`);
-    } else {
-        socket.emit('joinError', 'No se pudo unir a la mesa. Puede que esté llena o en un estado inválido.');
+
+    if (emptySeatIndex === -1) {
+        return socket.emit('joinError', 'La mesa está llena.');
     }
-  });
 
-  socket.on('requestToSit', (roomId) => {
-    const room = rooms[roomId];
-    const playerInfo = room?.spectators?.find(sp => sp.id === socket.id);
+    if (!room.players) room.players = [];
+    room.players.push({ id: socket.id, name: user.username });
 
-    if (!room || !playerInfo) return;
+    const isWaitingForNextGame = room.state === 'playing' || room.state === 'post-game';
 
-    const emptySeatIndex = room.seats.findIndex(seat => seat === null);
+    const roomBet = room.settings.bet;
+    const roomPenalty = room.settings.penalty || 0;
+    const roomCurrency = room.settings.betCurrency;
+    const playerInfo = users[userId];
 
-    if (emptySeatIndex !== -1) {
-        // Se encontró un asiento libre. Asignamos al jugador.
-        room.seats[emptySeatIndex] = {
-            playerId: playerInfo.id,
-            playerName: playerInfo.name,
-            avatar: playerInfo.avatar,
-            active: false,
-            doneFirstMeld: false,
-            status: 'waiting' // Estado clave para el cliente
-        };
+    // Calculamos el requisito total (apuesta + multa) en la moneda de la mesa
+    const totalRequirementInRoomCurrency = roomBet + roomPenalty;
 
-        // --- INICIO DE LA LÓGICA AÑADIDA ---
-        // 1. Eliminamos al jugador de la lista de espectadores.
-        room.spectators = room.spectators.filter(sp => sp.id !== socket.id);
+    // Convertimos ese requisito total a la moneda del jugador
+    const requiredAmountInPlayerCurrency = convertCurrency(totalRequirementInRoomCurrency, roomCurrency, playerInfo.currency, exchangeRates);
 
-        // 2. Si estaba en la lista de espera antigua, lo eliminamos también.
-        if (room.waitingForNextGame) {
-            room.waitingForNextGame = room.waitingForNextGame.filter(p => p.id !== socket.id);
-        }
-        // --- FIN DE LA LÓGICA AÑADIDA ---
+    if (!playerInfo || playerInfo.credits < requiredAmountInPlayerCurrency) {
+        const friendlyBet = convertCurrency(roomBet, roomCurrency, playerInfo.currency, exchangeRates);
+        const friendlyPenalty = convertCurrency(roomPenalty, roomCurrency, playerInfo.currency, exchangeRates);
+        return socket.emit('joinError', `Créditos insuficientes. Necesitas ${requiredAmountInPlayerCurrency.toFixed(2)} ${playerInfo.currency} para cubrir la apuesta (${friendlyBet.toFixed(2)}) y la posible multa (${friendlyPenalty.toFixed(2)}).`);
+    }
 
-        console.log(`Jugador ${playerInfo.name} se ha sentado en el asiento ${emptySeatIndex} como 'waiting'.`);
+    room.seats[emptySeatIndex] = {
+        playerId: socket.id,
+        playerName: user.username,
+        avatar: user.userAvatar,
+        active: !isWaitingForNextGame,
+        doneFirstMeld: false,
+        status: isWaitingForNextGame ? 'waiting' : undefined,
+        userId: userId // Usamos el userId generado por el servidor
+    };
 
-        // Notificamos a TODOS, enviando los asientos y la lista de espectadores actualizada.
-        io.to(roomId).emit('playerSatDownToWait', {
-            seats: room.seats,
-            spectators: room.spectators, // Enviamos la lista actualizada
-            waitingPlayerName: playerInfo.name
-        });
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    // Si un jugador se une durante la fase de revancha, actualizamos el estado para todos.
+    if (room.state === 'post-game') {
+        console.log(`Un nuevo jugador (${user.username}) se ha unido durante la revancha. Actualizando estado...`);
 
-        // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
-        io.emit('updateRoomList', Object.values(rooms)); // Notifica al LOBBY del cambio.
-
-        // ▼▼▼ AÑADE ESTE BLOQUE AQUÍ ▼▼▼
-        // FORZAR ACTUALIZACIÓN DE REVANCHA:
-        // Re-calculamos el estado de la revancha y lo emitimos a todos.
+        // Recalculamos quiénes están listos (incluyendo al nuevo jugador que tiene status: 'waiting')
         const readyPlayerIds = new Set();
         room.rematchRequests.forEach(id => readyPlayerIds.add(id));
         room.seats.forEach(seat => {
@@ -1028,40 +1521,71 @@ io.on('connection', (socket) => {
                 readyPlayerIds.add(seat.playerId);
             }
         });
-
         const playersReadyNames = Array.from(readyPlayerIds).map(id => {
             const seat = room.seats.find(s => s && s.playerId === id);
             return seat ? seat.playerName : null;
         }).filter(Boolean);
-
         const totalPlayersReady = readyPlayerIds.size;
 
+        // Notificamos a todos en la sala para que la UI se actualice instantáneamente.
         io.to(roomId).emit('rematchUpdate', {
-          playersReady: playersReadyNames,
-          canStart: totalPlayersReady >= 2,
-          hostId: room.hostId
+            playersReady: playersReadyNames,
+            canStart: totalPlayersReady >= 2,
+            hostId: room.hostId
         });
-        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
-
-    } else {
-        // Si no hay asientos, solo confirmamos la espera (comportamiento anterior).
-        socket.emit('waitingConfirmed');
-        io.to(roomId).emit('systemMessage', `${playerInfo.name} esperará a la siguiente partida.`);
     }
-});
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
+    socket.join(roomId);
+    
+    // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
+    socket.currentRoomId = roomId; // Guardamos en la conexión la sala actual del jugador.
+
+    if (isWaitingForNextGame) {
+        socket.emit('joinedAsSpectator', getSanitizedRoomForClient(room));
+    } else {
+        socket.emit('joinedRoomSuccessfully', getSanitizedRoomForClient(room));
+    }
+
+    socket.emit('chatHistory', room.chatHistory);
+    io.to(roomId).emit('playerJoined', getSanitizedRoomForClient(room));
+    broadcastRoomListUpdate(io);
+
+    console.log(`Jugador ${user.username} (ID: ${userId}) se sentó en la mesa ${roomId}.`);
+  });
+
 
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (room && room.hostId === socket.id) {
         console.log(`Iniciando juego en la mesa ${roomId}`);
         room.state = 'playing';
+        if (!room.chatHistory) room.chatHistory = [];
+        room.chatHistory.push({ sender: 'Sistema', message: 'Ha comenzado una nueva partida.' });
         room.initialSeats = JSON.parse(JSON.stringify(room.seats.filter(s => s !== null))); // Guardamos quiénes empezaron
         room.melds = [];
+        room.pot = 0; // <<-- AÑADE ESTA LÍNEA para inicializar el bote
         
         room.seats.forEach(seat => {
-            if(seat) {
+            if (seat) {
                 seat.active = true;
-                seat.doneFirstMeld = false; // <-- AÑADE ESTA LÍNEA
+                seat.doneFirstMeld = false;
+
+                const playerInfo = users[seat.userId];
+                if (playerInfo) {
+                    const roomBet = room.settings.bet;
+                    const roomCurrency = room.settings.betCurrency;
+
+                    // Convertir la apuesta a la moneda del jugador para descontarla
+                    const betInPlayerCurrency = convertCurrency(roomBet, roomCurrency, playerInfo.currency, exchangeRates);
+
+                    playerInfo.credits -= betInPlayerCurrency;
+
+                    // El bote siempre se mantiene en la moneda de la mesa
+                    room.pot += roomBet;
+
+                    io.to(seat.playerId).emit('userStateUpdated', playerInfo);
+                }
             }
         });
         
@@ -1107,7 +1631,11 @@ io.on('connection', (socket) => {
             });
         });
         
-        io.emit('updateRoomList', Object.values(rooms));
+        console.log(`Partida iniciada en ${roomId}. Bote inicial: ${room.pot}.`);
+        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+        io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: false });
+        // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
+        broadcastRoomListUpdate(io);
     }
   });
 
@@ -1288,20 +1816,28 @@ socket.on('accionDescartar', (data) => {
         }
     }
 
-    // REGLA 3: Descarte ilegal (ESTRICTO). Si la carta puede añadirse a un juego en mesa, es falta.
+    // ▼▼▼ REEMPLAZA EL BLOQUE DE LA REGLA 3 CON ESTE CÓDIGO ▼▼▼
+
+    // REGLA 3: Descarte ilegal (CORREGIDA Y MEJORADA).
     const isWinningDiscard = playerHand.length === 1;
 
-    // La validación se activa si hay juegos permanentes en la mesa y no es el descarte para ganar.
-    if (room.melds.length > 0 && !isWinningDiscard) {
-        // Se comprueba ÚNICAMENTE contra los juegos permanentes en la mesa (room.melds).
-        for (const meld of room.melds) {
-            if (canBeAddedToServerMeld(card, meld)) {
-                // Si la carta se puede añadir, es falta y se elimina al jugador.
-                const reason = `Descarte ilegal. La carta ${card.value}${getSuitIcon(card.suit)} podía ser añadida a un juego ya bajado en la mesa.`;
-                return handlePlayerElimination(room, socket.id, reason, io);
+    // La validación solo se activa si NO es el descarte para ganar.
+    if (!isWinningDiscard) {
+        // Se comprueba contra TODAS las combinaciones en la mesa (las permanentes y las de este turno).
+        const allCurrentMelds = [...room.melds, ...room.turnMelds];
+
+        if (allCurrentMelds.length > 0) {
+            for (const meld of allCurrentMelds) {
+                if (canBeAddedToServerMeld(card, meld)) {
+                    // Si la carta se puede añadir, es una falta grave.
+                    const reason = `Descarte ilegal. La carta ${card.value}${getSuitIcon(card.suit)} podía ser añadida a un juego ya bajado en la mesa.`;
+                    console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
+                    return handlePlayerElimination(room, socket.id, reason, io);
+                }
             }
         }
     }
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
 
     // REGLA 4: Validar 51 puntos (ESTRICTO - CAUSA ELIMINACIÓN).
     if (!playerSeat.doneFirstMeld && room.turnPoints > 0) {
@@ -1481,106 +2017,100 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   socket.on('sendGameChat', (data) => {
     const { roomId, message, sender } = data;
-    io.to(roomId).emit('gameChat', { sender, message });
+    const room = rooms[roomId];
+    if (room) {
+        const chatMessage = { sender, message };
+        // 1. Guardamos el mensaje en el historial de la sala
+        if (!room.chatHistory) room.chatHistory = [];
+        room.chatHistory.push(chatMessage);
+        // 2. Lo enviamos a todos en la sala como antes
+        io.to(roomId).emit('gameChat', chatMessage);
+    }
   });
 
-  // ▼▼▼ REEMPLAZA TU socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
+  // ▼▼▼ AÑADE ESTE LISTENER COMPLETO DENTRO DE io.on('connection',...) ▼▼▼
+  socket.on('sendLobbyChat', (data) => {
+      if (!data || !data.text || !data.sender) return; // Validación básica
+
+      // Creamos el objeto del mensaje en el servidor para consistencia
+      const newMessage = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          from: data.sender,
+          text: data.text,
+          ts: Date.now()
+      };
+
+      // Lo guardamos en el historial
+      lobbyChatHistory.push(newMessage);
+      if (lobbyChatHistory.length > LOBBY_CHAT_HISTORY_LIMIT) {
+          lobbyChatHistory.shift(); // Eliminamos el mensaje más antiguo si superamos el límite
+      }
+
+      // Lo retransmitimos a TODOS los clientes conectados
+      io.emit('lobbyChatUpdate', newMessage);
+  });
+  // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
+
+  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
   socket.on('disconnect', () => {
     console.log('❌ Un jugador se ha desconectado:', socket.id);
+    const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
 
-    // NUEVA LÓGICA ROBUSTA:
-    // Iteramos sobre NUESTRO PROPIO objeto de salas, que es la fuente de la verdad.
-    // No confiamos más en 'socket.rooms'.
-    for (const roomId in rooms) {
-        const room = rooms[roomId];
-        
-        // Buscamos si el jugador desconectado estaba sentado en ESTA sala.
-        const seatIndex = room.seats.findIndex(s => s && s.playerId === socket.id);
-
-        if (seatIndex !== -1) {
-            // ¡Lo encontramos! Estaba en esta sala.
-            console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
-            
-            // Ahora llamamos a la función central que ya sabemos que funciona bien con el botón.
-            handlePlayerDeparture(roomId, socket.id, io);
-            
-            // Como un jugador solo puede estar en una mesa, rompemos el bucle.
-            break;
-        }
-
-        // Limpieza adicional por si era espectador
-        if (room.spectators) {
-             const spectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
-             if (spectatorIndex !== -1) {
-                 room.spectators.splice(spectatorIndex, 1);
-                 io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
-             }
-        }
+    if (roomId && rooms[roomId]) {
+        // Si el jugador estaba en una sala válida, procesamos su salida.
+        console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
+        handlePlayerDeparture(roomId, socket.id, io);
     }
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
   socket.on('requestRematch', (data) => {
-    const { roomId, credits } = data;
+    const { roomId } = data;
     const room = rooms[roomId];
     if (!room) return;
 
-    const requiredCredits = (room.settings.bet || 0) + (room.settings.penalty || 0);
+    const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
+    if (!playerSeat || !playerSeat.userId) return;
 
-    // 1. Verificar si el jugador tiene créditos suficientes
-    if (credits >= requiredCredits) {
-      room.rematchRequests.add(socket.id);
+    const playerInfo = users[playerSeat.userId];
+    if (!playerInfo) return;
 
-      // ▼▼▼ REEMPLAZA TODO EL BLOQUE DE CÁLCULO DE JUGADORES LISTOS... ▼▼▼
-      /*
-      const playersReady = room.seats.filter(s => s && (room.rematchRequests.has(s.playerId) || s.status === 'waiting'));
-      const playersReadyNames = playersReady.map(s => s.playerName);
-      const totalPlayersReady = playersReady.length;
-      */
-      // ▲▲▲ ...CON ESTE NUEVO BLOQUE MÁS ROBUSTO ▼▼▼
+    // 1. El servidor calcula el requisito real.
+    const requirementInRoomCurrency = (room.settings.bet || 0) + (room.settings.penalty || 0);
+    const requiredInPlayerCurrency = convertCurrency(requirementInRoomCurrency, room.settings.betCurrency, playerInfo.currency, exchangeRates);
 
-      const readyPlayerIds = new Set();
-      // 1. Añadimos a los que confirmaron revancha
-      room.rematchRequests.forEach(id => readyPlayerIds.add(id));
-      // 2. Añadimos a los que ya estaban esperando
-      room.seats.forEach(seat => {
-          if (seat && seat.status === 'waiting') {
-              readyPlayerIds.add(seat.playerId);
-          }
-      });
+    // 2. El servidor valida contra sus propios datos.
+    if (playerInfo.credits >= requiredInPlayerCurrency) {
+        // SI HAY FONDOS: Procede con la lógica de revancha.
+        room.rematchRequests.add(socket.id);
 
-      // Creamos la lista de nombres a partir de los IDs únicos
-      const playersReadyNames = Array.from(readyPlayerIds).map(id => {
-          const seat = room.seats.find(s => s && s.playerId === id);
-          return seat ? seat.playerName : null;
-      }).filter(Boolean);
-      
-      const totalPlayersReady = readyPlayerIds.size;
-      
-      // ▼▼▼ ELIMINA ESTA LÍNEA (ya no es necesaria) ▼▼▼
-      // const totalPlayersAtTable = room.seats.filter(s => s !== null).length;
+        const readyPlayerIds = new Set();
+        room.rematchRequests.forEach(id => readyPlayerIds.add(id));
+        room.seats.forEach(seat => {
+            if (seat && seat.status === 'waiting') {
+                readyPlayerIds.add(seat.playerId);
+            }
+        });
 
-      io.to(roomId).emit('rematchUpdate', {
-        playersReady: playersReadyNames,
-        // ▼▼▼ REEMPLAZA ESTA LÍNEA... ▼▼▼
-        // canStart: totalPlayersReady >= totalPlayersAtTable && totalPlayersReady >= 2,
-        // ▲▲▲ ...CON LA LÍNEA ORIGINAL ▼▼▼
-        canStart: totalPlayersReady >= 2,
-        hostId: room.hostId
-      });
-      // --- FIN DE LA CORRECCIÓN ---
+        const playersReadyNames = Array.from(readyPlayerIds).map(id => {
+            const seat = room.seats.find(s => s && s.playerId === id);
+            return seat ? seat.playerName : null;
+        }).filter(Boolean);
 
+        const totalPlayersReady = readyPlayerIds.size;
+
+        io.to(roomId).emit('rematchUpdate', {
+            playersReady: playersReadyNames,
+            canStart: totalPlayersReady >= 2,
+            hostId: room.hostId
+        });
     } else {
-      // 3. Si no tiene créditos, se levanta de la mesa
-      console.log(`Jugador ${socket.id} no tiene créditos para la revancha. Levantando del asiento.`);
-      socket.emit('rematchFailed', { reason: 'No tienes créditos suficientes para la siguiente partida.' });
-      
-      const seatIndex = room.seats.findIndex(s => s && s.playerId === socket.id);
-      if (seatIndex !== -1) {
-        room.seats[seatIndex] = null;
-        // Notificar a todos que el jugador se levantó
-        io.to(roomId).emit('playerLeft', room);
-      }
+        // SI NO HAY FONDOS: El servidor fuerza la salida del jugador.
+        console.log(`[Servidor] Jugador ${socket.id} sin créditos para revancha. Se libera el asiento.`);
+        socket.emit('rematchFailed', { reason: 'No tienes créditos suficientes para la siguiente partida.' });
+
+        // Usamos la función existente para gestionar la salida y liberar el asiento.
+        handlePlayerDeparture(roomId, socket.id, io);
     }
   });
 
@@ -1614,7 +2144,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
                     playerName: seat.playerName,
                     avatar: seat.avatar,
                     active: true,
-                    doneFirstMeld: false
+                    doneFirstMeld: false,
+                    userId: seat.userId // ¡Esta es la corrección!
                 });
             }
         });
@@ -1636,6 +2167,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         });
 
         room.state = 'playing';
+        if (!room.chatHistory) room.chatHistory = [];
+        room.chatHistory.push({ sender: 'Sistema', message: 'Ha comenzado la revancha.' });
         room.seats = newSeats;
         room.initialSeats = JSON.parse(JSON.stringify(room.seats.filter(s => s !== null)));
         room.melds = [];
@@ -1667,6 +2200,38 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             }
         }
         // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
+
+        // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+        // 5. REINICIAR Y CALCULAR EL BOTE PARA LA REVANCHA
+        room.pot = 0; // Se resetea el bote
+        const seatedPlayersForRematch = room.seats.filter(s => s !== null);
+
+        seatedPlayersForRematch.forEach(seat => {
+            if (seat) {
+                const playerInfo = users[seat.userId]; // Usamos el objeto 'users'
+                if (playerInfo) {
+                    const roomBet = room.settings.bet;
+                    const roomCurrency = room.settings.betCurrency;
+
+                    // 1. Convertir la apuesta a la moneda del jugador para descontarla
+                    const betInPlayerCurrency = convertCurrency(roomBet, roomCurrency, playerInfo.currency, exchangeRates);
+
+                    // 2. Descontar el valor convertido de los créditos del jugador
+                    playerInfo.credits -= betInPlayerCurrency;
+
+                    // 3. El bote siempre suma el valor original en la moneda de la mesa
+                    room.pot += roomBet;
+
+                    // 4. Notificar al jugador su estado completo (créditos y moneda)
+                    io.to(seat.playerId).emit('userStateUpdated', playerInfo);
+                }
+            }
+        });
+
+        console.log(`[Rematch] Partida iniciada. Bote inicial: ${room.pot}.`);
+        // Se notifica a todos en la sala del nuevo valor del bote
+        io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: false });
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
         const newDeck = buildDeck();
         shuffle(newDeck);
@@ -1717,40 +2282,49 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             }
         });
 
-        io.emit('updateRoomList', Object.values(rooms));
+        broadcastRoomListUpdate(io);
 
     }
     // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
   });
 
-  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) CON ESTE ▼▼▼
+  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
     const { roomId } = data;
-    // Simplemente llamamos a la función central. Ya no enviamos confirmación.
+
+    // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
+    if (roomId) {
+        socket.leave(roomId);
+        console.log(`Socket ${socket.id} ha salido de la sala Socket.IO: ${roomId}`);
+    }
+
+    // 2. (Línea existente) Limpiamos nuestra variable de seguimiento personalizada.
+    delete socket.currentRoomId;
+    
+    // 3. (Línea existente) Ejecutamos la lógica para liberar el asiento y limpiar la mesa.
     handlePlayerDeparture(roomId, socket.id, io);
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
-  socket.on('kickSpectator', (data) => {
-      const { roomId, spectatorId } = data;
-      const room = rooms[roomId];
+  // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AL FINAL ▼▼▼
+  socket.on('requestPracticeRematch', (data) => {
+    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTE BLOQUE ▼▼▼
+    const oldRoomId = data.roomId;
+    const oldRoom = rooms[oldRoomId];
 
-      if (!room || socket.id !== room.hostId) return;
+    const playerSeat = oldRoom ? oldRoom.seats.find(s => s && s.playerId === socket.id) : null;
+    const username = playerSeat ? playerSeat.playerName : 'Jugador';
 
-      if (!room.kickedPlayers) room.kickedPlayers = new Set();
-      room.kickedPlayers.add(spectatorId);
+    if (oldRoom) {
+        delete rooms[oldRoomId];
+        console.log(`[Práctica] Sala anterior ${oldRoomId} eliminada.`);
+    }
 
-      room.spectators = room.spectators.filter(s => s.id !== spectatorId);
-
-      const spectatorSocket = io.sockets.sockets.get(spectatorId);
-      if (spectatorSocket) {
-          spectatorSocket.leave(roomId);
-          spectatorSocket.emit('kickedFromRoom', { reason: 'Has sido expulsado de la sala por el anfitrión.' });
-      }
-
-      io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+    console.log(`[Práctica] Creando nueva partida para ${username}.`);
+    createAndStartPracticeGame(socket, username, io);
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
   });
-
+  // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
 }); // <<-- Este es el cierre del 'io.on connection'
 

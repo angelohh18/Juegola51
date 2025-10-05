@@ -331,6 +331,9 @@ html {
     color: #c5a56a;
     cursor: not-allowed;
     box-shadow: none;
+
+    /* LÍNEA AÑADIDA: Esta es la solución definitiva */
+    pointer-events: auto !important;
 }
 
 
@@ -444,7 +447,8 @@ html {
 #credit-modal .modal-content,
 #rules-modal .modal-content,
 #create-room-modal .modal-content,
-#avatar-crop-modal .modal-content {
+#avatar-crop-modal .modal-content,
+#insufficient-credits-modal .modal-content {
     background: #211e18;
     border: 2px solid #c5a56a;
     border-radius: 20px;
@@ -508,7 +512,8 @@ html {
 #credit-modal .modal-content button,
 #rules-modal .modal-content button,
 #create-room-modal .modal-content button,
-#avatar-crop-modal .modal-content button {
+#avatar-crop-modal .modal-content button,
+#insufficient-credits-modal .modal-content button {
     margin-top: 20px;
     width: 100%;
     padding: 12px;
@@ -528,7 +533,8 @@ html {
 #credit-modal .modal-content button:hover,
 #rules-modal .modal-content button:hover,
 #create-room-modal .modal-content button:hover,
-#avatar-crop-modal .modal-content button:hover {
+#avatar-crop-modal .modal-content button:hover,
+#insufficient-credits-modal .modal-content button:hover {
     background: #9d7b40; /* Cambiado de gradiente a sólido */
 }
 
@@ -549,7 +555,7 @@ html {
 }
 
 /* Modal Login */
-#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal {
+#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -947,7 +953,7 @@ body.game-active {
 .bottom-ui-container {
     display: none;
 }
-#game-container .info-bot.human-info {
+#game-container:not(.spectator-view) .info-bot.human-info {
     flex-shrink: 0;
 }
 .player-actions {
@@ -1030,6 +1036,7 @@ body.game-active {
 }
 
 .center-area {
+    /* position: relative; */ /* <-- LÍNEA ELIMINADA O COMENTADA */
     position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
     width:98%; height:60%; 
     border: 3px solid #000; /* Borde oscuro para acentuar el interior */
@@ -1186,8 +1193,8 @@ body.game-active {
 }
 
 
-.toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--casino-dark-panel); color:var(--casino-gold); padding:10px 16px; border-radius:8px; border:2px solid var(--casino-gold); z-index:1100; display:none; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-.toast.show { display:block; }
+.toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--casino-dark-panel); color:var(--casino-gold); padding:10px 16px; border-radius:8px; border:2px solid var(--casino-gold); z-index:1100; display: none !important; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+.toast.show { display: none !important; }
 #turn-indicator, #points-indicator { position:absolute; top:-34px; padding:6px 10px; border-radius:8px; font-weight:bold; background:var(--casino-dark-panel); border:2px solid var(--casino-gold); color:var(--casino-gold); }
 #points-indicator { right:20px; left:auto; border-color:#00ff00; color:#00ff00; }
 #debug-info { position:absolute; bottom:-46px; left:20px; background:rgba(0,0,0,0.7); padding:8px; border-radius:8px; font-size:12px; color:#fff; border:1px solid #666; }
@@ -1336,6 +1343,26 @@ body.game-active {
     background: rgba(0, 255, 0, 0.1);
     color: #00ff00;
 }
+#spectators-list-host {
+  padding: 10px;
+  font-size: 13px;
+}
+
+.spectator-list-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--casino-gold);
+}
+#spectators-list-host .spectator-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+#spectators-list-host .kick-btn {
+  background: #c82333; color: #fff; border: none; font-size: 11px;
+  padding: 3px 6px; border-radius: 4px; cursor: pointer;
+}
 
 /* --- INICIO: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÓN --- */
 .animated-card-container {
@@ -1466,7 +1493,7 @@ body.game-active {
         min-height: auto;
     }
     
-    #game-container .info-bot.human-info {
+    #game-container:not(.spectator-view) .info-bot.human-info {
         transform: scale(0.75); /* Más pequeño */
     }
 
@@ -1636,6 +1663,15 @@ body.game-active {
         padding: 0.6vw;
         font-size: 1vw;
     }
+    #spectator-controls, #spectators-list-host {
+        padding: 0.7vw;
+    }
+    #spectator-controls button {
+        font-size: 1vw;
+    }
+    #spectators-list-host .kick-btn {
+        font-size: 0.8vw;
+    }
 
     #game-container header {
         display: none;
@@ -1655,6 +1691,15 @@ body.game-active {
     #game-container .meld-group .card:not(:first-child) {
         margin-left: -2.1vw;
     }
+
+    /* ▼▼▼ AÑADE ESTA REGLA DENTRO DEL MEDIA QUERY ▼▼▼ */
+    #game-pot-container {
+        top: 0.5vw;  /* Un poco más arriba */
+        left: 1.5vw;
+        transform: scale(0.85); /* Un poco más pequeño */
+        transform-origin: top left;
+    }
+    /* ▲▲▲ FIN DE LA REGLA A AÑADIR ▲▲▲ */
 }
 
 @media (max-width: 900px) and (orientation: portrait) {
@@ -1720,6 +1765,36 @@ body.game-active {
 }
 
 /* REGLA ACTUALIZADA PARA EL ESTILO DEL BOTÓN */
+.sit-down-btn {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 2px solid var(--casino-dark-panel);
+    background: linear-gradient(to bottom, #d1b47a, #b59458);
+    color: var(--casino-dark-panel);
+    font-family: 'Georgia', serif;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.2);
+    transition: all 0.1s ease-in-out;
+    margin-top: 4px; /* Pequeño margen superior */
+    width: auto; /* Ancho automático basado en el contenido */
+}
+
+.sit-down-btn:hover {
+    background: linear-gradient(to bottom, #e0c58a, #c5a56a);
+    box-shadow: 0 3px 7px rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+}
+
+.sit-down-btn:disabled {
+    border-color: #6D2932;
+    background: #4a2026;
+    color: #8b795c;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+}
 /* --- FIN: Estilos para asiento vacío y botón de sentarse --- */
 
 #btn-back-to-lobby-ingame {
@@ -1744,3 +1819,85 @@ body.game-active {
     animation: highlight-added-card 4s ease-in-out; /* Duración aumentada a 4 segundos */
 }
 /* --- FIN: Animación para resaltar carta añadida --- */
+
+/* --- INICIO: ESTILOS Y ANIMACIÓN DEL BOTE (VERSIÓN ELEGANTE) --- */
+#game-pot-container {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5); /* Más sutil */
+    border: 1px solid var(--casino-gold);
+    border-radius: 8px; /* Menos redondeado */
+    padding: 5px 12px;  /* Más pequeño */
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    min-width: 100px; /* Más compacto */
+}
+
+.pot-title {
+    color: var(--casino-gold);
+    font-size: 0.8rem; /* Más pequeño */
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 2px; /* Menos espacio */
+    text-shadow: none;
+}
+
+.pot-value {
+    color: #6bff6b;
+    font-size: 1.5rem; /* Más pequeño */
+    font-weight: 700;
+    text-shadow: 0 0 5px #6bff6b; /* Sombra más sutil */
+    transition: transform 0.2s ease-out; /* Para la animación de pulso */
+}
+
+/* --- INICIO: Estilos para el modal de reinicio de práctica --- */
+#practice-restart-modal .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+/* --- FIN: Estilos --- */
+
+/* Nueva animación de pulso para cuando el bote aumenta */
+@keyframes pot-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Clase que activa la animación en el NÚMERO, no en todo el contenedor */
+.pot-value.pot-updated {
+    animation: pot-pulse 0.6s ease-out;
+}
+/* --- FIN: ESTILOS Y ANIMACIÓN DEL BOTE --- */
+
+/* ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE TU style.css ▼▼▼ */
+
+/* Estilos específicos para el título 'La 51' DENTRO de los modales */
+#login-modal .panel-title,
+#register-modal .panel-title {
+  /* 1. Centrado y espaciado */
+  width: fit-content; /* Hace que el contenedor se ajuste al contenido */
+  margin: 0 auto 25px auto; /* Centra horizontalmente y añade más espacio abajo */
+
+  /* 2. Nuevo color de fondo para que resalte */
+  background: #6D2932; /* Usamos el color borgoña del tapete */
+
+  /* 3. Aumentamos el tamaño general (título y cartas) */
+  transform: scale(1.2); /* Lo hace un 20% más grande */
+
+  /* --- Estilos base copiados del original para mantener la consistencia --- */
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  font-weight: 900;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-height: 50px;
+  padding: 5px 15px;
+  border-radius: 10px;
+  border: 1px solid #c5a56a44;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
+}

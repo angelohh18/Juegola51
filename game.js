@@ -1,6 +1,88 @@
 // game.js (Archivo completo y actualizado)
 
+/**
+ * Convierte una cantidad de una moneda a otra usando las tasas de cambio.
+ * @param {number} amount - La cantidad a convertir.
+ * @param {string} fromCurrency - La moneda de origen (ej. 'USD').
+ * @param {string} toCurrency - La moneda de destino (ej. 'EUR').
+ * @param {object} rates - El objeto de tasas de cambio (clientExchangeRates).
+ * @returns {number} - La cantidad convertida.
+ */
+function convertCurrency(amount, fromCurrency, toCurrency, rates) {
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) {
+        return amount;
+    }
+    if (rates[fromCurrency] && rates[fromCurrency][toCurrency]) {
+        return amount * rates[fromCurrency][toCurrency];
+    }
+    if (rates[toCurrency] && rates[toCurrency][fromCurrency]) {
+         return amount / rates[toCurrency][fromCurrency];
+    }
+    console.warn(`No se encontró tasa de cambio entre ${fromCurrency} y ${toCurrency}.`);
+    return amount; 
+}
+
+// SOLUCIÓN AL ERROR: El error muestra "convertcurrency" en minúsculas, 
+// lo que probablemente es una errata en alguna parte del código. 
+// Para solucionarlo de forma segura, creamos un alias que apunta a la función correcta.
+const convertcurrency = convertCurrency;
+
+// Nueva función simple para mostrar el modal de fondos insuficientes
+function showInsufficientFundsModal(requiredText, missingText) {
+    const modal = document.getElementById('simple-funds-modal');
+    const messageEl = document.getElementById('simple-funds-message');
+    const closeBtn = document.getElementById('simple-funds-close-btn');
+
+    if (!modal || !messageEl || !closeBtn) {
+        console.error("No se encontraron los elementos del nuevo modal de fondos.");
+        alert(`Fondos Insuficientes:\nNecesitas: ${requiredText}\nTe faltan: ${missingText}`);
+        return;
+    }
+
+    messageEl.innerHTML = `Necesitas <strong>${requiredText}</strong> para unirte.<br>Te faltan <strong style="color: #ff4444;">${missingText}</strong>.`;
+
+    closeBtn.textContent = 'Aceptar'; // Aseguramos el texto por defecto
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    modal.style.display = 'flex';
+}
+
+function showRematchFundsModal(requiredText, missingText) {
+    const modal = document.getElementById('simple-funds-modal');
+    const messageEl = document.getElementById('simple-funds-message');
+    const actionBtn = document.getElementById('simple-funds-close-btn');
+
+    if (!modal || !messageEl || !actionBtn) return;
+
+    messageEl.innerHTML = `No tienes fondos suficientes para la revancha.<br>Necesitas <strong>${requiredText}</strong>.<br>Te faltan <strong style="color: #ff4444;">${missingText}</strong>.`;
+
+    // Cambiamos el texto y la acción del botón
+    actionBtn.textContent = 'Volver al Lobby';
+    actionBtn.onclick = () => {
+        modal.style.display = 'none';
+        goBackToLobby(); // Esta función ya se encarga de sacar al jugador de la mesa
+    };
+
+    modal.style.display = 'flex';
+}
+
 // --- INICIO: SCRIPT DE PUENTE (BRIDGE) ---
+
+// ▼▼▼ PEGA LA FUNCIÓN COMPLETA AQUÍ ▼▼▼
+function showToast(msg, duration = 3000) {
+    const toast = document.getElementById('toast');
+    if (!toast) {
+        console.error("Elemento 'toast' no encontrado en el DOM.");
+        return;
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    // Usamos un temporizador para ocultar el toast después de la duración
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+}
+// ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
+
 function showLobbyView() {
     document.body.classList.remove('game-active'); // >> AÑADE ESTA LÍNEA <<
     document.getElementById('lobby-overlay').style.display = 'flex';
@@ -39,17 +121,60 @@ function hideOverlay(id) {
 const socket = io("http://localhost:3000", { autoConnect: false });
 
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
+let clientExchangeRates = {}; // Para guardar las tasas
+let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
+
+
+// Variables globales para el estado del usuario (migración segura)
+let currentUser = {
+    username: '',
+    userAvatar: '',
+    userId: '',
+    credits: 1000
+};
 
 socket.on('connect', () => {
     console.log('🔌 Conexión global con el servidor establecida. ID:', socket.id);
+    socket.emit('requestInitialData'); // Un nuevo evento que crearemos en el servidor
 });
 
 
 // --- INICIO: SCRIPT DEL LOBBY ---
 (function(){
 
+
     socket.on('updateRoomList', (serverRooms) => {
-        renderRoomsOverview(serverRooms);
+        lastKnownRooms = serverRooms || [];
+        renderRoomsOverview(lastKnownRooms);
+    });
+
+    socket.on('userStateUpdated', (userState) => {
+        console.log('Estado de usuario actualizado:', userState);
+        currentUser.credits = userState.credits;
+        currentUser.currency = userState.currency;
+
+        if (typeof updateLobbyCreditsDisplay === 'function') {
+            updateLobbyCreditsDisplay();
+        }
+        
+        renderRoomsOverview(lastKnownRooms); 
+    });
+
+    // ▼▼▼ AÑADE ESTOS DOS LISTENERS DENTRO DE LA LÓGICA DEL LOBBY ▼▼▼
+    socket.on('lobbyChatHistory', (history) => {
+        console.log('Historial del chat del lobby recibido.');
+        renderLobbyChat(history);
+    });
+
+    socket.on('lobbyChatUpdate', (newMessage) => {
+        addLobbyChatMessage(newMessage);
+    });
+    // ▲▲▲ FIN DE LOS NUEVOS LISTENERS ▲▲▲
+
+    socket.on('exchangeRatesUpdate', (rates) => {
+        console.log('Tasas de cambio actualizadas:', rates);
+        clientExchangeRates = rates;
+        renderRoomsOverview(lastKnownRooms);
     });
 
     socket.on('roomCreatedSuccessfully', (roomData) => {
@@ -59,6 +184,32 @@ socket.on('connect', () => {
     socket.on('joinedRoomSuccessfully', (roomData) => {
         showGameView({ ...roomData, isPractice: false });
     });
+
+    socket.on('joinError', (message) => {
+        console.error('Error al unirse a la sala:', message);
+        showToast(`Error: ${message}`, 4000);
+    });
+
+    // ▼▼▼ AÑADE ESTE LISTENER COMPLETO ▼▼▼
+    socket.on('potUpdated', (data) => {
+        const potContainer = document.getElementById('game-pot-container');
+        if (!potContainer) return;
+
+        const potValueEl = potContainer.querySelector('.pot-value');
+        if (!potValueEl) return;
+
+        potValueEl.textContent = data.newPotValue;
+
+        // Aplicamos la nueva animación de pulso al valor numérico
+        if (data.isPenalty) {
+            potValueEl.classList.add('pot-updated');
+
+            setTimeout(() => {
+                potValueEl.classList.remove('pot-updated');
+            }, 600); // Coincide con la duración de la nueva animación
+        }
+    });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
     socket.on('joinedAsSpectator', (gameState) => {
         console.log('Te has unido como espectador. Pasando control a la vista de juego...');
@@ -160,6 +311,7 @@ socket.on('connect', () => {
     const defaultAvatars = [ 'https://i.pravatar.cc/150?img=1', 'https://i.pravatar.cc/150?img=2', 'https://i.pravatar.cc/150?img=3', 'https://i.pravatar.cc/150?img=4', 'https://i.pravatar.cc/150?img=5', 'https://i.pravatar.cc/150?img=6', 'https://i.pravatar.cc/150?img=7', 'https://i.pravatar.cc/150?img=8', 'https://i.pravatar.cc/150?img=9', 'https://i.pravatar.cc/150?img=10' ];
     let selectedAvatar = null;
     let currentPhonePrefix = '';
+    let onCropCompleteCallback = null; // <-- AÑADE ESTA LÍNEA
 
     function scaleAndCenterLobby() {
         if (window.getComputedStyle(lobbyOverlay).display === 'none' || !body.classList.contains('is-logged-in')) {
@@ -182,22 +334,44 @@ socket.on('connect', () => {
     }
 
     function updateCreditsDisplay() {
-        const credits = parseInt(localStorage.getItem('userCredits')) || 0;
-        userCreditsEl.textContent = 'Créditos ' + credits.toLocaleString();
+        const credits = currentUser.credits ?? 0;
+        const currency = currentUser.currency || 'USD'; // Usamos USD como fallback
+        let formattedText = 'Créditos ';
+
+        // Usamos un formato especial para cada moneda
+        if (currency === 'EUR') {
+            // Ejemplo: Créditos 10€
+            formattedText += credits.toLocaleString('es-ES') + '€';
+        } else if (currency === 'COP') {
+            // Ejemplo: Créditos 100.000 COP
+            formattedText += credits.toLocaleString('es-CO') + ' ' + currency;
+        } else {
+            // Ejemplo para USD y otras futuras monedas: Créditos 20 USD
+            formattedText += credits.toLocaleString() + ' ' + currency;
+        }
+
+        userCreditsEl.textContent = formattedText;
     }
     window.updateLobbyCreditsDisplay = updateCreditsDisplay;
     
+    // ▼▼▼ REEMPLAZA EL LISTENER DEL avatarInput CON ESTE ▼▼▼
     avatarInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
+        if (file && file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onload = function(evt) {
-                userAvatarEl.src = evt.target.result;
-                localStorage.setItem('userAvatar', evt.target.result);
+                // Llamamos al modal de recorte y le decimos qué hacer cuando se guarde
+                openCropModal(evt.target.result, (croppedDataUrl) => {
+                    userAvatarEl.src = croppedDataUrl; // Actualiza el avatar del lobby
+                    currentUser.userAvatar = croppedDataUrl; // Actualiza la variable global
+                    localStorage.setItem('userAvatar', croppedDataUrl); // Guarda en localStorage
+                    showToast('Avatar actualizado con éxito.', 2500);
+                });
             };
             reader.readAsDataURL(file);
         }
     });
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     btnReloadCredits.addEventListener('click', () => { creditModal.style.display = 'flex'; });
     btnCloseCreditModal.addEventListener('click', () => { creditModal.style.display = 'none'; });
@@ -214,6 +388,10 @@ socket.on('connect', () => {
     function confirmCreateRoom() {
         const bet = parseInt(betInput.value);
         const penalty = parseInt(penaltyInput.value);
+        
+        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+        const currency = document.getElementById('create-room-currency').value;
+
         if (isNaN(bet) || bet <= 0) {
             createRoomError.textContent = 'La apuesta debe ser un número positivo.';
             createRoomError.style.display = 'block';
@@ -224,22 +402,45 @@ socket.on('connect', () => {
             createRoomError.style.display = 'block';
             return;
         }
-        const totalCost = bet;
-        const userCredits = parseInt(localStorage.getItem('userCredits')) || 0;
-        if (userCredits < totalCost) {
-            createRoomError.textContent = `No tienes créditos suficientes. Necesitas ${totalCost}.`;
+        const totalCostInRoomCurrency = bet + penalty; // El coste total es apuesta + multa.
+
+        // Obtenemos los datos del usuario y la moneda de la mesa
+        const userCredits = currentUser.credits ?? 0;
+        const userCurrency = currentUser.currency || 'USD';
+        const roomCurrency = document.getElementById('create-room-currency').value;
+
+        let requiredAmountInUserCurrency = totalCostInRoomCurrency;
+
+        // Hacemos la conversión solo si las monedas son diferentes
+        if (roomCurrency !== userCurrency && clientExchangeRates[userCurrency] && clientExchangeRates[userCurrency][roomCurrency]) {
+            requiredAmountInUserCurrency = totalCostInRoomCurrency / clientExchangeRates[userCurrency][roomCurrency];
+        } else if (roomCurrency !== userCurrency && clientExchangeRates[roomCurrency] && clientExchangeRates[roomCurrency][userCurrency]) {
+            requiredAmountInUserCurrency = totalCostInRoomCurrency * clientExchangeRates[roomCurrency][userCurrency];
+        }
+
+        // Comparamos los créditos del usuario con el coste convertido a su moneda
+        if (userCredits < requiredAmountInUserCurrency) {
+            const friendlyBet = bet.toLocaleString('es-ES');
+            const friendlyPenalty = penalty.toLocaleString('es-ES');
+
+            createRoomError.innerHTML = `Créditos insuficientes. <br>Para crear la mesa (${friendlyBet} + ${friendlyPenalty} de multa) necesitas el equivalente a <strong>${requiredAmountInUserCurrency.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${userCurrency}</strong>.`;
             createRoomError.style.display = 'block';
             return;
         }
         
-        const username = localStorage.getItem('username') || 'Jugador';
-        const userAvatar = localStorage.getItem('userAvatar') || defaultAvatars[0];
+        // MIGRACIÓN SEGURA: Usar variables globales con fallback a localStorage
+        const username = currentUser.username || localStorage.getItem('username') || 'Jugador';
+        const userAvatar = currentUser.userAvatar || localStorage.getItem('userAvatar') || defaultAvatars[0];
+        const userId = currentUser.userId || localStorage.getItem('userId');
+        
         const roomSettings = {
             username: username,
             userAvatar: userAvatar,
+            userId: userId, // MIGRACIÓN SEGURA: Usar variables globales
             tableName: `Mesa de ${username}`,
             bet: bet,
-            penalty: penalty
+            penalty: penalty,
+            betCurrency: currency // <-- AÑADE ESTA LÍNEA
         };
         socket.emit('createRoom', roomSettings);
         createRoomModal.style.display = 'none';
@@ -261,9 +462,21 @@ socket.on('connect', () => {
 
     btnLogout.addEventListener('click', () => {
         socket.disconnect(); 
+        
+        // MIGRACIÓN SEGURA: Limpiar tanto variables globales como localStorage
+        currentUser = {
+            username: '',
+            userAvatar: '',
+            userId: '',
+            credits: 1000
+        };
+        
         localStorage.removeItem('username');
         localStorage.removeItem('userAvatar');
         localStorage.removeItem('userCredits');
+        localStorage.removeItem('userId');
+        
+        
         body.classList.remove('is-logged-in');
         window.removeEventListener('resize', scaleAndCenterLobby);
         scaleAndCenterLobby();
@@ -281,20 +494,26 @@ socket.on('connect', () => {
     }
 
     function handleJoinRoom(roomId, mode = 'wantsToPlay') {
-        spectatorMode = mode; // Guardamos la intención del espectador
+        spectatorMode = mode;
+        
+        // MIGRACIÓN SEGURA: Usar variables globales con fallback a localStorage
         const user = {
-            username: localStorage.getItem('username') || 'Invitado',
-            userAvatar: localStorage.getItem('userAvatar') || defaultAvatars[0]
+            username: currentUser.username || localStorage.getItem('username') || 'Invitado',
+            userAvatar: currentUser.userAvatar || localStorage.getItem('userAvatar') || defaultAvatars[0],
+            userId: currentUser.userId || localStorage.getItem('userId') // MIGRACIÓN SEGURA: Usar variables globales
         };
+        
+        console.log(`[JoinRoom] Usuario: ${user.username} (ID: ${user.userId}) - Migración segura`);
         socket.emit('joinRoom', { roomId, user });
     }
 
 // REEMPLAZA LA FUNCIÓN renderRoomsOverview ENTERA CON ESTO:
+// REEMPLAZA LA FUNCIÓN renderRoomsOverview ENTERA CON ESTA VERSIÓN MEJORADA
 function renderRoomsOverview(rooms = []) {
     if (!roomsOverviewEl) return;
     roomsOverviewEl.innerHTML = ''; // Limpiar la vista
 
-    // --- MESA DE PRÁCTICA ---
+    // --- MESA DE PRÁCTICA (Sin cambios) ---
     const practiceTable = document.createElement('div');
     practiceTable.className = 'table-item';
     practiceTable.innerHTML = `
@@ -312,7 +531,7 @@ function renderRoomsOverview(rooms = []) {
     };
     roomsOverviewEl.appendChild(practiceTable);
 
-    // --- BOTÓN DE CREAR MESA ---
+    // --- BOTÓN DE CREAR MESA (Sin cambios) ---
     const createTableItem = document.createElement('div');
     createTableItem.className = 'table-item no-rooms';
     createTableItem.innerHTML = `
@@ -330,84 +549,141 @@ function renderRoomsOverview(rooms = []) {
         return;
     }
 
-    // --- RENDERIZAR MESAS REALES ---
+    // --- INICIO DE LAS MODIFICACIONES ---
+
+    // 1. CREAMOS UNA FUNCIÓN AUXILIAR REUTILIZABLE PARA LAS CONVERSIONES
+    // Esto nos permitirá usarla tanto para la apuesta como para la multa.
+    const getConvertedValueHTML = (amount, fromCurrency) => {
+        if (!currentUser.currency || fromCurrency === currentUser.currency || !clientExchangeRates) {
+            return ''; // No se necesita conversión
+        }
+        
+        let convertedAmount = 0;
+        if (clientExchangeRates[fromCurrency] && clientExchangeRates[fromCurrency][currentUser.currency]) {
+            convertedAmount = amount * clientExchangeRates[fromCurrency][currentUser.currency];
+        } else if (clientExchangeRates[currentUser.currency] && clientExchangeRates[currentUser.currency][fromCurrency]) {
+            convertedAmount = amount / clientExchangeRates[currentUser.currency][fromCurrency];
+        }
+
+        if (convertedAmount > 0) {
+            const formattedAmount = convertedAmount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return `<span style="font-size: 0.75rem; color: #aaa;"> (Aprox. ${formattedAmount} ${currentUser.currency})</span>`;
+        }
+        return '';
+    };
+
+    // --- FIN DE LA MODIFICACIÓN 1 ---
+
     rooms.sort((a, b) => getRoomStatePriority(a) - getRoomStatePriority(b));
 
     rooms.forEach(roomData => {
+        // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
+        if (roomData.isPractice) return; // Si la mesa es de práctica, no la mostramos y pasamos a la siguiente.
+        // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
+
         try {
             const div = document.createElement('div');
             div.className = 'table-item';
 
             const seated = (roomData.seats || []).filter(Boolean).length;
             const bet = parseInt(roomData.settings?.bet || 0);
+            const penalty = parseInt(roomData.settings?.penalty || 0); // Obtenemos la multa
             const hostUsername = roomData.settings?.username || 'Desconocido';
-            // ▼▼▼ REEMPLAZA ESTA LÍNEA... ▼▼▼
-            // const isPlaying = roomData.state === 'playing';
-            // ▲▲▲ ...CON ESTA LÍNEA ▼▼▼
             const isEffectivelyPlaying = roomData.state === 'playing' || roomData.state === 'post-game';
-            
+            const betCurrency = roomData.settings?.betCurrency || 'USD';
+
+            // --- INICIO DE LA MODIFICACIÓN 2 ---
+            // 2. USAMOS LA FUNCIÓN AUXILIAR PARA APUESTA Y MULTA
+            const convertedBetHTML = getConvertedValueHTML(bet, betCurrency);
+            const convertedPenaltyHTML = getConvertedValueHTML(penalty, betCurrency);
+            // --- FIN DE LA MODIFICACIÓN 2 ---
+
             let stateText = isEffectivelyPlaying ? `Jugando (${seated} / 4)` : `En espera (${seated} / 4)`;
             const seatedPlayerNames = (roomData.seats || []).map(seat => seat ? seat.playerName : null).filter(Boolean);
 
+            // Se actualiza el innerHTML para mostrar la multa con su conversión
             div.innerHTML = `
                 <div class="info">
                     <div><strong>Mesa de:</strong> ${hostUsername}</div>
                     <div><strong>Estado:</strong> ${stateText}</div>
-                    <div><strong>Apuesta:</strong> ${bet}</div>
-                    <div><strong>Multa:</strong> ${roomData.settings?.penalty || 0}</div>
+                    <div><strong>Apuesta:</strong> ${bet.toLocaleString('es-ES')} ${betCurrency}${convertedBetHTML}</div>
+                    <div><strong>Multa:</strong> ${penalty.toLocaleString('es-ES')} ${betCurrency}${convertedPenaltyHTML}</div>
                     <div class="player-list"><strong>Jugadores:</strong> ${seatedPlayerNames.length > 0 ? seatedPlayerNames.join(', ') : '-'}</div>
                 </div>
                 <div class="actions"></div>
             `;
 
             const actionsContainer = div.querySelector('.actions');
+            const btnEnter = document.createElement('button');
+            btnEnter.textContent = 'Entrar';
+            btnEnter.className = 'play-button';
 
-            // ▼▼▼ REEMPLAZA ESTA LÍNEA... ▼▼▼
-            // if (isPlaying) {
-            // ▲▲▲ ...CON ESTA LÍNEA ▼▼▼
-            if (isEffectivelyPlaying) {
-                // ▼▼▼ REEMPLAZA EL BLOQUE DEL BOTÓN 'Unirse y Esperar' CON ESTO ▼▼▼
-                
-                const isFull = seated >= 4; // Comprobamos si la mesa está llena
+            const isFull = seated >= 4;
+            const requirementInRoomCurrency = bet + penalty;
 
-                const btnJoinAndWait = document.createElement('button');
-                btnJoinAndWait.textContent = 'Unirse y Esperar';
-                btnJoinAndWait.className = 'play-button';
-                btnJoinAndWait.disabled = isFull; // Deshabilitamos el botón si está llena
-
-                if (isFull) {
-                    btnJoinAndWait.title = 'La mesa está llena, no puedes unirte a la espera.';
-                } else {
-                    btnJoinAndWait.title = 'Entras como espectador con la opción de sentarte si se libera un puesto.';
+            // Calculamos el coste en la moneda del jugador
+            let requiredAmountInPlayerCurrency = requirementInRoomCurrency;
+            if (currentUser.currency && betCurrency !== currentUser.currency) {
+                 if (clientExchangeRates[currentUser.currency] && clientExchangeRates[currentUser.currency][betCurrency]) {
+                    requiredAmountInPlayerCurrency = requirementInRoomCurrency / clientExchangeRates[currentUser.currency][betCurrency];
                 }
-                btnJoinAndWait.onclick = () => handleJoinRoom(roomData.roomId, 'wantsToPlay');
-                actionsContainer.appendChild(btnJoinAndWait);
-                
-                // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
-
-                const btnSpectateOnly = document.createElement('button');
-                btnSpectateOnly.textContent = 'Solo Ver';
-                btnSpectateOnly.className = 'play-button secondary'; // Estilo secundario
-                btnSpectateOnly.title = 'Entras como espectador y no recibirás notificaciones para jugar.'
-                btnSpectateOnly.onclick = () => handleJoinRoom(roomData.roomId, 'spectateOnly');
-                actionsContainer.appendChild(btnSpectateOnly);
-            } else {
-                // Si la partida está en espera, mostrar solo el botón "Entrar"
-                const btnEnter = document.createElement('button');
-                btnEnter.textContent = 'Entrar';
-                btnEnter.className = 'play-button';
-                
-                const currentCredits = parseInt(localStorage.getItem('userCredits')) || 0;
-                const isFull = seated >= 4;
-                const hasEnoughCredits = currentCredits >= bet;
-
-                btnEnter.disabled = !hasEnoughCredits || isFull;
-                if (!hasEnoughCredits) btnEnter.title = `Créditos insuficientes. Necesitas ${bet}.`;
-                if (isFull) btnEnter.title = `Mesa llena.`;
-                
-                btnEnter.onclick = () => handleJoinRoom(roomData.roomId); // Asignación correcta
-                actionsContainer.appendChild(btnEnter);
             }
+            
+            const hasEnoughCredits = (currentUser.credits ?? 0) >= requiredAmountInPlayerCurrency;
+
+            // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+            if (isFull) {
+                btnEnter.disabled = true;
+                btnEnter.title = 'Mesa llena.';
+            } else {
+                btnEnter.disabled = false;
+
+                // Asignamos una única y nueva función onclick que valida todo en el momento.
+                btnEnter.onclick = () => {
+                    // 1. Obtenemos los datos más frescos en el instante del clic.
+                    const userCreditsNow = currentUser.credits ?? 0;
+                    const userCurrencyNow = currentUser.currency || 'USD';
+
+                    const bet = parseInt(roomData.settings?.bet || 0);
+                    const penalty = parseInt(roomData.settings?.penalty || 0);
+                    const betCurrency = roomData.settings?.betCurrency || 'USD';
+
+                    const requirementInRoomCurrency = bet + penalty;
+                    let requiredInUserCurrency = requirementInRoomCurrency;
+
+                    // 2. Realizamos la conversión de moneda.
+                    if (userCurrencyNow !== betCurrency && clientExchangeRates) {
+                         if (clientExchangeRates[betCurrency] && clientExchangeRates[betCurrency][userCurrencyNow]) {
+                            requiredInUserCurrency = requirementInRoomCurrency * clientExchangeRates[betCurrency][userCurrencyNow];
+                        } else if (clientExchangeRates[userCurrencyNow] && clientExchangeRates[userCurrencyNow][betCurrency]) {
+                            requiredInUserCurrency = requirementInRoomCurrency / clientExchangeRates[userCurrencyNow][betCurrency];
+                        }
+                    }
+
+                    // 3. Comparamos los créditos del usuario con el requisito.
+                    console.log(`VALIDANDO: Créditos=${userCreditsNow} ${userCurrencyNow} vs Requerido=${requiredInUserCurrency.toFixed(2)} ${userCurrencyNow}`);
+
+                    if (userCreditsNow >= requiredInUserCurrency) {
+                        // Si tiene créditos, se une a la mesa.
+                        handleJoinRoom(roomData.roomId);
+                    } else {
+                        // Si NO tiene créditos, llamamos a nuestra nueva función de modal.
+                        const missingAmount = requiredInUserCurrency - userCreditsNow;
+
+                        const friendlyRequired = `${requiredInUserCurrency.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${userCurrencyNow}`;
+                        const friendlyMissing = `${missingAmount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${userCurrencyNow}`;
+
+                        showInsufficientFundsModal(friendlyRequired, friendlyMissing);
+                    }
+                };
+            }
+
+            if (isEffectivelyPlaying && isFull) {
+                 btnEnter.title = 'La mesa está llena.';
+            }
+
+            actionsContainer.appendChild(btnEnter);
+            // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
             
             roomsOverviewEl.appendChild(div);
 
@@ -417,33 +693,60 @@ function renderRoomsOverview(rooms = []) {
     });
 }
     
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN sendChat ENTERA CON ESTA ▼▼▼
     function sendChat(text) {
         if (!text) return;
-        const name = localStorage.getItem('username') || 'Anónimo';
-        const chatMessages = JSON.parse(localStorage.getItem('lobby_chat')) || [];
-        chatMessages.push({ id: uid('m'), from: name, text: text, ts: nowTs() });
-        if(chatMessages.length > 50) chatMessages.slice(-50);
-        localStorage.setItem('lobby_chat', JSON.stringify(chatMessages));
+
+        // Obtenemos el nombre del usuario actual de la variable global
+        const senderName = currentUser.username || 'Invitado';
+
+        // Enviamos el mensaje al servidor en lugar de a localStorage
+        socket.emit('sendLobbyChat', { text: text, sender: senderName });
+
+        // Limpiamos el input localmente
         chatInput.value = '';
-        renderGlobalChat();
+    }
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN renderGlobalChat ENTERA CON ESTAS DOS FUNCIONES ▼▼▼
+
+    // Función 1: Añade un solo mensaje al DOM
+    function addLobbyChatMessage(msg) {
+        const m = document.createElement('div');
+        m.style.marginBottom = '6px';
+
+        const who = document.createElement('div');
+        who.style.fontSize = '12px';
+        who.style.color = '#6D2932';
+        who.textContent = msg.from;
+
+        const txt = document.createElement('div');
+        txt.textContent = msg.text;
+
+        const ts = document.createElement('div');
+        ts.style.fontSize = '11px';
+        ts.style.color = '#888';
+        ts.textContent = new Date(msg.ts).toLocaleTimeString();
+
+        m.appendChild(who);
+        m.appendChild(txt);
+        m.appendChild(ts);
+
+        chatEl.appendChild(m);
+        chatEl.scrollTop = chatEl.scrollHeight; // Auto-scroll
     }
 
-    function renderGlobalChat() {
-        const chatMessages = JSON.parse(localStorage.getItem('lobby_chat')) || [];
-        if (chatMessages.length === 0) {
-            chatMessages.push({ id: uid('m'), from: 'Sistema', text: '¡Bienvenido al Lobby! Sé respetuoso y disfruta del juego.', ts: nowTs() });
+    // Función 2: Renderiza un array completo de mensajes (para el historial)
+    function renderLobbyChat(messages = []) {
+        chatEl.innerHTML = ''; // Limpiamos el chat
+        if (messages.length === 0) {
+            // Mensaje de bienvenida si el historial está vacío
+            addLobbyChatMessage({ from: 'Sistema', text: '¡Bienvenido al Lobby! Sé respetuoso y disfruta del juego.', ts: Date.now() });
+        } else {
+            messages.forEach(msg => addLobbyChatMessage(msg));
         }
-        chatEl.innerHTML = '';
-        chatMessages.forEach(msg => {
-            const m = document.createElement('div'); m.style.marginBottom = '6px';
-            const who = document.createElement('div'); who.style.fontSize='12px'; who.style.color='#6D2932'; who.textContent = msg.from;
-            const txt = document.createElement('div'); txt.textContent = msg.text;
-            const ts = document.createElement('div'); ts.style.fontSize='11px'; ts.style.color='#888'; ts.textContent = new Date(msg.ts).toLocaleTimeString();
-            m.appendChild(who); m.appendChild(txt); m.appendChild(ts);
-            chatEl.appendChild(m);
-        });
-        chatEl.scrollTop = chatEl.scrollHeight;
     }
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
 // REEMPLAZA LA FUNCIÓN showRoomsOverview ENTERA CON ESTO
 function showRoomsOverview() {
@@ -491,7 +794,8 @@ function showRoomsOverview() {
                 password: userData.password, 
                 avatar: userData.avatar || defaultAvatars[0],
                 country: userData.country,
-                whatsapp: userData.whatsapp
+                whatsapp: userData.whatsapp,
+                currency: userData.currency || 'USD' // <-- AÑADE ESTA LÍNEA (con un fallback por si acaso)
             };
         } catch (e) {
             loginError.textContent = 'Error al validar usuario.';
@@ -500,8 +804,8 @@ function showRoomsOverview() {
         }
     }
 
-    function registerUser(name, country, whatsapp, password, confirmPassword, avatar) {
-        if (!name || !country || !whatsapp || !password || !confirmPassword) { 
+    function registerUser(name, country, whatsapp, password, confirmPassword, avatar, currency) { // <-- Añadido "currency"
+        if (!name || !country || !whatsapp || !password || !confirmPassword || !currency) { // <-- Añadida validación de currency
             registerError.textContent = 'Por favor, completa todos los campos.'; 
             registerError.style.display = 'block'; 
             return false; 
@@ -528,6 +832,7 @@ function showRoomsOverview() {
             whatsapp: whatsapp,
             password: password,
             avatar: avatar,
+            currency: currency, // <-- AÑADIDO: Guardar la moneda
             registeredAt: Date.now()
         };
         try {
@@ -550,13 +855,30 @@ function showRoomsOverview() {
            
             socket.connect(); 
 
+            // ▼▼▼ REEMPLAZA la línea socket.emit('userLoggedIn', ...) con esta ▼▼▼
+            socket.emit('userLoggedIn', { username: user.name, currency: user.currency }); // Enviamos la moneda
+
+            // MIGRACIÓN SEGURA: Actualizar tanto localStorage como variables globales
+            const defaultAvatar = 'https://i.pravatar.cc/150?img=1';
+            const userAvatar = user.avatar || defaultAvatar;
+            
+            // Actualizar variables globales
+            currentUser = {
+                username: user.name,
+                userAvatar: userAvatar,
+                userId: 'user_' + user.name.toLowerCase(),
+                credits: 1000
+            };
+            
+            // Mantener localStorage para compatibilidad
             localStorage.setItem('username', user.name);
+            localStorage.setItem('userId', currentUser.userId);
+            localStorage.setItem('userAvatar', userAvatar);
+            localStorage.setItem('userCredits', 1000);
+            
             loginModal.style.display = 'none';
             document.getElementById('user-name').textContent = user.name;
-            const defaultAvatar = 'https://i.pravatar.cc/150?img=1';
-            userAvatarEl.src = user.avatar || defaultAvatar;
-            localStorage.setItem('userAvatar', user.avatar || defaultAvatar);
-            localStorage.setItem('userCredits', 1000);
+            userAvatarEl.src = userAvatar;
             updateCreditsDisplay();
             body.classList.add('is-logged-in');
             lobbyOverlay.style.display = 'flex';
@@ -571,7 +893,9 @@ function showRoomsOverview() {
         const whatsapp = registerWhatsAppInput.value.trim();
         const password = registerPasswordInput.value;
         const confirmPassword = registerConfirmPasswordInput.value;
-        if (registerUser(name, country, whatsapp, password, confirmPassword, selectedAvatar)) {
+        const currency = document.getElementById('register-currency').value; // <-- AÑADE ESTA LÍNEA
+
+        if (registerUser(name, country, whatsapp, password, confirmPassword, selectedAvatar, currency)) { // <-- Pasa la moneda
             setTimeout(() => {
                 registerModal.style.display = 'none';
                 showLoginModal();
@@ -622,7 +946,8 @@ function showRoomsOverview() {
     }
 
     let cropperState = { isDragging: false, startX: 0, startY: 0, wrapperX: 0, wrapperY: 0, scale: 1 };
-    function openCropModal(imageDataUrl) {
+    function openCropModal(imageDataUrl, callback) { // <-- Añade 'callback'
+        onCropCompleteCallback = callback; // <-- AÑADE ESTA LÍNEA
         cropImagePreview.onload = () => {
             avatarCropModal.style.display = 'flex';
             cropperState = { isDragging: false, startX: 0, startY: 0, wrapperX: 0, wrapperY: 0, scale: 1 };
@@ -655,13 +980,14 @@ function showRoomsOverview() {
         const finalImgWidth = wrapperWidth * scale, finalImgHeight = wrapperHeight * scale;
         ctx.drawImage(img, finalImgX, finalImgY, finalImgWidth, finalImgHeight);
         const dataUrl = canvas.toDataURL('image/png');
-        selectedAvatar = dataUrl;
-        avatarPreview.src = dataUrl;
-        avatarPreviewContainer.style.display = 'block';
-        const current = avatarGallery.querySelector('.selected');
-        if (current) current.classList.remove('selected');
-        avatarGallery.firstChild.classList.add('selected');
+
+        // ▼▼▼ REEMPLAZA LAS LÍNEAS FINALES CON ESTE BLOQUE ▼▼▼
+        if (typeof onCropCompleteCallback === 'function') {
+            onCropCompleteCallback(dataUrl); // Ejecutamos la acción guardada
+        }
+        onCropCompleteCallback = null; // Limpiamos la acción para futuros usos
         closeCropModal();
+        // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     }
     cropContainer.addEventListener('mousedown', (e) => { e.preventDefault(); cropperState.isDragging = true; cropperState.startX = e.clientX - cropperState.wrapperX; cropperState.startY = e.clientY - cropperState.wrapperY; });
     window.addEventListener('mousemove', (e) => { if (!cropperState.isDragging || avatarCropModal.style.display !== 'flex') return; e.preventDefault(); cropperState.wrapperX = e.clientX - cropperState.startX; cropperState.wrapperY = e.clientY - cropperState.startY; cropImageWrapper.style.left = `${cropperState.wrapperX}px`; cropImageWrapper.style.top = `${cropperState.wrapperY}px`; });
@@ -672,7 +998,27 @@ function showRoomsOverview() {
     zoomSlider.addEventListener('input', (e) => { cropperState.scale = e.target.value / 100; cropImagePreview.style.transform = `scale(${cropperState.scale})`; });
     btnSaveCrop.addEventListener('click', saveCrop);
     btnCancelCrop.addEventListener('click', closeCropModal);
-    registerAvatarUpload.addEventListener('change', (e) => { const file = e.target.files[0]; if (file && file.type.startsWith('image/')) { const reader = new FileReader(); reader.onload = function(evt) { openCropModal(evt.target.result); }; reader.readAsDataURL(file); } });
+    // ▼▼▼ REEMPLAZA EL LISTENER DEL registerAvatarUpload CON ESTE ▼▼▼
+    registerAvatarUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                // Llamamos al modal y le pasamos la acción específica para el registro
+                openCropModal(evt.target.result, (croppedDataUrl) => {
+                    selectedAvatar = croppedDataUrl;
+                    avatarPreview.src = croppedDataUrl;
+                    avatarPreviewContainer.style.display = 'block';
+                    const current = avatarGallery.querySelector('.selected');
+                    if (current) current.classList.remove('selected');
+                    // Asumimos que el primer item es la opción de 'Subir Foto'
+                    avatarGallery.firstChild.classList.add('selected');
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
     (function init() {
         console.log('--- INICIANDO VERSIÓN CORREGIDA DEL SCRIPT (V3) ---');
@@ -681,6 +1027,12 @@ function showRoomsOverview() {
         if (loggedInUser) {
             
             socket.connect();
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // Le decimos al servidor quiénes somos al reconectar, igual que en un login normal.
+            const userCurrency = JSON.parse(localStorage.getItem('registered_user_' + loggedInUser.toLowerCase()))?.currency || 'USD';
+            socket.emit('userLoggedIn', { username: loggedInUser, currency: userCurrency });
+            // --- FIN DE LA MODIFICACIÓN ---
 
             const user = {
                 name: loggedInUser,
@@ -707,6 +1059,19 @@ function showRoomsOverview() {
 // --- INICIO: SCRIPT DEL JUEGO ---
 (function() {
 
+    socket.on('chatHistory', (history) => {
+        console.log('Recibiendo historial del chat con', history.length, 'mensajes.');
+        const messagesInner = document.getElementById('chat-messages-inner');
+        if (messagesInner) {
+            messagesInner.innerHTML = ''; // Limpiamos la vista actual
+            // Llenamos el chat con el historial recibido
+            history.forEach(msg => {
+                const role = msg.sender === 'Sistema' ? 'system' : 'player';
+                addChatMessage(msg.sender, msg.message, role);
+            });
+        }
+    });
+
     socket.on('oponenteDescarto', (data) => {
         console.log(`El oponente (${data.playerId}) descartó la carta:`, data.card);
         discardPile.push(data.card);
@@ -719,8 +1084,6 @@ function showRoomsOverview() {
         const newSeats = data.seats;
         updatePlayersView(newSeats, true); 
 
-        // ▼ AÑADE ESTA LÍNEA ▼
-        renderSpectatorList(data.spectators || []);
 
         showToast(`${data.waitingPlayerName} se sentará en la próxima partida.`, 3000);
     });
@@ -735,7 +1098,7 @@ function showRoomsOverview() {
         // Comprobación de créditos
         const roomSettings = currentGameSettings.settings;
         const requiredCredits = (roomSettings.bet || 0) + (roomSettings.penalty || 0);
-        const userCredits = parseInt(localStorage.getItem('userCredits')) || 0;
+        const userCredits = currentUser.credits ?? parseInt(localStorage.getItem('userCredits')) ?? 1000; // MIGRACIÓN SEGURA
 
         if (userCredits < requiredCredits) {
             showToast(`Un asiento está libre, pero necesitas ${requiredCredits} créditos para unirte.`, 4000);
@@ -908,6 +1271,8 @@ function showRoomsOverview() {
 
     socket.on('meldUpdate', (data) => {
         console.log("Actualización de jugada recibida del servidor:", data);
+
+        // Sincronizamos el estado oficial del servidor en nuestras variables locales
         allMelds = data.newMelds || [];
         turnMelds = data.turnMelds || [];
 
@@ -915,7 +1280,14 @@ function showRoomsOverview() {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // 1. Primero, renderizamos la mesa con el nuevo estado oficial.
+        // Si la animación de nuestra propia bajada está en curso, no hacemos nada más.
+        // La animación se encargará de redibujar la mesa cuando termine.
+        if (isAnimatingLocalMeld) {
+            console.log("Ignorando renderizado de 'meldUpdate' por animación local en curso.");
+            return;
+        }
+
+        // 1. Primero, renderizamos la mesa con el nuevo estado oficial (para otros jugadores).
         renderMelds();
 
         // 2. Ahora que la carta ya existe en el DOM, aplicamos el resaltado si es necesario.
@@ -929,7 +1301,7 @@ function showRoomsOverview() {
                     cardEl.classList.add('highlight-add');
                     setTimeout(() => {
                         cardEl.classList.remove('highlight-add');
-                    }, 4000); // <-- CAMBIA 3000 POR 4000 AQUÍ
+                    }, 4000);
                 }
             }
         }
@@ -967,48 +1339,56 @@ function showRoomsOverview() {
 
     // ▼▼▼ REEMPLAZA TU LISTENER socket.on('gameEnd', ...) CON ESTE ▼▼▼
     socket.on('gameEnd', (data) => {
-        console.log('PARTIDA FINALIZADA. Razón: Un jugador abandonó o alguien ganó.', data);
-        
+        console.log('PARTIDA FINALIZADA.', data);
+
         resetClientGameState(); 
 
         if (data.finalRoomState) {
             updatePlayersView(data.finalRoomState.seats, true); 
-            renderSpectatorList(data.finalRoomState.spectators || []);
         }
 
         const wasPlayerInGame = data.finalRoomState.seats.some(s => s && s.playerId === socket.id);
+
         const victoryOverlay = document.getElementById('victory-overlay');
         const victoryMessage = document.getElementById('victory-message');
         const finalScores = document.getElementById('final-scores');
         const setupRematchBtn = document.getElementById('btn-setup-rematch');
-        const secondaryBtn = victoryOverlay.querySelector('.secondary');
+
+        let headerText = `¡${data.winnerName} ha ganado la partida!`;
+        if (data.abandonment && data.abandonment.name) {
+            headerText += `<br><span style="font-size: 0.9rem; color: #ffdddd;">(Por abandono de ${data.abandonment.name})</span>`;
+        }
+        victoryMessage.innerHTML = headerText;
+
+        // --- INICIO DE LA LÓGICA DE EQUIVALENCIA ---
+        let finalHTML = data.scoresHTML || '<p>No hay detalles de la partida.</p>';
+
+        if (data.potData && currentUser.currency && data.potData.currency !== currentUser.currency) {
+            const potInfo = data.potData;
+            const convertedPot = convertCurrency(potInfo.pot, potInfo.currency, currentUser.currency, clientExchangeRates);
+            const convertedCommission = convertCurrency(potInfo.commission, potInfo.currency, currentUser.currency, clientExchangeRates);
+            const convertedWinnings = convertCurrency(potInfo.winnings, potInfo.currency, currentUser.currency, clientExchangeRates);
+            const symbol = currentUser.currency === 'EUR' ? '€' : currentUser.currency;
+
+            const equivalencyHTML = `
+                <div style="border-top: 1px solid #555; margin-top: 15px; padding-top: 10px; text-align: left; font-size: 0.9rem; color: #aaa;">
+                    <p><strong>Equivalencia en tu moneda (${symbol}):</strong></p>
+                    <p>Bote Total: ~${convertedPot.toFixed(2)} ${symbol}</p>
+                    <p>Comisión: ~${convertedCommission.toFixed(2)} ${symbol}</p>
+                    <p style="color: #6bff6b; font-weight: bold;">Ganancia: ~${convertedWinnings.toFixed(2)} ${symbol}</p>
+                </div>
+            `;
+            finalHTML += equivalencyHTML;
+        }
+
+        finalScores.innerHTML = finalHTML;
+        // --- FIN DE LA LÓGICA DE EQUIVALENCIA ---
 
         if (wasPlayerInGame) {
-            // ▼▼▼ BLOQUE MODIFICADO: Mensaje de victoria dinámico ▼▼▼
-            let victoryText = `🏆 ${data.winnerName} ha ganado!`;
-            if (data.abandonment && data.abandonment.name) {
-                victoryText += `<br><span style="font-size: 0.9rem; color: #ffdddd;">(Por abandono de ${data.abandonment.name})</span>`;
-            }
-            victoryMessage.innerHTML = victoryText;
-            // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
-
-            try {
-                finalScores.innerHTML = data.scoresHTML || '<p>La partida ha finalizado.</p>';
-            } catch (e) {
-                console.error("Error al renderizar el HTML de las puntuaciones:", e);
-                finalScores.innerHTML = '<p>Error al mostrar puntuaciones.</p>';
-            }
-            finalScores.style.display = 'block';
             setupRematchBtn.style.display = 'inline-block';
             setupRematchBtn.onclick = setupRematchScreen;
-            secondaryBtn.textContent = '🚪 Volver al Lobby';
-            secondaryBtn.onclick = () => goBackToLobby();
         } else {
-            victoryMessage.textContent = `La partida ha terminado`;
-            finalScores.style.display = 'none';
-            setupRematchBtn.style.display = 'none';
-            secondaryBtn.textContent = 'Aceptar';
-            secondaryBtn.onclick = () => hideOverlay('victory-overlay');
+             setupRematchBtn.style.display = 'none';
         }
 
         showOverlay('victory-overlay');
@@ -1049,8 +1429,8 @@ function showRoomsOverview() {
         // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
         const mainButton = document.getElementById('btn-ready-main');
 
-        // El botón solo aparece si: se puede iniciar Y el jugador actual es el host
-        if (data.canStart && socket.id === data.hostId) {
+        // El botón solo aparece si: se puede iniciar, el jugador es el host Y YA HA CONFIRMADO
+        if (data.canStart && socket.id === data.hostId && mainButton.disabled) {
             startButton.style.display = 'block';
             startButton.disabled = false; // <-- AÑADE ESTA LÍNEA AQUÍ
             // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
@@ -1098,23 +1478,6 @@ function showRoomsOverview() {
         renderHands();
     });
 
-    socket.on('spectatorJoined', (data) => {
-        // Lógica para mostrar la notificación en el icono del chat
-        const chatWindow = document.getElementById('chat-window');
-        const badge = document.getElementById('chat-notification-badge');
-        if (chatWindow && !chatWindow.classList.contains('visible')) {
-            unreadMessages++;
-            badge.textContent = unreadMessages;
-            badge.style.display = 'flex';
-        }
-        
-        addChatMessage(null, `${data.name} ha entrado a la sala como espectador.`, 'system');
-        renderSpectatorList(data.spectators);
-    });
-
-    socket.on('spectatorListUpdated', (data) => {
-        renderSpectatorList(data.spectators);
-    });
 
     socket.on('kickedFromRoom', (data) => {
         showToast(data.reason, 5000);
@@ -1128,21 +1491,9 @@ function showRoomsOverview() {
         }
         showToast(`${data.hostName} es ahora el nuevo anfitrión.`, 3500);
 
-        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
-        // Si estamos en la pantalla de revancha, actualizamos la vista.
-        const readyOverlay = document.getElementById('ready-overlay');
-        if (readyOverlay.style.display === 'flex') {
-            // Forzamos una actualización pidiendo al servidor el estado de la revancha.
-            // Usamos el ID del jugador que ahora es el host para la solicitud.
-            socket.emit('requestRematch', {
-                roomId: currentGameSettings.roomId,
-                credits: parseInt(localStorage.getItem('userCredits')) || 0
-            });
-        }
-        // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+        // Ya no es necesario que el cliente pida una actualización,
+        // el servidor la enviará automáticamente gracias al cambio en el Paso 1.
 
-        // Volvemos a renderizar los controles, por si el nuevo anfitrión soy yo
-        // y ahora me debe aparecer el botón de "Iniciar Partida".
         renderGameControls();
     });
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
@@ -1218,6 +1569,47 @@ function showRoomsOverview() {
     });
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
+    // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AQUÍ ▼▼▼
+    socket.on('practiceGameFaultEnd', () => {
+        // Activamos la bandera que indica que el juego de práctica terminó por una falta.
+        // El modal de eliminación se mostrará gracias al evento 'playerEliminated' que se recibe primero.
+        practiceGameEndedByFault = true;
+    });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
+
+    // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AQUÍ ▼▼▼
+    // ▼▼▼ REEMPLAZA TUS LISTENERS 'practiceGameHumanWin' y 'practiceGameEnded' CON ESTOS DOS ▼▼▼
+
+    socket.on('practiceGameHumanWin', () => {
+        // Obtenemos los elementos del modal de victoria
+        const victoryModal = document.getElementById('practice-victory-modal');
+        const title = victoryModal.querySelector('h2');
+        const message = victoryModal.querySelector('p');
+
+        // Cambiamos el texto para la victoria del jugador
+        title.textContent = '¡Victoria!';
+        message.textContent = '¡Felicidades, has ganado la partida de práctica!';
+
+        // Mostramos el modal ya actualizado
+        showOverlay('practice-victory-modal');
+    });
+
+    socket.on('practiceGameBotWin', (data) => {
+        // Obtenemos los mismos elementos del modal de victoria
+        const victoryModal = document.getElementById('practice-victory-modal');
+        const title = victoryModal.querySelector('h2');
+        const message = victoryModal.querySelector('p');
+
+        // Cambiamos el texto para mostrar qué bot ganó
+        title.textContent = 'Partida Terminada';
+        message.textContent = `El jugador ${data.winnerName} ha ganado la partida.`;
+
+        // Mostramos el modal ya actualizado
+        showOverlay('practice-victory-modal');
+    });
+
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
+
     socket.on('animateCardAdd', (data) => {
         // No animar mi propia jugada, se anima localmente
         if (data.melderId === socket.id) return;
@@ -1245,100 +1637,155 @@ function showRoomsOverview() {
     });
 
     let currentGameSettings = {};
-    let currentUser = {}; 
     let players = [];
     let gameStarted = false;
     let deck = [], discardPile = [], currentPlayer = 0, allMelds = [], turnMelds = []; // Añadir turnMelds
     let unreadMessages = 0;
     let isWaitingForNextTurn = false;
+    let isAnimatingLocalMeld = false; // <<-- AÑADE ESTA LÍNEA
+    let practiceGameEndedByFault = false; // <<-- AÑADE ESTA LÍNEA
     let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, selectedCards, isDrawing;
+
+    // ▼▼▼ PEGA EL BLOQUE COMPLETO AQUÍ ▼▼▼
+    // Configuración de los botones del modal de reinicio de práctica (Ubicación corregida)
+    document.addEventListener('DOMContentLoaded', () => {
+        const btnRestart = document.getElementById('btn-restart-practice');
+        const btnExit = document.getElementById('btn-exit-practice');
+
+        if (btnRestart) {
+            btnRestart.onclick = () => {
+                hideOverlay('practice-restart-modal');
+                // Asegurarnos que currentGameSettings exista antes de usarlo
+                if (currentGameSettings && currentGameSettings.roomId) {
+                    socket.emit('requestPracticeRematch', { roomId: currentGameSettings.roomId });
+                } else {
+                    console.error("No se pudo reiniciar la partida: roomId no encontrado.");
+                    goBackToLobby(); // Fallback seguro
+                }
+            };
+        }
+
+        if (btnExit) {
+            btnExit.onclick = () => {
+                hideOverlay('practice-restart-modal');
+                goBackToLobby();
+            };
+        }
+
+        // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ DENTRO ▼▼▼
+        const btnAcceptVictory = document.getElementById('btn-accept-practice-victory');
+        if (btnAcceptVictory) {
+            btnAcceptVictory.onclick = () => {
+                // 1. Oculta el modal de victoria
+                hideOverlay('practice-victory-modal');
+                // 2. Muestra el modal de reinicio
+                showOverlay('practice-restart-modal');
+            };
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+    });
+    // ▲▲▲ FIN DEL BLOQUE A PEGAR ▲▲▲
 
     // ▼▼▼ AÑADE ESTE LISTENER COMPLETO ▼▼▼
     socket.on('resetForNewGame', (data) => {
-        console.log('Recibida orden del servidor para resetear la UI para la nueva partida.');
-        
-        // 1. Limpiar completamente el contenido del chat.
-        const chatMessagesInner = document.getElementById('chat-messages-inner');
-        if (chatMessagesInner) {
-            chatMessagesInner.innerHTML = '';
-        }
-
-        // 2. Añadir un mensaje de sistema al chat vacío.
-        addChatMessage(null, 'Se ha iniciado una nueva partida. ¡Buena suerte!', 'system');
-
-        // 3. Renderizar la lista de espectadores con los datos FRESCOS del servidor.
-        // Esto elimina espectadores antiguos y muestra correctamente a los que se quedaron.
-        renderSpectatorList(data.spectators || []);
+        // No hacer nada aquí para no borrar el chat.
     });
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-    socket.on('gameStarted', (initialState) => {
-        // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
-        // Forzamos la visibilidad de los botones de acción para TODOS al empezar una partida.
-        document.querySelector('.player-actions').style.display = 'flex';
-        // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+    // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
 
-        // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-        resetClientGameState(); // ¡Limpia todo ANTES de procesar la nueva partida!
-        // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
+// ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
+socket.on('gameStarted', (initialState) => {
+    
+    // CORRECCIÓN CLAVE: Si es una partida de práctica, inicializamos manualmente
+    // las configuraciones que las mesas reales inicializan por otra vía.
+    if (initialState.isPractice) {
+        
+        // 1. Creamos el objeto de configuración que estaba ausente y causaba el error.
+        currentGameSettings = {
+            isPractice: true,
+            roomId: `practice-${socket.id}`,
+            settings: {
+                username: 'Práctica', // Nombre placeholder para la mesa
+                bet: 0,
+                penalty: 0
+            }
+        };
 
-        console.log("Servidor ha iniciado la partida. Recibiendo estado:", initialState);
-        
-        document.getElementById('btn-start-rematch').style.display = 'none';
+        // 2. Ahora que la configuración existe, podemos mostrar la vista y activar los botones sin errores.
+        document.body.classList.add('game-active');
+        document.getElementById('lobby-overlay').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        setupChat();
+        setupInGameLeaveButton();
+    }
 
-        hideOverlay('victory-overlay');
-        hideOverlay('ready-overlay');
-        document.getElementById('start-game-btn').style.display = 'none';
-        
-        gameStarted = true;
-        allMelds = initialState.melds || [];
-        turnMelds = [];
-        selectedCards = new Set();
-        isDrawing = false;
-        
-        updatePlayersView(initialState.seats, true);
-        
-        const myPlayerData = players.find(p => p && p.name === currentUser.name);
-        if (myPlayerData) {
-            myPlayerData.hand = initialState.hand;
-        }
-        
-        discardPile = initialState.discardPile;
-        
-        const startingPlayer = initialState.seats.find(sp => sp && sp.playerId === initialState.currentPlayerId);
-        if (startingPlayer) {
-            currentPlayer = orderedSeats.findIndex(s => s && s.playerId === startingPlayer.playerId);
-        } else {
-            currentPlayer = 0;
-        }
-        
-        if (myPlayerData && myPlayerData.hand.length === 15) {
-            hasDrawn = true;
-            mustDiscard = true;
-            showToast("Empiezas tú. Tienes 15 cartas, solo puedes descartar.", 4000);
-        } else {
-            hasDrawn = false;
-            mustDiscard = false;
-        }
+    // El resto del código es el que ya tenías y es correcto para AMBOS tipos de partida.
+    document.querySelector('.player-actions').style.display = 'flex';
+    resetClientGameState();
+    console.log("Servidor ha iniciado la partida. Recibiendo estado:", initialState);
+    
+    document.getElementById('btn-start-rematch').style.display = 'none';
+    hideOverlay('victory-overlay');
+    hideOverlay('ready-overlay');
+    document.getElementById('start-game-btn').style.display = 'none';
+    
+    gameStarted = true;
+    allMelds = initialState.melds || [];
+    turnMelds = [];
+    selectedCards = new Set();
+    isDrawing = false;
+    
+    updatePlayersView(initialState.seats, true);
+    
+    // ▼▼▼ CORRECCIÓN ▼▼▼
+    // Asignamos la mano directamente al jugador local, que la lógica de la UI 
+    // siempre posiciona en el índice 0 del array 'players'.
+    if (players[0]) {
+        players[0].hand = initialState.hand;
+    }
+    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+    
+    discardPile = initialState.discardPile;
+    
+    const startingPlayer = initialState.seats.find(sp => sp && sp.playerId === initialState.currentPlayerId);
+    if (startingPlayer) {
+        currentPlayer = orderedSeats.findIndex(s => s && s.playerId === startingPlayer.playerId);
+    } else {
+        currentPlayer = 0;
+    }
+    
+    // ▼▼▼ CORRECCIÓN ▼▼▼
+    // Reemplazamos la referencia a 'myPlayerData' por 'players[0]', que es la correcta.
+    const myPlayerData = players[0]; // Definimos la variable para que el código sea más legible.
+    if (myPlayerData && myPlayerData.hand && myPlayerData.hand.length === 15) {
+        hasDrawn = true;
+        mustDiscard = true;
+        showToast("Empiezas tú. Tienes 15 cartas, solo puedes descartar.", 4000);
+    } else {
+        hasDrawn = false;
+        mustDiscard = false;
+    }
+    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
 
-        if (initialState.playerHandCounts) {
-            updatePlayerHandCounts(initialState.playerHandCounts);
-        }
+    if (initialState.playerHandCounts) {
+        updatePlayerHandCounts(initialState.playerHandCounts);
+    }
 
-        setupPileTouchInteractions();
-        setupMeldDropZone();
-        
-        animateDealing(initialState).then(() => {
-            renderHands();
-            updateTurnIndicator();
-            updateActionButtons();
-        });
+    setupPileTouchInteractions();
+    setupMeldDropZone();
+    
+    animateDealing(initialState).then(() => {
+        renderHands();
+        updateTurnIndicator();
+        updateActionButtons();
     });
+});
 
     socket.on('playerJoined', (roomData) => {
         console.log('Un jugador se ha unido a la sala:', roomData);
         currentGameSettings = { ...currentGameSettings, ...roomData };
-        updatePlayersView(roomData.seats, false);
+        updatePlayersView(roomData.seats, gameStarted);
         renderGameControls();
     });
 
@@ -1347,7 +1794,6 @@ function showRoomsOverview() {
         currentGameSettings = { ...currentGameSettings, ...roomData };
         updatePlayersView(roomData.seats, gameStarted); // Pasamos el estado actual del juego
         renderGameControls();
-        renderSpectatorList(roomData.spectators || []); // <<-- AÑADE ESTA LÍNEA
     });
     
     function resetClientGameState() {
@@ -1403,10 +1849,23 @@ function showRoomsOverview() {
     window.initializeGame = function(settings) {
         resetClientGameState(); // Esta línea ya la tenías, déjala como está
         currentGameSettings = settings;
-        currentUser = {
-            name: localStorage.getItem('username'),
-            id: socket.id
-        };
+        
+        // ▼▼▼ AÑADE ESTE BLOQUE JUSTO AL PRINCIPIO DE la función initializeGame ▼▼▼
+        // Reseteo robusto y explícito del estado de la UI del chat.
+        const chatWindowForReset = document.getElementById('chat-window');
+        if (chatWindowForReset) {
+            chatWindowForReset.classList.remove('visible');
+        }
+        const badgeForReset = document.getElementById('chat-notification-badge');
+        if (badgeForReset) {
+            badgeForReset.style.display = 'none';
+            badgeForReset.textContent = '0';
+        }
+        unreadMessages = 0;
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+        // MIGRACIÓN SEGURA: Mantener datos originales del usuario
+        currentUser.name = currentUser.username || localStorage.getItem('username');
+        currentUser.id = socket.id;
 
         // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
         const gameContainer = document.getElementById('game-container');
@@ -1486,25 +1945,11 @@ function showRoomsOverview() {
         }
 
         // Configuración común
-        // ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE LA FUNCIÓN initializeGame ▼▼▼
-        // FORZAR REINICIO DEL CHAT:
-        // Esto garantiza que el chat siempre esté en su estado inicial (oculto y limpio)
-        // al entrar a una sala, solucionando el bloqueo al salir y volver a entrar.
-        const chatWindow = document.getElementById('chat-window');
-        const chatMessagesInner = document.getElementById('chat-messages-inner');
-        if (chatWindow) {
-            chatWindow.classList.remove('visible'); // Asegurarse de que empieza oculto
-        }
-        if (chatMessagesInner) {
-            chatMessagesInner.innerHTML = ''; // Limpiar mensajes anteriores
-        }
-        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
 
         setupChat();
         document.getElementById('melds-display').innerHTML = '';
         renderDiscard();
         setupInGameLeaveButton();
-        renderSpectatorList(settings.spectators || []); // <<-- AÑADE ESTA LÍNEA
     }
 
     function setupInGameLeaveButton() {
@@ -1518,7 +1963,9 @@ function showRoomsOverview() {
 
         leaveButton.onclick = () => {
             const isActivePlayer = orderedSeats.some(s => s && s.playerId === socket.id && s.active !== false && s.status !== 'waiting');
-            if (isActivePlayer) {
+            
+            // Se añade la comprobación "&& gameStarted"
+            if (isActivePlayer && gameStarted) {
                 messageEl.innerHTML = '¿Estás seguro de que quieres volver al lobby? <br><strong style="color: #ff4444;">Se contará como una derrota y pagarás la apuesta y la multa.</strong>';
             } else {
                 messageEl.textContent = '¿Estás seguro de que quieres volver al lobby?';
@@ -1539,41 +1986,6 @@ function showRoomsOverview() {
         };
     }
 
-    function renderSpectatorList(spectators = []) {
-        const listContainer = document.getElementById('spectators-list-host');
-        if (!listContainer) return;
-        listContainer.innerHTML = ''; // Limpiar la lista anterior.
-
-        if (spectators && spectators.length > 0) {
-            const isHost = socket.id === currentGameSettings.hostId;
-            const title = document.createElement('div');
-            title.className = 'spectator-list-title';
-            title.textContent = `Espectadores (${spectators.length}):`;
-            listContainer.appendChild(title);
-
-            spectators.forEach(spec => {
-                if (!spec) return; // Añadido para seguridad
-                const item = document.createElement('div');
-                item.className = 'spectator-item';
-                item.textContent = spec.name;
-
-                // El anfitrión puede expulsar a cualquier espectador excepto a sí mismo
-                if (isHost && spec.id !== socket.id) {
-                    const kickBtn = document.createElement('button');
-                    kickBtn.className = 'kick-btn';
-                    kickBtn.textContent = 'Expulsar';
-                    kickBtn.onclick = () => {
-                        socket.emit('kickSpectator', {
-                            roomId: currentGameSettings.roomId,
-                            spectatorId: spec.id
-                        });
-                    };
-                    item.appendChild(kickBtn);
-                }
-                listContainer.appendChild(item);
-            });
-        }
-    }
     
     function handleSitDown() {
         hideOverlay('ready-overlay');
@@ -1608,6 +2020,7 @@ function showRoomsOverview() {
     let orderedSeats = [];
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN updatePlayersView ENTERA CON ESTE CÓDIGO ORIGINAL ▼▼▼
+// ▼▼▼ REEMPLAZA LA FUNCIÓN updatePlayersView ENTERA CON ESTE CÓDIGO ▼▼▼
 function updatePlayersView(seats, inGame = false) {
     // --- INICIO DE LA LÓGICA DE CORRECCIÓN DEFINITIVA ---
 
@@ -1679,29 +2092,6 @@ function updatePlayersView(seats, inGame = false) {
             newPlayers[i] = null;
 
             // Lógica para que un espectador vea el botón de "Sentarse"
-            const isSpectator = !seats.some(s => s && s.playerId === socket.id);
-            if (isSpectator) {
-                const requiredCredits = (currentGameSettings.settings.bet || 0) + (currentGameSettings.settings.penalty || 0);
-                const userCredits = parseInt(localStorage.getItem('userCredits')) || 0;
-                const canAfford = userCredits >= requiredCredits;
-
-                const sitDownBtn = document.createElement('button');
-                sitDownBtn.className = 'sit-down-btn';
-                sitDownBtn.textContent = 'Sentarse';
-                sitDownBtn.disabled = !canAfford;
-                sitDownBtn.title = !canAfford ? `Necesitas ${requiredCredits} créditos` : 'Sentarse para la próxima partida';
-                
-                sitDownBtn.onclick = () => {
-                    if (canAfford) {
-                        socket.emit('requestToSit', currentGameSettings.roomId);
-                        sitDownBtn.disabled = true;
-                        sitDownBtn.textContent = 'Reservado';
-                    } else {
-                        showToast(`No tienes créditos suficientes. Necesitas ${requiredCredits}.`, 3000);
-                    }
-                };
-                playerDetailsEl.appendChild(sitDownBtn);
-            }
         }
     }
 
@@ -1787,19 +2177,29 @@ function updatePlayersView(seats, inGame = false) {
         discardEl.addEventListener('touchend', handleInteraction(discardAction));
     }
 
-    // ▼▼▼ REEMPLAZA LA FUNCIÓN goBackToLobby CON ESTA ▼▼▼
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
-        // 1. Notificamos al servidor que estamos saliendo (para que limpie la sala).
-        // Esto es "fire and forget", no esperamos respuesta.
         if (currentGameSettings && currentGameSettings.roomId) {
-            console.log('Notificando al servidor la salida de la sala...');
+            console.log('Notificando al servidor la salida de la sala para limpieza...');
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
 
-        // 2. Reseteamos el estado del cliente y volvemos al lobby INMEDIATAMENTE.
-        // Esto hace que la acción sea instantánea, igual que cerrar la pestaña.
-        console.log('Volviendo al lobby AHORA.');
+        // --- EL BLOQUE DE "NUEVA IDENTIDAD" HA SIDO ELIMINADO ---
+        // Ya no se genera un nuevo userId cada vez. La identidad del jugador
+        // se mantiene estable desde que inicia sesión hasta que la cierra.
+
+        // Limpiamos las variables de la partida anterior
         resetClientGameState();
+
+        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
+        // Reseteamos visualmente el bote al salir de la partida
+        const potValueEl = document.querySelector('#game-pot-container .pot-value');
+        if (potValueEl) {
+            potValueEl.textContent = '0';
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+        
+        // Mostramos la vista del lobby
         showLobbyView();
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
@@ -1818,61 +2218,108 @@ function updatePlayersView(seats, inGame = false) {
         return `https://deckofcardsapi.com/static/img/${value}${suit}.png`;
     }
 
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO ANTES DE la función setupChat ▼▼▼
+
+    // 1. Funciones que manejarán los eventos del chat. Las separamos para poder
+    //    añadir y quitar los listeners de forma controlada.
+
+    function handleChatToggle() {
+        const chatWindow = document.getElementById('chat-window');
+        if (!chatWindow) return;
+
+        chatWindow.classList.toggle('visible');
+
+        if (chatWindow.classList.contains('visible')) {
+            unreadMessages = 0;
+            const badge = document.getElementById('chat-notification-badge');
+            if (badge) badge.style.display = 'none';
+
+            const input = document.getElementById('chat-input');
+            if (input) input.focus();
+
+            const messagesContainer = document.getElementById('chat-messages');
+            if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function handleChatSend() {
+        const input = document.getElementById('chat-input');
+        if (!input) return;
+
+        const message = input.value.trim();
+        if (message && currentGameSettings && currentGameSettings.roomId) {
+            socket.emit('sendGameChat', {
+                roomId: currentGameSettings.roomId,
+                message: message,
+                sender: currentUser.name || 'Jugador'
+            });
+            input.value = '';
+        }
+    }
+
+    function handleChatKeypress(e) {
+        if (e.key === 'Enter') {
+            handleChatSend();
+        }
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN setupChat ENTERA CON ESTA VERSIÓN ▼▼▼
     function setupChat() {
+        const toggleBtn = document.getElementById('chat-toggle-btn');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const input = document.getElementById('chat-input');
+
+        if (!toggleBtn || !sendBtn || !input) {
+            console.error("No se encontraron los elementos de la UI del chat.");
+            return;
+        }
+
+        // --- LA MAGIA ESTÁ AQUÍ ---
+        // Eliminamos los listeners antiguos antes de añadir los nuevos.
+        // Esto previene la acumulación de eventos y soluciona el bug de raíz.
+        toggleBtn.removeEventListener('click', handleChatToggle);
+        toggleBtn.addEventListener('click', handleChatToggle);
+
+        sendBtn.removeEventListener('click', handleChatSend);
+        sendBtn.addEventListener('click', handleChatSend);
+
+        input.removeEventListener('keypress', handleChatKeypress);
+        input.addEventListener('keypress', handleChatKeypress);
+
+        // El resto de la lógica que tenías (como el botón de reglas) puede permanecer si lo deseas.
         const rulesBtn = document.getElementById('game-rules-btn');
         const rulesModal = document.getElementById('rules-modal');
         if (rulesBtn && rulesModal) {
+            // Hacemos lo mismo por seguridad
+            rulesBtn.removeEventListener('click', () => rulesModal.style.display = 'flex');
             rulesBtn.addEventListener('click', () => {
                 rulesModal.style.display = 'flex';
             });
         }
-        const toggleBtn = document.getElementById('chat-toggle-btn');
-        const chatWindow = document.getElementById('chat-window');
-        const sendBtn = document.getElementById('chat-send-btn');
-        const input = document.getElementById('chat-input');
+
+        // Mantener la lógica del chat UI content
         const chatUiContent = document.getElementById('chat-ui-content');
-
-        toggleBtn.addEventListener('click', () => {
-            chatWindow.classList.toggle('visible');
-            if (chatWindow.classList.contains('visible')) {
-                unreadMessages = 0;
-                const badge = document.getElementById('chat-notification-badge');
-                badge.style.display = 'none';
-                
-                input.focus();
-                const messagesContainer = document.getElementById('chat-messages');
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        });
-        const sendMessage = () => {
-            const message = input.value.trim();
-            if (message && currentGameSettings.roomId) {
-                socket.emit('sendGameChat', {
-                    roomId: currentGameSettings.roomId,
-                    message: message,
-                    sender: currentUser.name
+        if (chatUiContent) {
+            chatUiContent.innerHTML = '';
+            if (currentUser.role === 'spectator') {
+                const sitDownArea = document.createElement('div');
+                sitDownArea.id = 'spectator-controls';
+                sitDownArea.innerHTML = `<button id="sit-down-btn">Sentarse en la próxima partida</button>`;
+                chatUiContent.appendChild(sitDownArea);
+                document.getElementById('sit-down-btn').addEventListener('click', () => {
+                    const credits = 500;
+                    if (credits >= currentGameSettings.bet + currentGameSettings.penalty) {
+                        showToast("Te has sentado. Esperando a la siguiente partida...", 3000);
+                    } else { showToast("No tienes créditos suficientes para sentarte.", 3000); }
                 });
-                input.value = '';
+            } else if (currentUser.role === 'host') { 
+                renderSpectatorListForHost(); 
             }
-        };
-        sendBtn.addEventListener('click', sendMessage);
-        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-
-        chatUiContent.innerHTML = '';
-        if (currentUser.role === 'spectator') {
-            const sitDownArea = document.createElement('div');
-            sitDownArea.id = 'spectator-controls';
-            sitDownArea.innerHTML = `<button id="sit-down-btn">Sentarse en la próxima partida</button>`;
-            chatUiContent.appendChild(sitDownArea);
-            document.getElementById('sit-down-btn').addEventListener('click', () => {
-                const credits = 500;
-                if (credits >= currentGameSettings.bet + currentGameSettings.penalty) {
-                    showToast("Te has sentado. Esperando a la siguiente partida...", 3000);
-                } else { showToast("No tienes créditos suficientes para sentarte.", 3000); }
-            });
-        } else if (currentUser.role === 'host') { renderSpectatorListForHost(); }
-        addChatMessage(null, `Bienvenido a la mesa de ${currentGameSettings.settings.username}.`, 'system');
+            addChatMessage(null, `Bienvenido a la mesa de ${currentGameSettings.settings.username}.`, 'system');
+        }
     }
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     function addChatMessage(sender, message, role) {
         const messagesInner = document.getElementById('chat-messages-inner');
         const li = document.createElement('li');
@@ -2273,26 +2720,38 @@ function updatePlayersView(seats, inGame = false) {
             const cardWidth = 90;
             const cardHeight = 135;
             const cardCount = cardsData.length || 1;
+            
+            // --- CORRECCIÓN: Evitar duplicación de la primera carta ---
             for(let i=0; i < cardCount; i++) {
                 const cardData = cardsData[i];
                 const innerCard = document.createElement('div');
                 innerCard.className = 'card';
                 innerCard.style.width = `${cardWidth}px`;
                 innerCard.style.height = `${cardHeight}px`;
+                innerCard.style.position = 'relative';
+                innerCard.style.zIndex = '1000';
+                
                 if (isBack) {
                     innerCard.classList.add('card-back');
                 } else if (cardData) {
                     innerCard.innerHTML = `<img src="${getCardImageUrl(cardData)}" alt="${cardData.value}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
                 }
+                
+                // --- CORRECCIÓN: Solo aplicar margen negativo a partir de la segunda carta ---
                 if (i > 0) {
                     innerCard.style.marginLeft = `-${cardWidth / 2}px`;
                 }
+                
                 animContainer.appendChild(innerCard);
             }
+            
             const totalAnimWidth = cardWidth + (cardCount - 1) * (cardWidth / 2);
             animContainer.style.left = `${startRect.left + (startRect.width / 2) - (totalAnimWidth / 2)}px`;
             animContainer.style.top = `${startRect.top + (startRect.height / 2) - (cardHeight / 2)}px`;
+            animContainer.style.position = 'fixed';
+            animContainer.style.zIndex = '9999';
             document.body.appendChild(animContainer);
+            
             requestAnimationFrame(() => {
                 animContainer.style.transition = `all ${duration}ms cubic-bezier(0.65, 0, 0.35, 1)`;
                 const targetLeft = endRect.left + (endRect.width / 2) - (totalAnimWidth / 2);
@@ -2300,8 +2759,11 @@ function updatePlayersView(seats, inGame = false) {
                 const finalScale = (endElement.querySelector('.card')?.offsetWidth || 60) / cardWidth;
                 animContainer.style.transform = `translate(${targetLeft - parseFloat(animContainer.style.left)}px, ${targetTop - parseFloat(animContainer.style.top)}px) scale(${finalScale}) rotate(0deg)`;
             });
+            
             setTimeout(() => {
-                animContainer.remove();
+                if (animContainer.parentNode) {
+                    animContainer.remove();
+                }
                 resolve();
             }, duration);
         });
@@ -2309,18 +2771,40 @@ function updatePlayersView(seats, inGame = false) {
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }
     function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
     function updateTurnIndicator() { for (let i = 0; i < 4; i++) { const e = document.getElementById(`info-player${i}`); if(e) e.classList.remove('current-turn-glow'); } const e = document.getElementById(`info-player${currentPlayer}`); if(e) e.classList.add('current-turn-glow'); }
-    function updatePointsIndicator() { } function updateDebugInfo() { } let hidePlayerActionToasts = true; function showToast(msg, duration=3000) { /* Lógica de toast... */ } function showPlayerToast(msg, duration=3000) { if (hidePlayerActionToasts) return; showToast(msg, duration); } function showOverlay(id) { document.getElementById(id).style.display = 'flex'; } function hideOverlay(id) { document.getElementById(id).style.display = 'none'; }
+    function updatePointsIndicator() { } function updateDebugInfo() { } let hidePlayerActionToasts = true; function showPlayerToast(msg, duration=3000) { if (hidePlayerActionToasts) return; showToast(msg, duration); } function showOverlay(id) { document.getElementById(id).style.display = 'flex'; } function hideOverlay(id) { document.getElementById(id).style.display = 'none'; }
     function showEliminationMessage(playerName, faultReason) {
         const el = document.getElementById('elimination-message');
         if (el) {
-            el.innerHTML = `Jugador <strong>${playerName}</strong> ha sido eliminado y pagará la multa adicional de <strong>${penaltyAmount || currentGameSettings.settings.penalty}</strong> por la siguiente falta:
+            const penalty = currentGameSettings?.settings?.penalty || 0;
+            const tableCurrency = currentGameSettings?.settings?.betCurrency || 'USD';
+
+            let penaltyText = `${penalty.toLocaleString('es-CO')} ${tableCurrency}`;
+
+            // Calculamos y añadimos la equivalencia si las monedas son diferentes
+            if (currentUser.currency && tableCurrency !== currentUser.currency) {
+                const convertedPenalty = convertCurrency(penalty, tableCurrency, currentUser.currency, clientExchangeRates);
+                const symbol = currentUser.currency === 'EUR' ? '€' : currentUser.currency;
+                penaltyText += ` <span style="font-size: 0.9rem; color: #aaa;">(Aprox. ${convertedPenalty.toFixed(2)} ${symbol})</span>`;
+            }
+
+            el.innerHTML = `Jugador <strong>${playerName}</strong> ha sido eliminado y pagará la multa adicional de <strong>${penaltyText}</strong> por la siguiente falta:
                           <div style="background: rgba(255,0,0,0.1); border: 1px solid #ff4444; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 1.1em; color: #ffdddd; text-align: center;">
                               ${faultReason}
                           </div>`;
         }
         showOverlay('elimination-overlay');
     }
-    window.closeEliminationOverlay = function() { hideOverlay('elimination-overlay'); }
+    // ▼▼▼ REEMPLAZA LA FUNCIÓN ENTERA CON ESTA VERSIÓN ▼▼▼
+    window.closeEliminationOverlay = function() { 
+        hideOverlay('elimination-overlay'); 
+        
+        // Si la partida de práctica terminó por una falta, mostramos el modal de reinicio.
+        if (practiceGameEndedByFault) {
+            practiceGameEndedByFault = false; // Reseteamos la bandera
+            showOverlay('practice-restart-modal');
+        }
+    }
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     // ▼▼▼ ELIMINA ESTA FUNCIÓN COMPLETA ▼▼▼
     /*
     async function animateShuffleIfNeeded(newDeckSize) {
@@ -2386,27 +2870,28 @@ function updatePlayersView(seats, inGame = false) {
         const meldsContainer = document.getElementById('melds-display');
 
         if (cardsData.length === cardIds.length && meldsContainer) {
-            // 1. Creamos el mismo marcador de posición invisible.
+            isAnimatingLocalMeld = true; // <-- 1. Activamos la bandera
             const placeholder = document.createElement('div');
             placeholder.className = 'meld-group';
             placeholder.style.visibility = 'hidden';
             meldsContainer.appendChild(placeholder);
 
-            // 2. Animamos las cartas del jugador hacia el marcador.
             animateCardMovement({
                 cardsData: cardsData,
                 startElement: document.getElementById('human-hand'),
                 endElement: placeholder,
                 duration: 1200
             }).then(() => {
-                // 3. Eliminamos el marcador al finalizar.
+                // <-- 3. Esto se ejecuta DESPUÉS de la animación
                 if (meldsContainer.contains(placeholder)) {
                     meldsContainer.removeChild(placeholder);
                 }
+                isAnimatingLocalMeld = false; // Desactivamos la bandera
+                renderHands(); // Forzamos el redibujado final y limpio
             });
         }
 
-        // 4. Enviamos la acción al servidor como siempre.
+        // <-- 2. Enviamos la acción al servidor INMEDIATAMENTE
         socket.emit('meldAction', {
             roomId: currentGameSettings.roomId,
             cardIds: cardIds
@@ -2422,19 +2907,43 @@ function updatePlayersView(seats, inGame = false) {
             try {
                 const indices = JSON.parse(e.dataTransfer.getData('application/json'));
                 if (Array.isArray(indices) && indices.length >= 3) {
-                    const p = players[0]; // El jugador humano
+                    const p = players[0];
                     if (!p) return;
 
-                    // Obtenemos los IDs de las cartas a partir de los índices arrastrados
                     const cardIds = indices.map(index => p.hand[index]?.id).filter(Boolean);
+                    if (cardIds.length !== indices.length) return;
 
-                    // Verificamos que todas las cartas se encontraron
-                    if (cardIds.length === indices.length) {
-                        socket.emit('meldAction', {
-                            roomId: currentGameSettings.roomId,
-                            cardIds: cardIds
+                    // --- INICIO DE LA LÓGICA DE ANIMACIÓN AÑADIDA ---
+                    const cardsData = cardIds.map(id => p.hand.find(c => c.id === id)).filter(Boolean);
+                    const meldsContainer = document.getElementById('melds-display');
+
+                    if (cardsData.length === cardIds.length && meldsContainer) {
+                        isAnimatingLocalMeld = true;
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'meld-group';
+                        placeholder.style.visibility = 'hidden';
+                        meldsContainer.appendChild(placeholder);
+
+                        animateCardMovement({
+                            cardsData: cardsData,
+                            startElement: document.getElementById('human-hand'),
+                            endElement: placeholder,
+                            duration: 1200
+                        }).then(() => {
+                            if (meldsContainer.contains(placeholder)) {
+                                meldsContainer.removeChild(placeholder);
+                            }
+                            isAnimatingLocalMeld = false;
+                            renderHands();
                         });
                     }
+                    // --- FIN DE LA LÓGICA DE ANIMACIÓN AÑADIDA ---
+
+                    socket.emit('meldAction', {
+                        roomId: currentGameSettings.roomId,
+                        cardIds: cardIds
+                    });
+
                 } else {
                     showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
                 }
@@ -2444,7 +2953,6 @@ function updatePlayersView(seats, inGame = false) {
         });
         const handleMeldZoneClick = (event) => {
             event.preventDefault();
-            // Simplemente llamamos a la función que ya funciona para el botón
             window.attemptMeld();
         };
         meldZone.addEventListener('click', handleMeldZoneClick);
@@ -2564,14 +3072,31 @@ function updatePlayersView(seats, inGame = false) {
             mainButton.textContent = 'Confirmar Revancha';
             mainButton.disabled = false;
             mainButton.onclick = () => {
-                mainButton.disabled = true;
-                mainButton.textContent = 'Esperando a los demás...';
-                const currentCredits = parseInt(localStorage.getItem('userCredits')) || 0;
-                addChatMessage(null, 'Has confirmado la revancha. Esperando...', 'system');
-                socket.emit('requestRematch', {
-                    roomId: currentGameSettings.roomId,
-                    credits: currentCredits
-                });
+                // 1. Calcular créditos necesarios con conversión de moneda
+                const roomSettings = currentGameSettings.settings;
+                const requirementInRoomCurrency = (roomSettings.bet || 0) + (roomSettings.penalty || 0);
+                const roomCurrency = roomSettings.betCurrency || 'USD';
+                const userCredits = currentUser.credits ?? 0;
+                const userCurrency = currentUser.currency || 'USD';
+
+                let requiredInUserCurrency = convertCurrency(requirementInRoomCurrency, roomCurrency, userCurrency, clientExchangeRates);
+
+                // 2. Validar si los créditos son suficientes
+                if (userCredits >= requiredInUserCurrency) {
+                    // SI TIENE CRÉDITOS: Se une a la revancha
+                    mainButton.disabled = true;
+                    mainButton.textContent = 'Esperando a los demás...';
+                    addChatMessage(null, 'Has confirmado la revancha. Esperando...', 'system');
+                    socket.emit('requestRematch', { roomId: currentGameSettings.roomId });
+                } else {
+                    // NO TIENE CRÉDITOS: Muestra el modal de error
+                    hideOverlay('ready-overlay'); // Ocultar el modal de revancha
+                    const missingAmount = requiredInUserCurrency - userCredits;
+                    const friendlyRequired = `${requiredInUserCurrency.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${userCurrency}`;
+                    const friendlyMissing = `${missingAmount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${userCurrency}`;
+
+                    showRematchFundsModal(friendlyRequired, friendlyMissing);
+                }
             };
         } else {
             // CASO C: Es un espectador que acaba de llegar (no estaba ni activo ni en espera).

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - La 51</title>
+    <style>
+        :root {
+            --casino-bg: #3a3a2a;
+            --casino-gold: #c5a56a;
+            --casino-tan: #e0d3b6;
+            --casino-dark-panel: #211e18;
+        }
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--casino-dark-panel);
+            color: var(--casino-tan);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: var(--casino-gold);
+            border-bottom: 2px solid var(--casino-gold);
+            padding-bottom: 10px;
+        }
+        .panel {
+            background: var(--casino-bg);
+            border: 1px solid var(--casino-gold);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        /* admin.html -> dentro de la etiqueta <style> */
+        #commission-filters button {
+            padding: 8px 12px;
+            border: 1px solid var(--casino-gold);
+            background-color: transparent;
+            color: var(--casino-tan);
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        #commission-filters button.active {
+            background-color: var(--casino-gold);
+            color: var(--casino-bg);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Panel de Administración</h1>
+
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Ganancias (Comisión 10%)</h2>
+                <button id="btn-reset-commissions" style="padding: 5px 10px; background-color: #c0392b; border: none; color: white; border-radius: 4px; cursor: pointer;">Reiniciar Ganancias</button>
+            </div>
+            <div id="commission-filters" style="margin-bottom: 15px;">
+                <button data-period="day">Diario</button>
+                <button data-period="week">Semanal</button>
+                <button data-period="month">Mensual</button>
+                <button data-period="all" class="active">Total</button>
+            </div>
+            <div id="commission-display">
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+
+    <div class="panel">
+        <h2>Resumen Mensual y Semanal</h2>
+        <table id="summary-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold); text-align: left;">Periodo</th>
+                    <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold); text-align: right;">Ganancias</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h2>Gestionar Tasas de Cambio (referencia: 1 EUR/USD)</h2>
+        <div id="exchange-rates-form">
+            <label for="rate-eur-cop">1 EUR equivale a COP:</label>
+            <input type="number" id="rate-eur-cop" step="0.01">
+            <br><br>
+            <label for="rate-usd-cop">1 USD equivale a COP:</label>
+            <input type="number" id="rate-usd-cop" step="0.01">
+            <br><br>
+            <button id="btn-save-rates">Guardar Tasas</button>
+        </div>
+    </div>
+
+        <div class="panel">
+            <h2>Lista de Usuarios Registrados</h2>
+            <div id="user-list">
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io("http://localhost:3000");
+        let fullCommissionLog = [];
+
+        const userListContainer = document.getElementById('user-list');
+        const commissionDisplay = document.getElementById('commission-display');
+        
+        // ... (código existente)
+        const eurCopInput = document.getElementById('rate-eur-cop');
+        const usdCopInput = document.getElementById('rate-usd-cop');
+        const btnSaveRates = document.getElementById('btn-save-rates');
+
+        socket.on('admin:commissionData', (log) => {
+            fullCommissionLog = log || [];
+            // Por defecto, mostramos el filtro "Total"
+            updateAllDisplays('all');
+        });
+
+        function formatCurrency(value) {
+            return value.toLocaleString('es-CO', { // Locale colombiano para formato (ej. 1.234.567)
+                style: 'currency',
+                currency: 'COP', // Moneda a mostrar: Pesos Colombianos
+                minimumFractionDigits: 0 // Usualmente COP no usa centavos
+            });
+        }
+
+        function updateAllDisplays(period) {
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+            startOfWeek.setHours(0, 0, 0, 0);
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const filteredLog = fullCommissionLog.filter(entry => {
+                const entryDate = new Date(entry.timestamp);
+                switch (period) {
+                    case 'day': return entryDate >= startOfToday;
+                    case 'week': return entryDate >= startOfWeek;
+                    case 'month': return entryDate >= startOfMonth;
+                    case 'all':
+                    default: return true;
+                }
+            });
+
+            const total = filteredLog.reduce((sum, entry) => sum + entry.amount, 0);
+            commissionDisplay.innerHTML = `<h3 style="margin: 0; font-size: 2rem; color: #6bff6b;">${formatCurrency(total)}</h3>`;
+
+            // Actualizar la clase activa en los botones de filtro
+            document.querySelectorAll('#commission-filters button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.period === period);
+            });
+            
+            // Renderizar la tabla de resumen
+            renderSummaryTable();
+        }
+
+        function renderSummaryTable() {
+            const tableBody = document.querySelector("#summary-table tbody");
+            tableBody.innerHTML = ''; // Limpiar tabla
+
+            if (fullCommissionLog.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="2" style="padding: 8px; text-align: center;">No hay datos de ganancias.</td></tr>';
+                return;
+            }
+
+            const monthlySummary = {};
+            const weeklySummary = {};
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+            fullCommissionLog.forEach(entry => {
+                const date = new Date(entry.timestamp);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const week = Math.ceil((date.getDate() + 6 - date.getDay()) / 7);
+
+                // Resumen Mensual
+                const monthKey = `${year}-${month}`;
+                if (!monthlySummary[monthKey]) {
+                    monthlySummary[monthKey] = { total: 0, name: `${monthNames[month]} ${year}` };
+                }
+                monthlySummary[monthKey].total += entry.amount;
+
+                // Resumen Semanal
+                const weekKey = `${year}-${month}-${week}`;
+                if (!weeklySummary[weekKey]) {
+                    weeklySummary[weekKey] = { total: 0, name: `Semana ${week} de ${monthNames[month]}` };
+                }
+                weeklySummary[weekKey].total += entry.amount;
+            });
+
+            // Añadir filas de meses
+            Object.values(monthlySummary).forEach(summary => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td style="padding: 8px; font-weight: bold;">${summary.name}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(summary.total)}</td>
+                `;
+            });
+            
+            // Añadir filas de semanas
+            Object.values(weeklySummary).forEach(summary => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td style="padding: 8px; padding-left: 20px;">${summary.name}</td>
+                    <td style="padding: 8px; text-align: right;">${formatCurrency(summary.total)}</td>
+                `;
+            });
+        }
+
+        // AÑADE este listener para recibir y mostrar las tasas actuales
+        socket.on('admin:exchangeRates', (rates) => {
+            if (rates.EUR) eurCopInput.value = rates.EUR.COP;
+            if (rates.USD) usdCopInput.value = rates.USD.COP;
+        });
+
+        // AÑADE el listener para el botón de guardar
+        btnSaveRates.addEventListener('click', () => {
+            const newRates = {
+                EUR_COP: parseFloat(eurCopInput.value),
+                USD_COP: parseFloat(usdCopInput.value)
+            };
+            socket.emit('admin:updateRates', newRates);
+            alert('Tasas de cambio enviadas al servidor.');
+        });
+
+        socket.on('connect', () => {
+            console.log('Conectado al servidor como Admin');
+            socket.emit('admin:requestUserList');
+            socket.emit('admin:requestRates'); // <-- AÑADE ESTA LÍNEA
+        });
+
+        // La función que renderiza la tabla ahora también asignará los eventos a los botones
+        function renderUserTable(users) {
+            userListContainer.innerHTML = ''; // Limpiamos
+
+            if (!users || users.length === 0) {
+                userListContainer.innerHTML = '<p>No se han encontrado usuarios (ningún jugador ha iniciado sesión todavía).</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.innerHTML = `
+                <thead style="text-align: left;">
+                    <tr>
+                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Usuario</th>
+                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Créditos Actuales</th>
+                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);" colspan="2">Nuevos Créditos y Moneda</th>
+                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Acciones</th>
+                    </tr>
+                </thead>
+            `;
+
+            const tbody = document.createElement('tbody');
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding: 8px;">${user.username}</td>
+                    <td style="padding: 8px; font-weight: bold;">
+                        ${user.credits.toLocaleString('es-ES')} ${user.currency}
+                    </td>
+                    <td style="padding: 8px;">
+                        <input type="number" value="${user.credits}" style="width: 100px; padding: 5px;" placeholder="Nuevo monto" />
+                    </td>
+                    <td style="padding: 8px;">
+                        <select style="padding: 5px;">
+                            <option value="EUR" ${user.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                            <option value="USD" ${user.currency === 'USD' ? 'selected' : ''}>USD</option>
+                            <option value="COP" ${user.currency === 'COP' ? 'selected' : ''}>COP</option>
+                        </select>
+                    </td>
+                    <td style="padding: 8px;">
+                        <button data-userid="${user.id}" style="padding: 5px 10px;">Guardar</button>
+                    </td>
+                `;
+
+                const saveButton = tr.querySelector('button');
+                const creditInput = tr.querySelector('input[type="number"]');
+                const currencySelect = tr.querySelector('select');
+
+                saveButton.addEventListener('click', () => {
+                    const newCredits = creditInput.value;
+                    const newCurrency = currencySelect.value;
+                    const userId = saveButton.dataset.userid;
+
+                    if (newCredits !== '' && !isNaN(newCredits)) {
+                        saveButton.textContent = 'Guardando...';
+                        saveButton.disabled = true;
+
+                        socket.emit('admin:updateCredits', { 
+                            userId: userId, 
+                            newCredits: parseFloat(newCredits),
+                            newCurrency: newCurrency
+                        });
+                    } else {
+                        alert('Por favor, introduce un valor numérico válido para los créditos.');
+                    }
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            userListContainer.appendChild(table);
+        }
+
+        // El listener principal ahora solo llama a la función de renderizado
+        socket.on('admin:userList', (users) => {
+            console.log('Usuarios recibidos:', users);
+            renderUserTable(users);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Listeners para los filtros de periodo
+            const filtersContainer = document.getElementById('commission-filters');
+            filtersContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const period = e.target.dataset.period;
+                    updateAllDisplays(period);
+                }
+            });
+
+            // Listener para el botón de reinicio
+            const btnReset = document.getElementById('btn-reset-commissions');
+            btnReset.addEventListener('click', () => {
+                if (confirm('¿Estás seguro de que quieres reiniciar TODAS las ganancias a cero? Esta acción no se puede deshacer.')) {
+                    socket.emit('admin:resetCommissions');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
