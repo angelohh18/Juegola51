@@ -46,7 +46,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        credits DECIMAL(10,2) DEFAULT 1000.00,
+        credits DECIMAL(10,2) DEFAULT 0.00,
         currency VARCHAR(10) DEFAULT 'USD',
         avatar_url TEXT,
         country VARCHAR(10),
@@ -394,7 +394,7 @@ app.post('/register', async (req, res) => {
 
         await pool.query(
             'INSERT INTO users (username, password_hash, country, whatsapp, avatar_url, currency, credits) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [name.toLowerCase(), passwordHash, country, whatsapp, avatar, currency, 1000.00]
+            [name.toLowerCase(), passwordHash, country, whatsapp, avatar, currency, 0.00]
         );
 
         res.status(201).json({ success: true, message: 'Usuario registrado exitosamente.' });
@@ -1651,7 +1651,7 @@ io.on('connection', (socket) => {
         } catch (error) {
             console.error('Error cargando usuario desde BD:', error);
             users[userId] = {
-                credits: 1000,
+                credits: 0,
                 currency: currency
             };
             socket.emit('userStateUpdated', users[userId]);
