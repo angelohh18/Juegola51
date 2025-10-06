@@ -1516,6 +1516,17 @@ function showRoomsOverview() {
                 animateCardMovement({ cardsData: [data.card], startElement, endElement, isBack: false, duration: 900 }); // <-- CAMBIA 600 POR 900
             }
         }
+
+        // Actualizar el estado del descarte para todos los jugadores
+        if (data.source === 'discard' && data.newDiscardPile) {
+            discardPile = data.newDiscardPile;
+            renderDiscard(); // Actualizar la vista del descarte
+        }
+
+        // Actualizar los conteos de cartas (tanto para robar del mazo como del descarte)
+        if (data.playerHandCounts) {
+            updatePlayerHandCounts(data.playerHandCounts);
+        }
     });
 
     // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼

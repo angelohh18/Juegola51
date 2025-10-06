@@ -2205,7 +2205,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     // Notificar a todos en la sala sobre el robo
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
-        source: 'deck'
+        source: 'deck',
+        playerHandCounts: playerHandCounts // Enviamos los conteos actualizados
     });
     
     socket.emit('cardDrawn', { 
@@ -2248,7 +2249,9 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       io.to(roomId).emit('playerDrewCard', {
           playerId: socket.id,
           source: 'discard',
-          card: cardDrawn // Enviamos la carta para que se vea la animación correcta
+          card: cardDrawn, // Enviamos la carta para que se vea la animación correcta
+          newDiscardPile: room.discardPile, // Enviamos el nuevo estado del descarte
+          playerHandCounts: playerHandCounts // Enviamos los conteos actualizados
       });
       
       // --- INICIO DE LA CORRECCIÓN ---
