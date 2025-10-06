@@ -154,13 +154,14 @@ async function getAllUsersFromDB() {
   }
 }
 
-// Función para actualizar créditos de un usuario
+// Función para actualizar créditos de un usuario (ignora mayúsculas)
 async function updateUserCredits(userId, credits, currency) {
   try {
-    // Extraer el username del userId (formato: user_username)
+    // Extraer el username del userId (formato: user_username), que ya viene en minúsculas.
     const username = userId.replace(/^user_/, '');
+    // Usamos LOWER(username) para asegurar que encontramos al usuario correcto.
     await pool.query(
-      'UPDATE users SET credits = $1, currency = $2 WHERE username = $3',
+      'UPDATE users SET credits = $1, currency = $2 WHERE LOWER(username) = $3',
       [credits, currency, username]
     );
     console.log(`✅ Créditos actualizados para usuario ${userId}: ${credits} ${currency}`);
@@ -169,10 +170,12 @@ async function updateUserCredits(userId, credits, currency) {
   }
 }
 
-// Función para eliminar un usuario de la base de datos
+// Función para eliminar un usuario de la base de datos (ignora mayúsculas)
 async function deleteUserFromDB(username) {
   try {
-    const result = await pool.query('DELETE FROM users WHERE username = $1', [username]);
+    // Usamos LOWER(username) para asegurar la coincidencia sin importar mayúsculas/minúsculas.
+    // El username que llega ya está en minúsculas, así que la comparación es segura.
+    const result = await pool.query('DELETE FROM users WHERE LOWER(username) = $1', [username]);
     console.log(`✅ Usuario '${username}' eliminado de la base de datos. Filas afectadas: ${result.rowCount}`);
     return result.rowCount > 0;
   } catch (error) {
