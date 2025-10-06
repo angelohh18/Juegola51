@@ -691,16 +691,6 @@ html {
     padding: 20px;
 }
 
-@media (hover: none) and (orientation: portrait) {
-    body.is-logged-in #lobby-overlay,
-    body.is-logged-in #create-room-modal,
-    body.is-logged-in #credit-modal {
-    display: none !important;
-    }
-    body.is-logged-in #orientation-message {
-    display: flex;
-    }
-}
 
 /* Media query mejorada para móviles en landscape */
 @media (max-width: 992px) and (orientation: landscape) {
@@ -1697,14 +1687,6 @@ main#table {
 }
 
 /* Media query para dispositivos muy pequeños en portrait */
-@media (max-width: 900px) and (orientation: portrait) {
-  #game-container #rotate-device-overlay {
-    display: flex;
-  }
-  main#table, #game-container header {
-    display: none;
-  }
-}
 
 /* Media query para dispositivos extremadamente pequeños */
 @media (max-width: 480px) and (orientation: landscape) {
@@ -1957,3 +1939,58 @@ main#table {
 }
 
 /* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
+
+/* ==========================================================
+   PULIDO FINAL DE DISEÑO
+   ========================================================== */
+
+/* 1. Hacemos más compacta la galería de avatares en el modal de registro */
+#register-modal .modal-content .avatar-gallery {
+    max-height: 120px; /* Reducimos su altura máxima */
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); /* Columnas más pequeñas */
+}
+#register-modal .modal-content .avatar-item {
+    width: 50px;
+    height: 50px;
+}
+
+/* 2. Damos un margen a la mesa de juego para que no toque los bordes */
+main#table {
+    /* Reemplazamos el '100vw' y '100vh' por '98vw' y '95vh' para crear un margen */
+    transform: translate(-50%, -50%) scale(calc(min(98vw / 1400, 95vh / 700)));
+}
+
+/* 3. Ajustamos la posición de los controles del juego para que respeten el margen */
+#chat-container {
+    top: 2vh;
+    right: 2vw;
+}
+#game-pot-container {
+    top: 2vh;
+    left: 2vw;
+}
+
+/* ==========================================================
+   CONTROL DE ORIENTACIÓN PARA LOBBY Y JUEGO
+   ========================================================== */
+
+/* Esta regla se activa solo en dispositivos móviles (<900px) en modo vertical */
+@media (max-width: 900px) and (orientation: portrait) {
+
+    /* 1. Oculta el lobby y la mesa de juego */
+    body.is-logged-in #lobby-overlay,
+    body.game-active #game-container {
+        display: none !important;
+    }
+    
+    /* 2. Muestra el mensaje para girar el dispositivo SOLO si el lobby o el juego están activos */
+    body.is-logged-in #orientation-message,
+    body.game-active #orientation-message {
+        display: flex;
+    }
+
+    /* 3. Nos aseguramos de que el overlay de rotación del juego se oculte para no interferir */
+    #game-container #rotate-device-overlay {
+        display: none;
+    }
+}
