@@ -1991,9 +1991,6 @@ body.game-active {
   /* 2. Nuevo color de fondo para que resalte */
   background: #6D2932; /* Usamos el color borgoña del tapete */
 
-  /* 3. Aumentamos el tamaño general (título y cartas) */
-  transform: scale(1.2); /* Lo hace un 20% más grande */
-
   /* --- Estilos base copiados del original para mantener la consistencia --- */
   font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
   font-weight: 900;

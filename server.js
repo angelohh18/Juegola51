@@ -98,13 +98,13 @@ async function initializeDatabase() {
 
 // Funciones para interactuar con la base de datos
 
-// Función para obtener o crear un usuario
-async function getUserFromDB(userId, username) {
+// Función para obtener un usuario por su nombre de usuario
+async function getUserByUsername(username) {
   try {
-    // Primero intentamos obtener el usuario existente
+    // La consulta ahora busca por 'username', que sí existe en tu tabla.
     const result = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
+      'SELECT * FROM users WHERE username = $1',
+      [username]
     );
 
     if (result.rows.length > 0) {
@@ -115,26 +115,13 @@ async function getUserFromDB(userId, username) {
         avatar_url: result.rows[0].avatar_url
       };
     } else {
-      // Usuario no existe, lo creamos
-      const insertResult = await pool.query(
-        'INSERT INTO users (user_id, username, credits, currency) VALUES ($1, $2, $3, $4) RETURNING *',
-        [userId, username, 1000.00, 'USD']
-      );
-      
-      return {
-        credits: parseFloat(insertResult.rows[0].credits),
-        currency: insertResult.rows[0].currency,
-        avatar_url: insertResult.rows[0].avatar_url
-      };
+      // Si el usuario no se encuentra, lanzamos un error en lugar de crearlo aquí.
+      throw new Error(`Usuario '${username}' no encontrado en la base de datos.`);
     }
   } catch (error) {
-    console.error('Error obteniendo/creando usuario:', error);
-    // Fallback a valores por defecto
-    return {
-      credits: 1000.00,
-      currency: 'USD',
-      avatar_url: null
-    };
+    console.error('Error obteniendo usuario por nombre:', error);
+    // Devolvemos null para indicar que la operación falló.
+    return null;
   }
 }
 
@@ -1634,7 +1621,16 @@ io.on('connection', (socket) => {
         socket.userId = userId;
 
         try {
-            const userData = await getUserFromDB(userId, username);
+            // ▼▼▼ REEMPLAZA ESTA LÍNEA ▼▼▼
+            const userData = await getUserByUsername(username); // Corregido para usar la nueva función
+
+            // Si la función falla, userData será null
+            if (!userData) {
+                // Manejar el caso en que el usuario logueado no existe en la BD (esto no debería pasar)
+                console.error(`Error crítico: el usuario '${username}' pasó el login pero no se encontró en la BD.`);
+                // Desconectar al usuario o manejar el error como prefieras
+                return;
+            }
             
             if (userData.currency !== currency) {
                 await updateUserCredits(userId, userData.credits, currency);
