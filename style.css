@@ -2007,3 +2007,29 @@ body.game-active {
   border: 1px solid #c5a56a44;
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
 }
+
+/* Media Query para corregir modales en móviles (vista vertical) */
+@media (max-width: 600px) and (orientation: portrait) {
+    /* Hacemos que todos los modales sean fluidos y nunca más altos que la pantalla */
+    #login-modal .modal-content,
+    #register-modal .modal-content,
+    #credit-modal .modal-content,
+    #rules-modal .modal-content,
+    #create-room-modal .modal-content,
+    #avatar-crop-modal .modal-content,
+    #insufficient-credits-modal .modal-content {
+        width: 90vw; /* El ancho será el 90% de la pantalla */
+        max-width: 400px; /* Pero nunca más de 400px */
+        
+        /* LA SOLUCIÓN CLAVE: */
+        max-height: 85vh; /* La altura nunca superará el 85% de la pantalla */
+        overflow-y: auto; /* Si el contenido no cabe, se podrá hacer scroll */
+
+        padding: 15px; /* Un poco menos de padding en pantallas pequeñas */
+    }
+
+    /* Ajuste específico para la galería de avatares en el registro */
+    #register-modal .avatar-gallery {
+        max-height: 110px; /* Reducimos la altura de la galería de avatares */
+    }
+}
