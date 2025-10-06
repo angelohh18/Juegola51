@@ -393,15 +393,21 @@ app.post('/register', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, saltRounds);
 
         await pool.query(
-            'INSERT INTO users (username, password_hash, country, whatsapp, avatar_url, currency) VALUES ($1, $2, $3, $4, $5, $6)',
-            [name.toLowerCase(), passwordHash, country, whatsapp, avatar, currency]
+            'INSERT INTO users (username, password_hash, country, whatsapp, avatar_url, currency, credits) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [name.toLowerCase(), passwordHash, country, whatsapp, avatar, currency, 1000.00]
         );
 
         res.status(201).json({ success: true, message: 'Usuario registrado exitosamente.' });
 
     } catch (error) {
         console.error('Error en el registro:', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+        console.error('Detalles del error:', error.message);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor.',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -2731,6 +2737,22 @@ setTimeout(() => {
     setInterval(selfPing, PING_INTERVAL_MS);
 }, 30000); // 30 segundos de espera inicial
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
+  
+  // Verificar estructura de la tabla users
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      ORDER BY ordinal_position
+    `);
+    console.log('📋 Estructura de la tabla users:');
+    result.rows.forEach(row => {
+      console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
+    });
+  } catch (error) {
+    console.error('❌ Error verificando estructura de la tabla:', error);
+  }
 });
