@@ -2004,7 +2004,7 @@ io.on('connection', (socket) => {
     await checkVictoryCondition(room, roomId, io);
   });
 
-socket.on('accionDescartar', (data) => {
+socket.on('accionDescartar', async (data) => {
     console.log(`[DEBUG] accionDescartar recibida de ${socket.id}:`, data);
     const { roomId, card } = data;
     const room = rooms[roomId];
@@ -2117,7 +2117,7 @@ socket.on('accionDescartar', (data) => {
 
     // 2. Comprobar victoria.
     console.log(`[DEBUG] Comprobando condición de victoria...`);
-    if (checkVictoryCondition(room, roomId, io)) {
+    if (await checkVictoryCondition(room, roomId, io)) {
         console.log(`[DEBUG] Juego terminado por victoria`);
         return;
     }
