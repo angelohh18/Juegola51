@@ -814,7 +814,7 @@ html {
         width: 100%;
         height: calc(var(--vh, 1vh) * 100);
     }
-}
+    
     .user-panel {
         padding: 10px;
     }
@@ -869,7 +869,7 @@ html {
     .table-item h4 {
         font-size: 0.9rem !important;
     }
-}
+    
     .user-panel, .tables-panel, .chat-header, .chat-messages, .chat-input {
         padding: 10px;
     }
