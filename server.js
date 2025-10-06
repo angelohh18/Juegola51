@@ -403,10 +403,11 @@ app.post('/register', async (req, res) => {
         console.error('Error en el registro:', error);
         console.error('Detalles del error:', error.message);
         console.error('Stack trace:', error.stack);
+        // MODIFICACIÓN: Enviamos el error completo al cliente para depuración
         res.status(500).json({ 
             success: false, 
-            message: 'Error interno del servidor.',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Error interno del servidor: ' + error.message, // Añadimos el mensaje de error
+            error: error.stack // Añadimos el stack completo
         });
     }
 });
