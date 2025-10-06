@@ -1563,34 +1563,29 @@ io.on('connection', (socket) => {
     // Escucha la orden del admin para actualizar los créditos de un usuario
     socket.on('admin:updateCredits', async ({ userId, newCredits, newCurrency }) => {
         const credits = parseFloat(newCredits);
+        const userExistsInMemory = users[userId]; // Comprobamos si el usuario está activo
 
-        if (users[userId] && !isNaN(credits) && ['EUR', 'USD', 'COP'].includes(newCurrency)) {
+        if (!isNaN(credits) && ['EUR', 'USD', 'COP'].includes(newCurrency)) {
             console.log(`[Admin] Actualizando datos para ${userId}.`);
-            users[userId].credits = credits;
-            users[userId].currency = newCurrency;
+            
+            // Actualizamos la base de datos primero
+            await updateUserCredits(userId, credits, newCurrency);
 
-            // Actualizar también en la base de datos
-            try {
-                await updateUserCredits(userId, credits, newCurrency);
-            } catch (error) {
-                console.error('Error actualizando créditos en BD:', error);
-            }
+            // Si el usuario está conectado, actualizamos su estado en memoria y le notificamos
+            if (userExistsInMemory) {
+                users[userId].credits = credits;
+                users[userId].currency = newCurrency;
 
-            // Notificar al jugador afectado (si está conectado)
-            for (const [id, socketInstance] of io.of("/").sockets) {
-                if (socketInstance.userId === userId) {
-                    socketInstance.emit('userStateUpdated', users[userId]);
-                    break; 
+                for (const [id, socketInstance] of io.of("/").sockets) {
+                    if (socketInstance.userId === userId) {
+                        socketInstance.emit('userStateUpdated', users[userId]);
+                        break; 
+                    }
                 }
             }
 
-            // Reenviar la lista completa y actualizada al panel de admin
-            const allUsers = Object.keys(users).map(uid => ({
-                id: uid,
-                username: uid.replace(/^user_/, ''),
-                credits: users[uid].credits,
-                currency: users[uid].currency
-            }));
+            // Reenviamos la lista completa y actualizada desde la base de datos al admin
+            const allUsers = await getAllUsersFromDB();
             io.to('admin-room').emit('admin:userList', allUsers);
         }
     });
@@ -1628,32 +1623,28 @@ io.on('connection', (socket) => {
     // ▲▲▲ FIN DEL LISTENER ▲▲▲
 
     // Escucha cuando un usuario inicia sesión en el lobby
-    socket.on('userLoggedIn', async ({ username, currency }) => { // <--- AHORA RECIBE LA MONEDA
+    socket.on('userLoggedIn', async ({ username, currency }) => {
         if (!username || !currency) return;
 
+        // ----- CORRECCIÓN #1: La misma errata estaba aquí -----
         const userId = 'user_' + username.toLowerCase();
         socket.userId = userId;
 
         try {
-            // Obtener o crear el usuario desde la base de datos
             const userData = await getUserFromDB(userId, username);
             
-            // Actualizar la moneda si es diferente
             if (userData.currency !== currency) {
                 await updateUserCredits(userId, userData.credits, currency);
                 userData.currency = currency;
             }
             
-            // Mantener en memoria para acceso rápido
             users[userId] = userData;
             
             console.log(`[Lobby Login] Usuario ${userId} cargado desde BD: ${userData.credits} ${userData.currency}`);
 
-            // Enviamos al cliente su objeto de usuario completo
             socket.emit('userStateUpdated', users[userId]);
         } catch (error) {
             console.error('Error cargando usuario desde BD:', error);
-            // Fallback a valores por defecto
             users[userId] = {
                 credits: 1000,
                 currency: currency
@@ -1661,13 +1652,10 @@ io.on('connection', (socket) => {
             socket.emit('userStateUpdated', users[userId]);
         }
 
-        // Notificar a todos los admins que la lista de usuarios ha cambiado
-        const allUsers = Object.keys(users).map(uid => ({
-            id: uid,
-            username: uid.replace(/^user_/, ''),
-            credits: users[uid].credits,
-            currency: users[uid].currency // Enviamos la moneda al admin
-        }));
+        // ----- CORRECCIÓN #2: Usar la misma fuente de datos que el resto de funciones -----
+        // En lugar de construir la lista desde la memoria, la pedimos a la base de datos
+        // para asegurar que siempre sea correcta y consistente.
+        const allUsers = await getAllUsersFromDB();
         io.to('admin-room').emit('admin:userList', allUsers);
     });
 
