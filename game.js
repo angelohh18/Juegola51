@@ -2202,6 +2202,7 @@ function updatePlayersView(seats, inGame = false) {
 
         // Limpiamos las variables de la partida anterior
         resetClientGameState();
+        currentGameSettings = null; // Limpiar configuración de la partida anterior
 
         // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
         // Reseteamos visualmente el bote al salir de la partida
