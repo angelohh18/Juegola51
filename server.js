@@ -169,6 +169,18 @@ async function updateUserCredits(userId, credits, currency) {
   }
 }
 
+// Función para eliminar un usuario de la base de datos
+async function deleteUserFromDB(username) {
+  try {
+    const result = await pool.query('DELETE FROM users WHERE username = $1', [username]);
+    console.log(`✅ Usuario '${username}' eliminado de la base de datos. Filas afectadas: ${result.rowCount}`);
+    return result.rowCount > 0;
+  } catch (error) {
+    console.error(`❌ Error eliminando al usuario '${username}' de la BD:`, error);
+    return false;
+  }
+}
+
 // Función para guardar comisión
 async function saveCommission(amount, currency = 'COP') {
   try {
@@ -1579,6 +1591,32 @@ io.on('connection', (socket) => {
                 credits: users[uid].credits,
                 currency: users[uid].currency
             }));
+            io.to('admin-room').emit('admin:userList', allUsers);
+        }
+    });
+
+    // Escucha la orden del admin para eliminar un usuario
+    socket.on('admin:deleteUser', async ({ userId }) => {
+        const username = userId.replace(/^user_/, ''); // Extraemos el username del id
+        console.log(`[Admin] Petición para eliminar al usuario: ${username} (ID: ${userId})`);
+
+        // 1. Eliminar de la base de datos
+        const deletedFromDB = await deleteUserFromDB(username);
+
+        if (deletedFromDB) {
+            // 2. Eliminar del objeto en memoria (si existe)
+            if (users[userId]) {
+                delete users[userId];
+            }
+
+            // 3. Obtener la lista actualizada y notificar a todos los admins
+            const allUsers = await getAllUsersFromDB();
+            io.to('admin-room').emit('admin:userList', allUsers);
+            console.log(`[Admin] Lista de usuarios actualizada enviada tras eliminación.`);
+        } else {
+            console.log(`[Admin] No se pudo eliminar al usuario ${username}, puede que ya no exista.`);
+            // Opcional: notificar al admin de un posible error
+            const allUsers = await getAllUsersFromDB();
             io.to('admin-room').emit('admin:userList', allUsers);
         }
     });

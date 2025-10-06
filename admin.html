@@ -280,13 +280,27 @@
                         </select>
                     </td>
                     <td style="padding: 8px;">
-                        <button data-userid="${user.id}" style="padding: 5px 10px;">Guardar</button>
+                        <button data-userid="${user.id}" class="save-btn" style="padding: 5px 10px;">Guardar</button>
+                        <button data-userid="${user.id}" data-username="${user.username}" class="delete-btn" style="padding: 5px 10px; background-color: #c0392b; color: white; border: none; margin-left: 5px;">Eliminar</button>
                     </td>
                 `;
 
-                const saveButton = tr.querySelector('button');
+                const saveButton = tr.querySelector('.save-btn');
                 const creditInput = tr.querySelector('input[type="number"]');
                 const currencySelect = tr.querySelector('select');
+                
+                const deleteButton = tr.querySelector('.delete-btn');
+                
+                deleteButton.addEventListener('click', () => {
+                    const userId = deleteButton.dataset.userid;
+                    const username = deleteButton.dataset.username;
+
+                    if (confirm(`¿Estás seguro de que quieres eliminar permanentemente al usuario "${username}"? Esta acción no se puede deshacer.`)) {
+                        deleteButton.textContent = 'Eliminando...';
+                        deleteButton.disabled = true;
+                        socket.emit('admin:deleteUser', { userId });
+                    }
+                });
 
                 saveButton.addEventListener('click', () => {
                     const newCredits = creditInput.value;
