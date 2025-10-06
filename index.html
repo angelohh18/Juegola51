@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La 51 - Juego de Cartas</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header con título animado -->
+        <header class="game-header">
+            <h1 class="main-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h1>
+        </header>
+
+        <!-- Lobby Principal -->
+        <div id="lobby" class="lobby-container">
+            <div class="user-info">
+                <div class="user-avatar-container">
+                    <img id="user-avatar" src="https://i.pravatar.cc/150?img=1" alt="Avatar" class="user-avatar">
+                    <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                    <button id="edit-avatar-btn" class="edit-avatar-btn">✏️</button>
+                </div>
+                <div class="user-details">
+                    <h2 id="user-name">Invitado</h2>
+                    <div class="user-credits">
+                        <span id="user-credits">0</span>
+                        <span id="user-currency">USD</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lobby-controls">
+                <button id="create-room-btn" class="btn btn-primary">Crear Mesa</button>
+                <button id="practice-btn" class="btn btn-secondary">Práctica</button>
+            </div>
+
+            <div class="rooms-section">
+                <h3>Mesas Disponibles</h3>
+                <div id="rooms-list" class="rooms-list">
+                    <!-- Las mesas se cargarán dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Chat del Lobby -->
+            <div class="lobby-chat">
+                <div class="chat-header">
+                    <h4>Chat del Lobby</h4>
+                    <button id="lobby-chat-toggle" class="chat-toggle-btn">💬</button>
+                </div>
+                <div id="lobby-chat-window" class="chat-window">
+                    <div id="lobby-chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="lobby-chat-input" placeholder="Escribe un mensaje..." maxlength="200">
+                        <button id="lobby-chat-send">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor del Juego -->
+        <div id="game-container" class="game-container" style="display: none;">
+            <!-- El contenido del juego se carga dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Modal de Login/Registro -->
+    <div id="login-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="modal-content">
+            <h2 class="panel-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h2>
+            <h3 id="login-modal-title">Iniciar Sesión / Registrarse</h3>
+            <form id="login-form">
+                <label for="login-username">Nombre:</label>
+                <input type="text" id="login-username" required maxlength="20">
+                
+                <label for="login-currency">Moneda:</label>
+                <select id="login-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <button type="submit" class="btn btn-primary">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Registro -->
+    <div id="register-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
+        <div class="modal-content">
+            <h2 class="panel-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h2>
+            <h3 id="register-modal-title">Registro de Usuario</h3>
+            <form id="register-form">
+                <label for="register-name">Nombre:</label>
+                <input type="text" id="register-name" required maxlength="20">
+                
+                <label for="register-currency">Moneda:</label>
+                <select id="register-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <div class="avatar-selection">
+                    <label>Avatar:</label>
+                    <div class="avatar-gallery">
+                        <div class="avatar-option selected" data-avatar="https://i.pravatar.cc/150?img=1">
+                            <img src="https://i.pravatar.cc/150?img=1" alt="Avatar 1">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=2">
+                            <img src="https://i.pravatar.cc/150?img=2" alt="Avatar 2">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=3">
+                            <img src="https://i.pravatar.cc/150?img=3" alt="Avatar 3">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=4">
+                            <img src="https://i.pravatar.cc/150?img=4" alt="Avatar 4">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=5">
+                            <img src="https://i.pravatar.cc/150?img=5" alt="Avatar 5">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=6">
+                            <img src="https://i.pravatar.cc/150?img=6" alt="Avatar 6">
+                        </div>
+                    </div>
+                    <div class="avatar-upload">
+                        <input type="file" id="register-avatar-upload" accept="image/*" style="display: none;">
+                        <button type="button" id="upload-avatar-btn" class="btn btn-secondary">Subir Foto</button>
+                        <div id="avatar-preview-container" style="display: none;">
+                            <img id="avatar-preview" alt="Preview">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Registrarse</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Crear Mesa -->
+    <div id="create-room-modal" class="modal">
+        <div class="modal-content">
+            <h3>Crear Nueva Mesa</h3>
+            <form id="create-room-form">
+                <label for="room-name">Nombre de la Mesa:</label>
+                <input type="text" id="room-name" required maxlength="30">
+                
+                <label for="room-bet">Apuesta:</label>
+                <input type="number" id="room-bet" min="1" max="1000" value="10" required>
+                
+                <label for="room-penalty">Multa:</label>
+                <input type="number" id="room-penalty" min="1" max="100" value="5" required>
+                
+                <label for="room-currency">Moneda:</label>
+                <select id="room-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <button type="submit" class="btn btn-primary">Crear Mesa</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Recorte de Avatar -->
+    <div id="avatar-crop-modal" class="modal">
+        <div class="modal-content crop-modal-content">
+            <h3>Recortar Avatar</h3>
+            <div class="crop-container">
+                <canvas id="crop-canvas"></canvas>
+            </div>
+            <div class="crop-controls">
+                <button id="crop-save" class="btn btn-primary">Guardar</button>
+                <button id="crop-cancel" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast para notificaciones -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
