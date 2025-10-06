@@ -368,12 +368,7 @@ function broadcastRoomListUpdate(io) {
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
-// Ruta principal
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// --- RUTAS DE AUTENTICACIÓN ---
+// --- RUTAS DE API Y MIDDLEWARE ---
 
 // RUTA DE REGISTRO
 app.post('/register', async (req, res) => {
@@ -448,6 +443,29 @@ app.post('/login', async (req, res) => {
         console.error('Error en el login:', error);
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });
     }
+});
+
+// RUTA DE ADMIN
+app.get('/admin', adminAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// RUTA DE TEST DE BASE DE DATOS
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+    res.json({
+      status: 'success',
+      message: 'Conexión a la base de datos exitosa',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Error conectando a la base de datos',
+      error: error.message
+    });
+  }
 });
 
 function buildDeck() {
@@ -1504,28 +1522,6 @@ const adminAuth = (req, res, next) => {
     res.status(401).send('Autenticación requerida.');
 };
 
-// Ruta para servir el panel de administración
-app.get('/admin', adminAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-// Endpoint de prueba para verificar la conexión a la base de datos
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
-    res.json({
-      status: 'success',
-      message: 'Conexión a la base de datos exitosa',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Error conectando a la base de datos',
-      error: error.message
-    });
-  }
-});
 
 // --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
 
