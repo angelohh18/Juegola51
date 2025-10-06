@@ -34,6 +34,8 @@
         // Eventos de conexión
         socket.on('connect', () => {
             console.log('🔌 Conectado al servidor');
+            // Solicitar mesas disponibles al conectarse
+            socket.emit('getRooms');
         });
         
         socket.on('disconnect', () => {
@@ -232,6 +234,8 @@
         socket.emit('lobbyLogin', currentUser);
         hideLoginModal();
         showLobby();
+        // Solicitar mesas después del login
+        socket.emit('getRooms');
     }
     
     function handleRegister(e) {
@@ -254,6 +258,8 @@
         socket.emit('lobbyLogin', currentUser);
         hideRegisterModal();
         showLobby();
+        // Solicitar mesas después del registro
+        socket.emit('getRooms');
     }
     
     function handleCreateRoom(e) {
