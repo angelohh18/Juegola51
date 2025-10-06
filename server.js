@@ -2071,7 +2071,8 @@ socket.on('accionDescartar', (data) => {
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
 
     // REGLA 4: Validar 51 puntos (ESTRICTO - CAUSA ELIMINACIÓN).
-    if (!playerSeat.doneFirstMeld && room.turnPoints > 0) {
+    // Solo aplica si el jugador ha bajado combinaciones en este turno
+    if (!playerSeat.doneFirstMeld && room.turnMelds.length > 0) {
         if (room.turnPoints < 51) {
             // ¡FALTA GRAVE! El jugador intentó descartar sin haber bajado los 51 puntos requeridos.
             const reason = `No cumplió con los 51 puntos requeridos en su primera bajada (solo bajó ${room.turnPoints}).`;
