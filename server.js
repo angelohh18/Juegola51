@@ -2701,6 +2701,40 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
 }); // <<-- Este es el cierre del 'io.on connection'
 
+// --- FUNCIÓN DE PING AUTOMÁTICO PARA MANTENER ACTIVO EL SERVICIO EN RENDER ---
+const PING_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos en milisegundos
+
+const selfPing = () => {
+    // Render proporciona la URL externa de tu servicio en esta variable de entorno.
+    const url = process.env.RENDER_EXTERNAL_URL;
+
+    if (!url) {
+        console.log('Ping omitido: La variable RENDER_EXTERNAL_URL no está definida.');
+        return;
+    }
+
+    // Usamos el módulo 'https' de Node.js para hacer la solicitud.
+    const https = require('https');
+
+    console.log(`Ping automático iniciado a: ${url}`);
+
+    https.get(url, (res) => {
+        if (res.statusCode === 200) {
+            console.log(`Ping exitoso a ${url}. Estado: ${res.statusCode}.`);
+        } else {
+            console.error(`Ping fallido a ${url}. Estado: ${res.statusCode}.`);
+        }
+    }).on('error', (err) => {
+        console.error(`Error en el ping automático: ${err.message}`);
+    });
+};
+
+// Programamos la función para que se ejecute cada 5 minutos.
+// El primer ping se hará 30 segundos después de que el servidor arranque.
+setTimeout(() => {
+    setInterval(selfPing, PING_INTERVAL_MS);
+}, 30000); // 30 segundos de espera inicial
+
 server.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 });
