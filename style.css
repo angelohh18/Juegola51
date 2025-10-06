@@ -1517,14 +1517,27 @@ body.game-active {
     #game-container header h1 { font-size: 2.2vw; }
     
     #table {
-        width: 100vw;
-        height: 100vh;
-        max-width: none;
-        margin: 0;
-        border-width: 0.6vw;
-        outline-width: 0.3vw;
-        border-radius: 0;
-        padding-top: 5.5vw;
+        /* 1. Definimos un tamaño fijo de diseño (como si fuera un lienzo) */
+        width: 1400px;
+        height: 700px;
+        max-width: 1400px; /* Aseguramos el ancho fijo */
+        max-height: 700px; /* Aseguramos el alto fijo */
+
+        /* 2. Lo posicionamos en el centro absoluto de la pantalla */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+
+        /* 3. La magia: lo escalamos y centramos para que siempre encaje */
+        transform: translate(-50%, -50%) scale(calc(min(100vw / 1400, 100vh / 700)));
+        transform-origin: center center;
+
+        /* 4. Mantenemos tus estilos de borde originales, pero con valores fijos */
+        border: 8px solid var(--casino-dark-panel);
+        outline: 4px solid var(--casino-gold);
+        border-radius: 16px;
+        padding-top: 0; /* Ya no necesitamos el padding superior */
+        margin: 0; /* Reseteamos márgenes */
     }
     
     .player-area.top { 
