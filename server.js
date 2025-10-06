@@ -345,6 +345,11 @@ function broadcastRoomListUpdate(io) {
 // Servir archivos estáticos
 app.use(express.static(path.join(__dirname)));
 
+// Ruta principal
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 function buildDeck() {
   const suits = ["hearts", "diamonds", "clubs", "spades"];
   const values = [
@@ -1211,7 +1216,7 @@ function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
     }
 }
 
-app.use(express.static(path.join(__dirname, '../cliente')));
+// Configuración de archivos estáticos ya definida arriba
 
 // ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
