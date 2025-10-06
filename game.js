@@ -769,139 +769,115 @@ function showRoomsOverview() {
         loginModal.style.display = 'none'; registerModal.style.display = 'flex';
     }
 
-    function validateUser(username, password) {
-        if (!username || !password) { 
-            loginError.textContent = 'Por favor, ingresa nombre y contraseña.'; 
-            loginError.style.display = 'block'; 
-            return null; 
-        }
-        const userKey = 'registered_user_' + username.toLowerCase();
-        const storedUser = localStorage.getItem(userKey);
-        if (!storedUser) {
-            loginError.textContent = 'Usuario no encontrado. Debes registrarte primero.';
-            loginError.style.display = 'block';
-            return null;
-        }
-        try {
-            const userData = JSON.parse(storedUser);
-            if (userData.password !== password) {
-                loginError.textContent = 'Contraseña incorrecta.';
-                loginError.style.display = 'block';
-                return null;
-            }
-            return { 
-                name: userData.name, 
-                password: userData.password, 
-                avatar: userData.avatar || defaultAvatars[0],
-                country: userData.country,
-                whatsapp: userData.whatsapp,
-                currency: userData.currency || 'USD' // <-- AÑADE ESTA LÍNEA (con un fallback por si acaso)
-            };
-        } catch (e) {
-            loginError.textContent = 'Error al validar usuario.';
-            loginError.style.display = 'block';
-            return null;
-        }
-    }
-
-    function registerUser(name, country, whatsapp, password, confirmPassword, avatar, currency) { // <-- Añadido "currency"
-        if (!name || !country || !whatsapp || !password || !confirmPassword || !currency) { // <-- Añadida validación de currency
-            registerError.textContent = 'Por favor, completa todos los campos.'; 
-            registerError.style.display = 'block'; 
-            return false; 
-        }
-        if (password !== confirmPassword) { 
-            registerError.textContent = 'Las contraseñas no coinciden.'; 
-            registerError.style.display = 'block'; 
-            return false; 
-        }
-        if (!avatar) { 
-            registerError.textContent = 'Por favor, selecciona un avatar.'; 
-            registerError.style.display = 'block'; 
-            return false; 
-        }
-        const userKey = 'registered_user_' + name.toLowerCase();
-        if (localStorage.getItem(userKey)) {
-            registerError.textContent = 'Este nombre de usuario ya está en uso. Elige otro.';
-            registerError.style.display = 'block';
-            return false;
-        }
-        const userData = {
-            name: name,
-            country: country,
-            whatsapp: whatsapp,
-            password: password,
-            avatar: avatar,
-            currency: currency, // <-- AÑADIDO: Guardar la moneda
-            registeredAt: Date.now()
-        };
-        try {
-            localStorage.setItem(userKey, JSON.stringify(userData));
-            registerSuccess.textContent = 'Usuario registrado exitosamente. Ahora puedes iniciar sesión.';
-            registerSuccess.style.display = 'block';
-            return true;
-        } catch (e) {
-            registerError.textContent = 'Error al registrar usuario. Inténtalo de nuevo.';
-            registerError.style.display = 'block';
-            return false;
-        }
-    }
 
     function doLogin() {
         const username = loginUsernameInput.value.trim();
         const password = loginPasswordInput.value.trim();
-        const user = validateUser(username, password);
-        if (user) {
-           
-            socket.connect(); 
+        loginError.style.display = 'none';
 
-            // ▼▼▼ REEMPLAZA la línea socket.emit('userLoggedIn', ...) con esta ▼▼▼
-            socket.emit('userLoggedIn', { username: user.name, currency: user.currency }); // Enviamos la moneda
-
-            // MIGRACIÓN SEGURA: Actualizar tanto localStorage como variables globales
-            const defaultAvatar = 'https://i.pravatar.cc/150?img=1';
-            const userAvatar = user.avatar || defaultAvatar;
-            
-            // Actualizar variables globales
-            currentUser = {
-                username: user.name,
-                userAvatar: userAvatar,
-                userId: 'user_' + user.name.toLowerCase(),
-                credits: 1000
-            };
-            
-            // Mantener localStorage para compatibilidad
-            localStorage.setItem('username', user.name);
-            localStorage.setItem('userId', currentUser.userId);
-            localStorage.setItem('userAvatar', userAvatar);
-            localStorage.setItem('userCredits', 1000);
-            
-            loginModal.style.display = 'none';
-            document.getElementById('user-name').textContent = user.name;
-            userAvatarEl.src = userAvatar;
-            updateCreditsDisplay();
-            body.classList.add('is-logged-in');
-            lobbyOverlay.style.display = 'flex';
-            setTimeout(scaleAndCenterLobby, 0);
-            window.addEventListener('resize', scaleAndCenterLobby);
+        if (!username || !password) {
+            loginError.textContent = 'Por favor, ingresa nombre y contraseña.';
+            loginError.style.display = 'block';
+            return;
         }
+
+        fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.user;
+                
+                socket.connect(); 
+                socket.emit('userLoggedIn', { username: user.name, currency: user.currency });
+
+                // Guardar datos en la variable global para la sesión
+                currentUser = {
+                    username: user.name,
+                    userAvatar: user.avatar,
+                    userId: 'user_' + user.name.toLowerCase(),
+                };
+                
+                // Guardar en localStorage solo para la sesión actual (avatar, etc.)
+                localStorage.setItem('username', user.name);
+                localStorage.setItem('userAvatar', user.avatar);
+                
+                loginModal.style.display = 'none';
+                document.getElementById('user-name').textContent = user.name;
+                userAvatarEl.src = user.avatar;
+                
+                body.classList.add('is-logged-in');
+                lobbyOverlay.style.display = 'flex';
+                setTimeout(scaleAndCenterLobby, 0);
+                window.addEventListener('resize', scaleAndCenterLobby);
+
+            } else {
+                loginError.textContent = data.message;
+                loginError.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error('Error de red en el login:', err);
+            loginError.textContent = 'Error de conexión. Inténtalo de nuevo.';
+            loginError.style.display = 'block';
+        });
     }
 
     function doRegister() {
+        registerError.style.display = 'none';
+        registerSuccess.style.display = 'none';
+
         const name = registerNameInput.value.trim();
         const country = registerCountrySelect.value;
         const whatsapp = registerWhatsAppInput.value.trim();
         const password = registerPasswordInput.value;
         const confirmPassword = registerConfirmPasswordInput.value;
-        const currency = document.getElementById('register-currency').value; // <-- AÑADE ESTA LÍNEA
+        const currency = document.getElementById('register-currency').value;
 
-        if (registerUser(name, country, whatsapp, password, confirmPassword, selectedAvatar, currency)) { // <-- Pasa la moneda
-            setTimeout(() => {
-                registerModal.style.display = 'none';
-                showLoginModal();
-                loginUsernameInput.value = name;
-            }, 2000);
+        if (!name || !country || !whatsapp || !password || !currency) {
+            registerError.textContent = 'Por favor, completa todos los campos.';
+            registerError.style.display = 'block';
+            return;
         }
+        if (password !== confirmPassword) {
+            registerError.textContent = 'Las contraseñas no coinciden.';
+            registerError.style.display = 'block';
+            return;
+        }
+        if (!selectedAvatar) {
+            registerError.textContent = 'Por favor, selecciona un avatar.';
+            registerError.style.display = 'block';
+            return;
+        }
+
+        fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, country, whatsapp, password, avatar: selectedAvatar, currency })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                registerSuccess.textContent = data.message + ' Serás redirigido al login.';
+                registerSuccess.style.display = 'block';
+                setTimeout(() => {
+                    registerModal.style.display = 'none';
+                    showLoginModal();
+                    loginUsernameInput.value = name; // Autocompletar el nombre
+                }, 2500);
+            } else {
+                registerError.textContent = data.message;
+                registerError.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error('Error de red en el registro:', err);
+            registerError.textContent = 'Error de conexión. Inténtalo de nuevo.';
+            registerError.style.display = 'block';
+        });
     }
 
     btnLogin.addEventListener('click', doLogin);
@@ -1021,36 +997,14 @@ function showRoomsOverview() {
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
     (function init() {
-        console.log('--- INICIANDO VERSIÓN CORREGIDA DEL SCRIPT (V3) ---');
+        console.log('--- INICIANDO VERSIÓN CON LOGIN EN SERVIDOR ---');
         initCountries();
-        const loggedInUser = localStorage.getItem('username');
-        if (loggedInUser) {
-            
-            socket.connect();
-
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Le decimos al servidor quiénes somos al reconectar, igual que en un login normal.
-            const userCurrency = JSON.parse(localStorage.getItem('registered_user_' + loggedInUser.toLowerCase()))?.currency || 'USD';
-            socket.emit('userLoggedIn', { username: loggedInUser, currency: userCurrency });
-            // --- FIN DE LA MODIFICACIÓN ---
-
-            const user = {
-                name: loggedInUser,
-                avatar: localStorage.getItem('userAvatar')
-            };
-            document.getElementById('user-name').textContent = user.name;
-            userAvatarEl.src = user.avatar || defaultAvatars[0];
-            updateCreditsDisplay();
-            body.classList.add('is-logged-in');
-            lobbyOverlay.style.display = 'flex';
-            // Se elimina la llamada incorrecta a showRoomsOverview() de aquí.
-            setTimeout(scaleAndCenterLobby, 0);
-            window.addEventListener('resize', scaleAndCenterLobby);
-        } else {
-            body.classList.remove('is-logged-in');
-            lobbyOverlay.style.display = 'none';
-            showLoginModal();
-        }
+        
+        // Como la sesión ya no se guarda en el navegador,
+        // siempre mostramos el modal de login al iniciar.
+        body.classList.remove('is-logged-in');
+        lobbyOverlay.style.display = 'none';
+        showLoginModal();
     })();
 })();
 // --- FIN: SCRIPT DEL LOBBY ---

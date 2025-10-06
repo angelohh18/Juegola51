@@ -1,12 +1,14 @@
 // server.js (Archivo completo y actualizado)
 
 const express = require('express');
+const bcrypt = require('bcrypt'); // <-- AÑADE ESTA LÍNEA
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
+app.use(express.json()); // <-- AÑADE ESTA LÍNEA (después de const app = express())
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -42,13 +44,14 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        user_id VARCHAR(255) UNIQUE NOT NULL,
-        username VARCHAR(255) NOT NULL,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
         credits DECIMAL(10,2) DEFAULT 1000.00,
         currency VARCHAR(10) DEFAULT 'USD',
         avatar_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        country VARCHAR(10),
+        whatsapp VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -135,12 +138,30 @@ async function getUserFromDB(userId, username) {
   }
 }
 
+// Función para obtener todos los usuarios
+async function getAllUsersFromDB() {
+  try {
+    const result = await pool.query('SELECT username, credits, currency FROM users ORDER BY username ASC');
+    return result.rows.map(row => ({
+      id: 'user_' + row.username.toLowerCase(),
+      username: row.username,
+      credits: parseFloat(row.credits),
+      currency: row.currency
+    }));
+  } catch (error) {
+    console.error('Error obteniendo todos los usuarios de la BD:', error);
+    return [];
+  }
+}
+
 // Función para actualizar créditos de un usuario
 async function updateUserCredits(userId, credits, currency) {
   try {
+    // Extraer el username del userId (formato: user_username)
+    const username = userId.replace(/^user_/, '');
     await pool.query(
-      'UPDATE users SET credits = $1, currency = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $3',
-      [credits, currency, userId]
+      'UPDATE users SET credits = $1, currency = $2 WHERE username = $3',
+      [credits, currency, username]
     );
     console.log(`✅ Créditos actualizados para usuario ${userId}: ${credits} ${currency}`);
   } catch (error) {
@@ -348,6 +369,76 @@ app.use(express.static(path.join(__dirname)));
 // Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// --- RUTAS DE AUTENTICACIÓN ---
+
+// RUTA DE REGISTRO
+app.post('/register', async (req, res) => {
+    const { name, country, whatsapp, password, avatar, currency } = req.body;
+
+    if (!name || !password || !currency) {
+        return res.status(400).json({ success: false, message: 'Nombre, contraseña y moneda son obligatorios.' });
+    }
+
+    try {
+        const existingUser = await pool.query('SELECT * FROM users WHERE username = $1', [name.toLowerCase()]);
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({ success: false, message: 'Este nombre de usuario ya está en uso.' });
+        }
+
+        const saltRounds = 10;
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+
+        await pool.query(
+            'INSERT INTO users (username, password_hash, country, whatsapp, avatar_url, currency) VALUES ($1, $2, $3, $4, $5, $6)',
+            [name.toLowerCase(), passwordHash, country, whatsapp, avatar, currency]
+        );
+
+        res.status(201).json({ success: true, message: 'Usuario registrado exitosamente.' });
+
+    } catch (error) {
+        console.error('Error en el registro:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    }
+});
+
+// RUTA DE LOGIN
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Por favor, ingresa nombre y contraseña.' });
+    }
+
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username.toLowerCase()]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado. Debes registrarte primero.' });
+        }
+
+        const user = result.rows[0];
+        const match = await bcrypt.compare(password, user.password_hash);
+
+        if (match) {
+            res.status(200).json({
+                success: true,
+                message: 'Inicio de sesión exitoso.',
+                user: {
+                    name: user.username,
+                    avatar: user.avatar_url,
+                    credits: parseFloat(user.credits),
+                    currency: user.currency
+                }
+            });
+        } else {
+            res.status(401).json({ success: false, message: 'Contraseña incorrecta.' });
+        }
+    } catch (error) {
+        console.error('Error en el login:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    }
 });
 
 function buildDeck() {
@@ -1441,33 +1532,20 @@ io.on('connection', (socket) => {
     // --- INICIO: LÓGICA PARA EL PANEL DE ADMIN ---
 
     // Escucha la petición del panel de admin para obtener la lista de usuarios
-    socket.on('admin:requestUserList', () => {
+    socket.on('admin:requestUserList', async () => { // <-- Se añade 'async'
         socket.join('admin-room');
         console.log(`Socket ${socket.id} se ha unido a la sala de administradores.`);
 
         socket.emit('admin:commissionData', commissionLog);
 
-        // ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
-        // Ahora leemos del objeto 'users', que es la fuente de datos correcta.
-        if (users && Object.keys(users).length > 0) {
-
-            const userList = Object.keys(users).map(userId => {
-                const username = userId.replace(/^user_/, '');
-                return {
-                    id: userId,
-                    username: username,
-                    credits: users[userId].credits,
-                    currency: users[userId].currency // Incluimos la moneda
-                };
-            });
-
-            // Enviamos la lista correcta a la sala de administradores.
-            io.to('admin-room').emit('admin:userList', userList);
+        // AHORA LEE DIRECTAMENTE DE LA BASE DE DATOS
+        const allUsers = await getAllUsersFromDB();
+        
+        if (allUsers.length > 0) {
+            io.to('admin-room').emit('admin:userList', allUsers);
         } else {
-            // Si no hay usuarios, enviamos un array vacío.
             io.to('admin-room').emit('admin:userList', []);
         }
-        // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
     });
 
     // Escucha la orden del admin para actualizar los créditos de un usuario
