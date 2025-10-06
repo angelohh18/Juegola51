@@ -6,7 +6,21 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="mobile-web-app-capable" content="yes" />
-<meta name="theme-color" content="#211e18" />
+<meta name="theme-color" content="#c5a56a" />
+<meta name="apple-mobile-web-app-title" content="La 51" />
+<meta name="application-name" content="La 51" />
+<meta name="msapplication-TileColor" content="#211e18" />
+<meta name="msapplication-tap-highlight" content="no" />
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- Favicon e iconos -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+<link rel="icon" type="image/png" sizes="144x144" href="/icon-144.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
 <title>La 51 - Lobby y Juego</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -617,6 +631,48 @@
         document.addEventListener('click', forceHideAddressBar, { passive: true });
     }
 })();
+
+// Registrar Service Worker para PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('SW registrado exitosamente:', registration.scope);
+                
+                // Verificar si hay actualizaciones
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // Hay una nueva versión disponible
+                            console.log('Nueva versión disponible');
+                            // Opcional: mostrar notificación al usuario
+                        }
+                    });
+                });
+            })
+            .catch((error) => {
+                console.log('Error al registrar SW:', error);
+            });
+    });
+}
+
+// Manejar instalación de PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('PWA puede ser instalada');
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Opcional: mostrar botón de instalación personalizado
+    // showInstallButton();
+});
+
+// Manejar cuando la PWA se instala
+window.addEventListener('appinstalled', (evt) => {
+    console.log('PWA instalada exitosamente');
+    deferredPrompt = null;
+});
 </script>
 
 </body>
