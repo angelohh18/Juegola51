@@ -368,9 +368,6 @@ function broadcastRoomListUpdate(io) {
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
-// Servir archivos estáticos
-app.use(express.static(path.join(__dirname)));
-
 // Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -1532,6 +1529,15 @@ app.get('/api/test-db', async (req, res) => {
 
 // --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
 
+// --- SERVIR ARCHIVOS ESTÁTICOS Y RUTA PRINCIPAL ---
+// ESTA ES LA UBICACIÓN CORRECTA
+app.use(express.static(path.join(__dirname)));
+
+app.get('*', (req, res) => { // Usamos '*' para capturar todas las demás rutas
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// --- MANEJO DE SOCKETS ---
 io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
