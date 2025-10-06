@@ -1388,6 +1388,24 @@ app.get('/admin', adminAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+// Endpoint de prueba para verificar la conexión a la base de datos
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+    res.json({
+      status: 'success',
+      message: 'Conexión a la base de datos exitosa',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Error conectando a la base de datos',
+      error: error.message
+    });
+  }
+});
+
 // --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
 
 io.on('connection', (socket) => {
