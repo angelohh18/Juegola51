@@ -608,7 +608,7 @@ function canBeAddedToServerMeld(card, meld) {
 }
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN endGameAndCalculateScores ENTERA CON ESTA VERSIÓN ▼▼▼
-function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
+async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     // ▼▼▼ REEMPLAZA EL BLOQUE DE 'isPractice' ENTERO CON ESTE ▼▼▼
@@ -637,22 +637,30 @@ function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null)
 
     // (Esta parte que procesa multas por no bajar no cambia y es correcta)
     if (room.initialSeats) {
-        room.initialSeats.forEach(seat => {
-            if (!seat || seat.playerId === winnerSeat.playerId) return;
-        const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
-        if (finalSeatState && finalSeatState.active && !finalSeatState.doneFirstMeld) {
-            const penalty = room.settings.penalty || 0;
-            const playerInfo = users[finalSeatState.userId];
-            if (penalty > 0 && playerInfo) {
-                const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
-                playerInfo.credits -= penaltyInPlayerCurrency;
-                room.pot = (room.pot || 0) + penalty;
-                console.log(`Jugador ${finalSeatState.playerName} paga multa de ${penalty} por no bajar. Nuevo bote: ${room.pot}`);
-                io.to(finalSeatState.playerId).emit('userStateUpdated', playerInfo);
-                io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+        for (const seat of room.initialSeats) {
+            if (!seat || seat.playerId === winnerSeat.playerId) continue;
+            const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
+            if (finalSeatState && finalSeatState.active && !finalSeatState.doneFirstMeld) {
+                const penalty = room.settings.penalty || 0;
+                const playerInfo = users[finalSeatState.userId];
+                if (penalty > 0 && playerInfo) {
+                    const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+                    playerInfo.credits -= penaltyInPlayerCurrency;
+                    room.pot = (room.pot || 0) + penalty;
+                    console.log(`Jugador ${finalSeatState.playerName} paga multa de ${penalty} por no bajar. Nuevo bote: ${room.pot}`);
+                    
+                    // Actualizar en la base de datos
+                    try {
+                        await updateUserCredits(finalSeatState.userId, playerInfo.credits, playerInfo.currency);
+                    } catch (error) {
+                        console.error('Error actualizando créditos en BD:', error);
+                    }
+                    
+                    io.to(finalSeatState.playerId).emit('userStateUpdated', playerInfo);
+                    io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+                }
             }
         }
-        });
     }
 
     console.log(`Partida finalizada. Ganador: ${winnerSeat.playerName}. Bote final (tras multas): ${room.pot}`);
@@ -675,6 +683,14 @@ function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null)
     if (winnerInfo) {
         const winningsInWinnerCurrency = convertCurrency(netWinnings, room.settings.betCurrency, winnerInfo.currency, exchangeRates);
         winnerInfo.credits += winningsInWinnerCurrency;
+        
+        // Actualizar en la base de datos
+        try {
+            await updateUserCredits(winnerSeat.userId, winnerInfo.credits, winnerInfo.currency);
+        } catch (error) {
+            console.error('Error actualizando créditos del ganador en BD:', error);
+        }
+        
         io.to(winnerSeat.playerId).emit('userStateUpdated', winnerInfo);
     }
 
@@ -753,19 +769,19 @@ function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null)
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
-function checkVictoryCondition(room, roomId, io) {
+async function checkVictoryCondition(room, roomId, io) {
   if (!room || room.state !== 'playing') return false;
   const winnerSeat = room.seats.find(s => s && s.active !== false && room.playerHands[s.playerId]?.length === 0);
   
   if (winnerSeat) {
     console.log(`¡VICTORIA! ${winnerSeat.playerName} se ha quedado sin cartas y gana la partida.`);
-    endGameAndCalculateScores(room, winnerSeat, io);
+    await endGameAndCalculateScores(room, winnerSeat, io);
     return true;
   }
   return false;
 }
 
-function handlePlayerElimination(room, faultingPlayerId, faultReason, io) {
+async function handlePlayerElimination(room, faultingPlayerId, faultReason, io) {
     if (!room) return;
     const roomId = room.roomId;
 
@@ -845,7 +861,7 @@ function handlePlayerElimination(room, faultingPlayerId, faultReason, io) {
     if (activePlayers.length <= 1) {
         const winnerSeat = activePlayers[0];
         if (winnerSeat) {
-            endGameAndCalculateScores(room, winnerSeat, io);
+            await endGameAndCalculateScores(room, winnerSeat, io);
         }
         return; // Detiene la ejecución para no pasar el turno
     }
@@ -1103,7 +1119,7 @@ async function botPlay(room, botPlayerId, io) {
                 botHand.splice(cardHandIndex, 1);
                 io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts, highlight: { cardId: cardToAdd.id, meldIndex: targetMeldIndex } });
                 cardWasAdded = true;
-                if (checkVictoryCondition(room, room.roomId, io)) return;
+                if (await checkVictoryCondition(room, room.roomId, io)) return;
                 await pause(1500);
             }
         }
@@ -1199,7 +1215,7 @@ app.use(express.static(path.join(__dirname, '../cliente')));
 
 // ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
-function handlePlayerDeparture(roomId, leavingPlayerId, io) {
+async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
@@ -1258,7 +1274,7 @@ function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
             const activePlayers = room.seats.filter(s => s && s.active !== false);
             if (activePlayers.length === 1) {
-                endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
+                await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
                 return;
             } else if (activePlayers.length > 1) {
                 if (room.currentPlayerId === leavingPlayerId) {
@@ -1450,13 +1466,20 @@ io.on('connection', (socket) => {
     });
 
     // Escucha la orden del admin para actualizar los créditos de un usuario
-    socket.on('admin:updateCredits', ({ userId, newCredits, newCurrency }) => {
+    socket.on('admin:updateCredits', async ({ userId, newCredits, newCurrency }) => {
         const credits = parseFloat(newCredits);
 
         if (users[userId] && !isNaN(credits) && ['EUR', 'USD', 'COP'].includes(newCurrency)) {
             console.log(`[Admin] Actualizando datos para ${userId}.`);
             users[userId].credits = credits;
             users[userId].currency = newCurrency;
+
+            // Actualizar también en la base de datos
+            try {
+                await updateUserCredits(userId, credits, newCurrency);
+            } catch (error) {
+                console.error('Error actualizando créditos en BD:', error);
+            }
 
             // Notificar al jugador afectado (si está conectado)
             for (const [id, socketInstance] of io.of("/").sockets) {
@@ -1484,25 +1507,38 @@ io.on('connection', (socket) => {
     // ▲▲▲ FIN DEL LISTENER ▲▲▲
 
     // Escucha cuando un usuario inicia sesión en el lobby
-    socket.on('userLoggedIn', ({ username, currency }) => { // <--- AHORA RECIBE LA MONEDA
+    socket.on('userLoggedIn', async ({ username, currency }) => { // <--- AHORA RECIBE LA MONEDA
         if (!username || !currency) return;
 
         const userId = 'user_' + username.toLowerCase();
         socket.userId = userId;
 
-        // Si el usuario no existe, lo creamos con sus créditos y moneda
-        if (!users[userId]) {
-            console.log(`[Lobby Login] Primer registro de ${userId}. Asignando 0 créditos en ${currency}.`);
-            users[userId] = {
-                credits: 0, // <-- LÍNEA MODIFICADA
-                currency: currency // Guardamos su moneda preferida
-            };
-        } else {
-             console.log(`[Lobby Login] Usuario ${userId} ha vuelto al lobby.`);
-        }
+        try {
+            // Obtener o crear el usuario desde la base de datos
+            const userData = await getUserFromDB(userId, username);
+            
+            // Actualizar la moneda si es diferente
+            if (userData.currency !== currency) {
+                await updateUserCredits(userId, userData.credits, currency);
+                userData.currency = currency;
+            }
+            
+            // Mantener en memoria para acceso rápido
+            users[userId] = userData;
+            
+            console.log(`[Lobby Login] Usuario ${userId} cargado desde BD: ${userData.credits} ${userData.currency}`);
 
-        // Enviamos al cliente su objeto de usuario completo
-        socket.emit('userStateUpdated', users[userId]);
+            // Enviamos al cliente su objeto de usuario completo
+            socket.emit('userStateUpdated', users[userId]);
+        } catch (error) {
+            console.error('Error cargando usuario desde BD:', error);
+            // Fallback a valores por defecto
+            users[userId] = {
+                credits: 1000,
+                currency: currency
+            };
+            socket.emit('userStateUpdated', users[userId]);
+        }
 
         // Notificar a todos los admins que la lista de usuarios ha cambiado
         const allUsers = Object.keys(users).map(uid => ({
@@ -1833,7 +1869,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('meldAction', (data) => {
+  socket.on('meldAction', async (data) => {
     // AÑADE ESTA LÍNEA AL INICIO DE LA FUNCIÓN
     let highlightInfo = null;
     const { roomId, cardIds, targetMeldIndex } = data;
@@ -1965,7 +2001,7 @@ io.on('connection', (socket) => {
     });
 
     socket.emit('meldSuccess', { meldedCardIds: cardIds });
-    checkVictoryCondition(room, roomId, io);
+    await checkVictoryCondition(room, roomId, io);
   });
 
 socket.on('accionDescartar', (data) => {
