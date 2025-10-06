@@ -1528,7 +1528,7 @@ function createAndStartPracticeGame(socket, username, io) {
 // ESTA ES LA UBICACIÓN CORRECTA
 app.use(express.static(path.join(__dirname)));
 
-app.get('*', (req, res) => { // Usamos '*' para capturar todas las demás rutas
+app.get('/*', (req, res) => { // Usamos '/*' para capturar todas las demás rutas
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
