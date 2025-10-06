@@ -2005,14 +2005,25 @@ io.on('connection', (socket) => {
   });
 
 socket.on('accionDescartar', (data) => {
+    console.log(`[DEBUG] accionDescartar recibida de ${socket.id}:`, data);
     const { roomId, card } = data;
     const room = rooms[roomId];
-    if (!room || room.currentPlayerId !== socket.id) return;
+    
+    console.log(`[DEBUG] Room encontrada:`, !!room);
+    console.log(`[DEBUG] Current player: ${room?.currentPlayerId}, Socket ID: ${socket.id}`);
+    
+    if (!room || room.currentPlayerId !== socket.id) {
+        console.log(`[DEBUG] Salida temprana: room=${!!room}, currentPlayer=${room?.currentPlayerId}, socket=${socket.id}`);
+        return;
+    }
 
     const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
+    console.log(`[DEBUG] Player seat encontrado:`, !!playerSeat);
     if (!playerSeat) return;
 
     const playerHand = room.playerHands[socket.id];
+    console.log(`[DEBUG] Player hand length:`, playerHand?.length);
+    console.log(`[DEBUG] Card to discard:`, card);
 
     // << --- INICIO DE LA NUEVA CORRECCIÓN --- >>
     // REGLA CRÍTICA: Si el jugador robó del MAZO y ha bajado combinaciones en este turno, está obligado a ganar.
@@ -2086,35 +2097,49 @@ socket.on('accionDescartar', (data) => {
     }
 
     // --- SI TODAS LAS REGLAS PASAN, LA JUGADA ES VÁLIDA ---
+    console.log(`[DEBUG] Todas las validaciones pasaron, procesando descarte...`);
     const cardIndex = playerHand.findIndex(c => c.id === card.id);
+    console.log(`[DEBUG] Card index found:`, cardIndex);
     if (cardIndex === -1) {
+        console.log(`[DEBUG] Carta no encontrada en la mano del jugador`);
         return socket.emit('fault', { reason: 'Error de sincronización, la carta no está en tu mano.' });
     }
 
     // 1. Procesar la jugada.
+    console.log(`[DEBUG] Eliminando carta de la mano...`);
     playerHand.splice(cardIndex, 1);
+    console.log(`[DEBUG] Agregando carta al descarte...`);
     room.discardPile.push(card);
+    console.log(`[DEBUG] Descartar procesado exitosamente`);
     if (room.turnMelds.length > 0) {
         room.melds.push(...room.turnMelds);
     }
 
     // 2. Comprobar victoria.
-    if (checkVictoryCondition(room, roomId, io)) return;
+    console.log(`[DEBUG] Comprobando condición de victoria...`);
+    if (checkVictoryCondition(room, roomId, io)) {
+        console.log(`[DEBUG] Juego terminado por victoria`);
+        return;
+    }
 
     // 3. Resetear y cambiar turno.
+    console.log(`[DEBUG] Reseteando estado del turno...`);
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
     const currentPlayerIndex = seatedPlayers.findIndex(p => p.playerId === socket.id);
     let nextPlayerIndex = (currentPlayerIndex + 1) % seatedPlayers.length;
+    console.log(`[DEBUG] Current player index: ${currentPlayerIndex}, Next player index: ${nextPlayerIndex}`);
     while (!seatedPlayers[nextPlayerIndex] || seatedPlayers[nextPlayerIndex].active === false) {
         nextPlayerIndex = (nextPlayerIndex + 1) % seatedPlayers.length;
     }
     room.currentPlayerId = seatedPlayers[nextPlayerIndex].playerId;
+    console.log(`[DEBUG] Nuevo current player: ${room.currentPlayerId}`);
 
     // 4. Notificar a TODOS.
     const playerHandCounts = {};
     seatedPlayers.forEach(p => { playerHandCounts[p.playerId] = room.playerHands[p.playerId]?.length || 0; });
 
+    console.log(`[DEBUG] Enviando turnChanged a todos los jugadores...`);
     io.to(roomId).emit('turnChanged', {
         discardedCard: card,
         discardingPlayerId: socket.id,
@@ -2123,6 +2148,7 @@ socket.on('accionDescartar', (data) => {
         playerHandCounts: playerHandCounts,
         newMelds: room.melds
     });
+    console.log(`[DEBUG] turnChanged enviado exitosamente`);
 
     // 5. Activar bot si es su turno.
     const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
