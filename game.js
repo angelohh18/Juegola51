@@ -1758,10 +1758,11 @@ socket.on('gameStarted', (initialState) => {
     // ▼▼▼ CORRECCIÓN ▼▼▼
     // Reemplazamos la referencia a 'myPlayerData' por 'players[0]', que es la correcta.
     const myPlayerData = players[0]; // Definimos la variable para que el código sea más legible.
-    if (myPlayerData && myPlayerData.hand && myPlayerData.hand.length === 15) {
+    // El primer jugador puede tener 15 o 16 cartas al inicio (16 si es el que empieza)
+    if (myPlayerData && myPlayerData.hand && (myPlayerData.hand.length === 15 || myPlayerData.hand.length === 16)) {
         hasDrawn = true;
         mustDiscard = true;
-        showToast("Empiezas tú. Tienes 15 cartas, solo puedes descartar.", 4000);
+        showToast("Empiezas tú. Puedes descartar para iniciar el juego.", 4000);
     } else {
         hasDrawn = false;
         mustDiscard = false;
