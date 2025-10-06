@@ -368,6 +368,27 @@ function broadcastRoomListUpdate(io) {
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
+// --- INICIO: SECCIÓN DE ADMINISTRACIÓN ---
+
+// Middleware de autenticación simple para el panel de admin
+const adminAuth = (req, res, next) => {
+    // Define aquí tu usuario y contraseña. ¡Cámbialos por algo seguro!
+    const ADMIN_USER = "angelohh18";
+    const ADMIN_PASS = "ANGELO51"; // <-- CAMBIA ESTA CONTRASEÑA
+
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    if (login && password && login === ADMIN_USER && password === ADMIN_PASS) {
+        // Si las credenciales son correctas, permite el acceso.
+        return next();
+    }
+
+    // Si no, pide las credenciales.
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Autenticación requerida.');
+};
+
 // --- RUTAS DE API Y MIDDLEWARE ---
 
 // RUTA DE REGISTRO
@@ -1500,28 +1521,6 @@ function createAndStartPracticeGame(socket, username, io) {
     });
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
-
-// --- INICIO: SECCIÓN DE ADMINISTRACIÓN ---
-
-// Middleware de autenticación simple para el panel de admin
-const adminAuth = (req, res, next) => {
-    // Define aquí tu usuario y contraseña. ¡Cámbialos por algo seguro!
-    const ADMIN_USER = "angelohh18";
-    const ADMIN_PASS = "ANGELO51"; // <-- CAMBIA ESTA CONTRASEÑA
-
-    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
-
-    if (login && password && login === ADMIN_USER && password === ADMIN_PASS) {
-        // Si las credenciales son correctas, permite el acceso.
-        return next();
-    }
-
-    // Si no, pide las credenciales.
-    res.set('WWW-Authenticate', 'Basic realm="401"');
-    res.status(401).send('Autenticación requerida.');
-};
-
 
 // --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
 
