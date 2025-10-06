@@ -4,6 +4,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,181 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Configuración de la base de datos PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Probar la conexión a la base de datos
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Error conectando a la base de datos:', err.stack);
+  } else {
+    console.log('✅ Conexión exitosa a la base de datos:', res.rows[0]);
+    // Inicializar tablas después de conectar
+    initializeDatabase();
+  }
+});
+
+// Función para inicializar las tablas de la base de datos
+async function initializeDatabase() {
+  try {
+    // Tabla de usuarios
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(255) NOT NULL,
+        credits DECIMAL(10,2) DEFAULT 1000.00,
+        currency VARCHAR(10) DEFAULT 'USD',
+        avatar_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Tabla de salas/mesas
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id SERIAL PRIMARY KEY,
+        room_id VARCHAR(255) UNIQUE NOT NULL,
+        host_id VARCHAR(255) NOT NULL,
+        state VARCHAR(50) DEFAULT 'waiting',
+        settings JSONB DEFAULT '{}',
+        pot DECIMAL(10,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Tabla de comisiones
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS commission_log (
+        id SERIAL PRIMARY KEY,
+        amount DECIMAL(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'COP',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Tabla de historial de chat del lobby
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lobby_chat (
+        id SERIAL PRIMARY KEY,
+        message_id VARCHAR(255) UNIQUE NOT NULL,
+        sender VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log('✅ Tablas de la base de datos inicializadas correctamente');
+  } catch (error) {
+    console.error('❌ Error inicializando la base de datos:', error);
+  }
+}
+
+// Funciones para interactuar con la base de datos
+
+// Función para obtener o crear un usuario
+async function getUserFromDB(userId, username) {
+  try {
+    // Primero intentamos obtener el usuario existente
+    const result = await pool.query(
+      'SELECT * FROM users WHERE user_id = $1',
+      [userId]
+    );
+
+    if (result.rows.length > 0) {
+      // Usuario existe, lo retornamos
+      return {
+        credits: parseFloat(result.rows[0].credits),
+        currency: result.rows[0].currency,
+        avatar_url: result.rows[0].avatar_url
+      };
+    } else {
+      // Usuario no existe, lo creamos
+      const insertResult = await pool.query(
+        'INSERT INTO users (user_id, username, credits, currency) VALUES ($1, $2, $3, $4) RETURNING *',
+        [userId, username, 1000.00, 'USD']
+      );
+      
+      return {
+        credits: parseFloat(insertResult.rows[0].credits),
+        currency: insertResult.rows[0].currency,
+        avatar_url: insertResult.rows[0].avatar_url
+      };
+    }
+  } catch (error) {
+    console.error('Error obteniendo/creando usuario:', error);
+    // Fallback a valores por defecto
+    return {
+      credits: 1000.00,
+      currency: 'USD',
+      avatar_url: null
+    };
+  }
+}
+
+// Función para actualizar créditos de un usuario
+async function updateUserCredits(userId, credits, currency) {
+  try {
+    await pool.query(
+      'UPDATE users SET credits = $1, currency = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $3',
+      [credits, currency, userId]
+    );
+    console.log(`✅ Créditos actualizados para usuario ${userId}: ${credits} ${currency}`);
+  } catch (error) {
+    console.error('Error actualizando créditos:', error);
+  }
+}
+
+// Función para guardar comisión
+async function saveCommission(amount, currency = 'COP') {
+  try {
+    await pool.query(
+      'INSERT INTO commission_log (amount, currency) VALUES ($1, $2)',
+      [amount, currency]
+    );
+    console.log(`✅ Comisión guardada: ${amount} ${currency}`);
+  } catch (error) {
+    console.error('Error guardando comisión:', error);
+  }
+}
+
+// Función para guardar mensaje del lobby
+async function saveLobbyMessage(messageId, sender, message) {
+  try {
+    await pool.query(
+      'INSERT INTO lobby_chat (message_id, sender, message) VALUES ($1, $2, $3)',
+      [messageId, sender, message]
+    );
+  } catch (error) {
+    console.error('Error guardando mensaje del lobby:', error);
+  }
+}
+
+// Función para obtener historial del chat del lobby
+async function getLobbyChatHistory() {
+  try {
+    const result = await pool.query(
+      'SELECT message_id, sender, message, timestamp FROM lobby_chat ORDER BY timestamp DESC LIMIT 50'
+    );
+    return result.rows.map(row => ({
+      id: row.message_id,
+      from: row.sender,
+      text: row.message,
+      ts: new Date(row.timestamp).getTime()
+    }));
+  } catch (error) {
+    console.error('Error obteniendo historial del lobby:', error);
+    return [];
+  }
+}
 
 function handleHostLeaving(room, leavingPlayerId, io) {
     if (room && room.hostId === leavingPlayerId) {
