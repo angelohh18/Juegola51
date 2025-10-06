@@ -1,462 +1,212 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>La 51 - Lobby y Juego</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La 51 - Juego de Cartas</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div id="app">
+        <!-- Header con título animado -->
+        <header class="game-header">
+            <h1 class="main-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h1>
+        </header>
 
-<div id="orientation-message">
-  <div>
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px;"><path d="M16.4 3.6a9 9 0 0 1 0 16.8M3.6 7.6a9 9 0 0 1 16.8 0"/><path d="M21 16H3M21 8H3"/></svg>
-    <p>Por favor, gira tu dispositivo a la posición horizontal para continuar.</p>
-  </div>
-</div>
-
-<div id="lobby-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
-  <div class="overlay-content">
-    
-    <div class="lobby-main" role="main">
-    <section class="user-panel" aria-label="Panel de usuario">
-      <h2 class="panel-title">
-        <span class="card left-card"></span>
-        <span class="char" style="--i:1">L</span>
-        <span class="char" style="--i:2">a</span>
-        <span class="char" style="--i:3">&nbsp;</span>
-        <span class="char" style="--i:4">5</span>
-        <span class="char" style="--i:5">1</span>
-        <span class="card right-card"></span>
-      </h2>
-      <div>
-        <div class="avatar-container">
-          <img src="" alt="Avatar del usuario" class="avatar" id="user-avatar" />
-          <label for="avatar-input" class="avatar-label" title="Cambiar avatar">✎</label>
-          <input type="file" id="avatar-input" accept="image/*" aria-label="Seleccionar avatar" />
-        </div>
-        <div class="username" id="user-name">Invitado</div>
-        <div class="credits" id="user-credits">Créditos 0</div>
-        <button class="button orange" id="btn-rules">Reglas del Juego</button>
-        <button class="button orange" id="btn-reload-credits">Recargar Créditos</button>
-      </div>
-      <div class="user-actions">
-        <button class="button secondary" id="btn-logout">Cerrar Sesión</button>
-      </div>
-    </section>
-    <section class="tables-panel" id="rooms-overview" aria-label="Mesas disponibles" tabindex="0">
-    </section>
-    <section class="chat-panel" aria-label="Chat de la sala">
-        <div class="chat-header">Chat Sala</div>
-        <div class="chat-messages" id="lobby-chat" tabindex="0" aria-live="polite" aria-relevant="additions">
-        </div>
-        <div class="chat-input">
-            <textarea rows="2" placeholder="Escribe un mensaje..." id="lobby-chat-input-textarea" aria-label="Escribe un mensaje"></textarea>
-            <button id="btn-send-chat" aria-label="Enviar mensaje">Enviar</button>
-        </div>
-    </section>
-    </div>
-  </div>
-</div>
-
-<div id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
-    <div class="modal-content">
-    <h3>Reglas Completas de La 51</h3>
-
-    <h4>1. El Objetivo</h4>
-    <p>
-        El objetivo es ser el primer jugador en quedarse sin cartas en la mano. Para ganar, un jugador debe bajar o acomodar todas sus cartas y descartar su última carta en el montón de descarte.
-    </p>
-
-    <h4>2. Las Combinaciones (Bajadas)</h4>
-    <p>Para deshacerte de tus cartas, debes "bajarlas" a la mesa en combinaciones válidas. Hay tres acciones posibles:</p>
-    
-    <h5>Grupos (Tríos o Cuartetos)</h5>
-    <ul>
-        <li>Formados por 3 o 4 cartas del <strong>mismo valor</strong> pero de <strong>diferente palo</strong>.</li>
-        <li><strong>Importante:</strong> No puede haber dos cartas del mismo color (rojo/negro) seguidas.</li>
-    </ul>
-    <div class="example">
-        <strong>Válido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:black;">♠</span> 7<span style="color:red;">♦</span> (Colores alternados: Rojo, Negro, Rojo)<br>
-        <strong>Inválido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:red;">♦</span> 7<span style="color:black;">♠</span> (Dos rojas seguidas)<br>
-        <strong>Inválido:</strong> 7<span style="color:red;">♥</span> 7<span style="color:black;">♠</span> 7<span style="color:red;">♥</span> (Palo repetido)
-    </div>
-
-    <h5>Escaleras (Corridas)</h5>
-    <ul>
-        <li>Formadas por 3 o más cartas del <strong>mismo palo</strong> en secuencia numérica.</li>
-        <li>El As (A) puede usarse al principio (A-2-3) o al final (Q-K-A).</li>
-        <li>Una escalera con Q-K-A se considera "cerrada" y no se le puede añadir un 2.</li>
-    </ul>
-    <div class="example">
-        <strong>Válido:</strong> 4<span style="color:black;">♣</span> 5<span style="color:black;">♣</span> 6<span style="color:black;">♣</span><br>
-        <strong>Válido:</strong> Q<span style="color:red;">♦</span> K<span style="color:red;">♦</span> A<span style="color:red;">♦</span><br>
-        <strong>Inválido:</strong> K<span style="color:black;">♠</span> A<span style="color:black;">♠</span> 2<span style="color:black;">♠</span> (El As no puede ser intermedio)
-    </div>
-
-    <h5>Añadir a Jugadas Existentes</h5>
-    <ul>
-        <li>Un jugador puede añadir una carta de su mano a una combinación que ya esté en la mesa (suya o de otro jugador).</li>
-        <li>Esta acción solo está permitida si el jugador <strong>ya ha cumplido su requisito de 51 puntos</strong> en un turno anterior.</li>
-    </ul>
-    <h4>3. Requisito Inicial: Los 51 Puntos</h4>
-    <p>
-        La primera vez que un jugador baja cartas en una partida, el valor total de las combinaciones que baje en ese turno debe sumar <strong>51 puntos o más</strong>.
-    </p>
-    <ul>
-        <li>Las figuras (J, Q, K) y el 10 valen 10 puntos.</li>
-        <li>El As (A) vale 10 puntos en la escalera Q-K-A, pero solo 1 punto en la escalera A-2-3. En los grupos de Ases, vale 10.</li>
-        <li>El resto de cartas valen su valor numérico (el 2 vale 2, el 3 vale 3, etc.).</li>
-    </ul>
-    <div class="example">
-        Un jugador baja por primera vez un trío de Reyes (10+10+10=30) y una escalera 5-6-7 (5+6+7=18). El total es 48. No es suficiente, no puede bajar. <br>
-        Si bajara un trío de Reyes y una escalera J-Q-K (10+10+10=30), el total sería 60. ¡Jugada válida!
-    </div>
-
-    <h4>4. El Flujo de un Turno</h4>
-    <p>Cada turno sigue 3 pasos obligatorios en este orden:</p>
-    <ol>
-        <li><strong>Robar:</strong> Debes tomar una (y solo una) carta. Puedes elegir:
-            <ul>
-                <li>La carta superior del <strong>mazo</strong> (boca abajo).</li>
-                <li>La carta superior del montón de <strong>descarte</strong> (boca arriba).</li>
-            </ul>
-        </li>
-        <li><strong>Bajar (Opcional):</strong> Después de robar, puedes realizar las acciones descritas en el punto 2.</li>
-        <li><strong>Descartar:</strong> Para finalizar tu turno, debes tirar una carta de tu mano al montón de descarte.</li>
-    </ol>
-    
-    <h4 class="penalty">5. Faltas Graves (Causan Eliminación)</h4>
-    <p>
-        Cometer cualquiera de las siguientes faltas resulta en la <strong>eliminación inmediata</strong> del jugador, quien deberá pagar la apuesta más la multa.
-    </p>
-    <ol>
-      
-        <li>
-            <strong>No usar la carta del descarte en la primera bajada:</strong> Si robas del descarte, estás obligado a usar esa carta en la primera combinación que bajes en ese mismo turno.
-            <div class="example">Falta: Robas un 8♠ del descarte. Luego, intentas bajar un trío de Reyes (K-K-K). Es falta, porque tu primera jugada debía incluir obligatoriamente el 8♠.</div>
-        </li>
-        <li>
-            <strong>Robar del descarte y no bajar:</strong> Si robas del descarte, es obligatorio bajar al menos una combinación. No puedes robar del descarte y simplemente tirar otra carta de tu mano.
-        </li>
-        <li>
-            <strong>Bajar una jugada inválida:</strong> Presentar una combinación que no cumpla las reglas de Grupo o Escalera.
-        </li>
-        <li>
-            <strong>No cumplir los 51 puntos:</strong> Bajar combinaciones por primera vez y descartar sin haber alcanzado el mínimo de 51 puntos.
-        </li>
-        <li>
-            <strong>Bajar y no ganar (Regla del Mazo):</strong> Si robas del <strong>mazo</strong> (no del descarte) y decides bajar una combinación, estás <strong>obligado a ganar</strong> en ese mismo turno.
-            <div class="example">Falta: Robas del mazo. Bajas una escalera 5-6-7. Todavía te quedan más cartas en la mano y descartas una para terminar tu turno, serás eliminado.</div>
-        </li>
-        <li>
-            <strong>Descarte Ilegal:</strong> Descartar una carta que podría ser añadida a una combinación ya existente en la mesa. Esta regla no aplica si es tu última carta para ganar.
-             <div class="example">Falta: En la mesa hay una escalera 4♥-5♥-6♥. Intentas descartar el 7♥ de tu mano. Es falta, porque esa carta se podía añadir a la escalera.</div>
-        </li>
-        <li>
-            <strong>Abandonar la partida:</strong> Salir del juego voluntariamente mientras está en curso.
-        </li>
-    </ol>
-    <button id="btn-close-rules-modal" class="secondary">Entendido</button>
-    </div>
-</div>
-  
-
-<div id="create-room-modal" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
-  <div class="modal-content">
-    <h3 id="create-room-title">Crear Mesa</h3>
-    <label for="bet-input">Apuesta:</label>
-    <input type="number" id="bet-input" min="1" value="10" />
-
-    <label for="create-room-currency">Moneda de la Apuesta:</label>
-    <select id="create-room-currency">
-        <option value="EUR">Euro (€)</option>
-        <option value="USD">Dólar Estadounidense ($)</option>
-        <option value="COP">Peso Colombiano ($)</option>
-    </select>
-
-    <label for="penalty-input">Multa:</label>
-    <input type="number" id="penalty-input" min="0" value="5" />
-    <div class="error" id="create-room-error"></div>
-    <button id="btn-create-room-confirm">Crear Mesa</button>
-    <button id="btn-create-room-cancel" class="secondary">Volver</button>
-    </div>
-</div>
-
-<div id="credit-modal" role="dialog" aria-modal="true" aria-labelledby="credit-modal-title">
-  <div class="modal-content">
-    <h3 id="credit-modal-title">Recargar Créditos</h3>
-    <p>Para recargar tus créditos, comunícate al WhatsApp: <a href="https://wa.me/34665530984" target="_blank" rel="noopener noreferrer">+34 665 530 984</a></p>
-    <button id="btn-close-credit-modal">Cerrar</button>
-  </div>
-</div>
-
-<div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
-  <div class="modal-content">
-    <h2 class="panel-title">
-      <span class="card left-card"></span>
-      <span class="char" style="--i:1">L</span>
-      <span class="char" style="--i:2">a</span>
-      <span class="char" style="--i:3">&nbsp;</span>
-      <span class="char" style="--i:4">5</span>
-      <span class="char" style="--i:5">1</span>
-      <span class="card right-card"></span>
-    </h2>
-    <h3 id="login-modal-title">Iniciar Sesión / Registrarse</h3>
-    <label for="login-username">Nombre:</label>
-    <input type="text" id="login-username" aria-required="true" />
-    <label for="login-password">Contraseña:</label>
-    <input type="password" id="login-password" aria-required="true" />
-    <div class="error" id="login-error"></div>
-    <button id="btn-login">Iniciar Sesión</button>
-    <button id="btn-register" class="secondary">Registrarse</button>
-  </div>
-</div>
-
-<div id="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
-  <div class="modal-content">
-    <h2 class="panel-title">
-      <span class="card left-card"></span>
-      <span class="char" style="--i:1">L</span>
-      <span class="char" style="--i:2">a</span>
-      <span class="char" style="--i:3">&nbsp;</span>
-      <span class="char" style="--i:4">5</span>
-      <span class="char" style="--i:5">1</span>
-      <span class="card right-card"></span>
-    </h2>
-    <h3 id="register-modal-title">Registro de Usuario</h3>
-    <label for="register-name">Nombre:</label>
-    <input type="text" id="register-name" aria-required="true" />
-
-    <label for="register-country">País:</label>
-    <select id="register-country" aria-required="true">
-    <option value="">Selecciona un país</option>
-    </select>
-
-    <label for="register-whatsapp">WhatsApp:</label>
-    <input type="text" id="register-whatsapp" aria-required="true" />
-
-    <label for="register-currency">Moneda de tus créditos:</label>
-    <select id="register-currency" aria-required="true">
-        <option value="">Selecciona tu moneda</option>
-        <option value="EUR">Euro (€)</option>
-        <option value="USD">Dólar Estadounidense ($)</option>
-        <option value="COP">Peso Colombiano ($)</option>
-    </select>
-
-    <label for="register-password">Contraseña:</label>
-    <input type="password" id="register-password" aria-required="true" />
-
-    <label for="register-confirm-password">Confirmar Contraseña:</label>
-    <input type="password" id="register-confirm-password" aria-required="true" />
-
-    <label>Selecciona un Avatar:</label>
-    <div class="avatar-gallery" id="avatar-gallery">
-      </div>
-    <input type="file" id="register-avatar-upload" accept="image/*" style="display: none;" />
-
-    <div class="avatar-preview-container" id="avatar-preview-container" style="display: none;">
-        <img id="avatar-preview" class="avatar-preview" src="" alt="Vista previa del avatar">
-    </div>
-
-    <div class="error" id="register-error"></div>
-    <div class="success" id="register-success"></div>
-
-    <button id="btn-register-submit">Registrarse</button>
-    <button id="btn-register-back" class="secondary">Volver al Login</button>
-  </div>
-</div>
-
-<div id="avatar-crop-modal" role="dialog" aria-modal="true">
-  <div class="modal-content">
-    <h3 id="crop-modal-title">Ajusta tu Avatar</h3>
-    <div id="crop-container">
-      <div id="crop-image-wrapper">
-          <img id="crop-image-preview" src="" alt="Previsualización para recortar">
-      </div>
-    </div>
-    <div class="crop-controls">
-        <label for="zoom-slider">Zoom:</label>
-        <input type="range" id="zoom-slider" min="50" max="200" value="100">
-    </div>
-    <button id="btn-save-crop">Guardar Avatar</button>
-    <button id="btn-cancel-crop" class="secondary">Cancelar</button>
-  </div>
-</div>
-
-<div id="game-container" style="display: none;">
-    <div id="rotate-device-overlay">
-        <div class="content">
-        <h2>Gira tu dispositivo</h2>
-        <p>Para una mejor experiencia, por favor juega en modo horizontal.</p>
-        </div>
-    </div>
-
-    <header></header>
-    
-    <div id="chat-container">
-        <div class="top-controls-wrapper">
-            <button id="game-rules-btn">📜 Reglas</button>
-            <button id="btn-back-to-lobby-ingame">🚪 Volver al Lobby</button>
-            <button id="chat-toggle-btn">💬 Chat <span id="chat-notification-badge" style="display: none;"></span></button>
-        </div>
-        <div id="chat-window">
-        <div id="chat-ui-content"></div>
-        <ul id="chat-messages"><div id="chat-messages-inner"></div></ul>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Escribe un mensaje...">
-            <button id="chat-send-btn">Enviar</button>
-        </div>
-        </div>
-    </div>
-    <main id="table">
-        <div id="game-pot-container">
-            <div class="pot-title">BOTE</div>
-            <div class="pot-value">0</div>
-        </div>
-        
-        <div class="player-area top">
-            <div class="opponents-container">
-                <div class="info-bot" id="info-player1">
-                    <img src="https://placehold.co/50/blue/white?text=B1" class="player-avatar" alt="Avatar de Bot 1">
-                    <div class="player-details">
-                        <span class="player-name">Bot 1</span>
-                        <div class="card-counter" id="counter-bot1">🂠 0</div>
+        <!-- Lobby Principal -->
+        <div id="lobby" class="lobby-container">
+            <div class="user-info">
+                <div class="user-avatar-container">
+                    <img id="user-avatar" src="https://i.pravatar.cc/150?img=1" alt="Avatar" class="user-avatar">
+                    <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                    <button id="edit-avatar-btn" class="edit-avatar-btn">✏️</button>
+                </div>
+                <div class="user-details">
+                    <h2 id="user-name">Invitado</h2>
+                    <div class="user-credits">
+                        <span id="user-credits">0</span>
+                        <span id="user-currency">USD</span>
                     </div>
                 </div>
-                <div class="info-bot" id="info-player2">
-                    <img src="https://placehold.co/50/orange/white?text=B2" class="player-avatar" alt="Avatar de Bot 2">
-                    <div class="player-details">
-                        <span class="player-name">Bot 2</span>
-                        <div class="card-counter" id="counter-bot2">🂠 0</div>
-                    </div>
+            </div>
+
+            <div class="lobby-controls">
+                <button id="create-room-btn" class="btn btn-primary">Crear Mesa</button>
+                <button id="practice-btn" class="btn btn-secondary">Práctica</button>
+            </div>
+
+            <div class="rooms-section">
+                <h3>Mesas Disponibles</h3>
+                <div id="rooms-list" class="rooms-list">
+                    <!-- Las mesas se cargarán dinámicamente -->
                 </div>
-                <div class="info-bot" id="info-player3">
-                    <img src="https://placehold.co/50/red/white?text=B3" class="player-avatar" alt="Avatar de Bot 3">
-                    <div class="player-details">
-                        <span class="player-name">Bot 3</span>
-                        <div class="card-counter" id="counter-bot3">🂠 0</div>
+            </div>
+
+            <!-- Chat del Lobby -->
+            <div class="lobby-chat">
+                <div class="chat-header">
+                    <h4>Chat del Lobby</h4>
+                    <button id="lobby-chat-toggle" class="chat-toggle-btn">💬</button>
+                </div>
+                <div id="lobby-chat-window" class="chat-window">
+                    <div id="lobby-chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="lobby-chat-input" placeholder="Escribe un mensaje..." maxlength="200">
+                        <button id="lobby-chat-send">Enviar</button>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div class="center-area">
-        <div id="melds" class="melds">
-            <div id="melds-display" class="meld-display"></div>
-        </div>
-        <div class="piles-container">
-            <div id="deck" class="pile">Mazo</div>
-            <div id="discard" class="pile">Descarte</div>
-        </div>
-        </div>
 
-        <div class="player-area bottom">
-            <div class="info-bot human-info" id="info-player0">
-                <img src="https://placehold.co/50/green/white?text=P1" class="player-avatar" alt="Avatar de Jugador">
-                <div class="player-details">
-                    <span class="player-name">Jugador</span>
-                    <div class="card-counter" id="counter-human">🂠 0</div>
+        <!-- Contenedor del Juego -->
+        <div id="game-container" class="game-container" style="display: none;">
+            <!-- El contenido del juego se carga dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Modal de Login/Registro -->
+    <div id="login-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="modal-content">
+            <h2 class="panel-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h2>
+            <h3 id="login-modal-title">Iniciar Sesión / Registrarse</h3>
+            <form id="login-form">
+                <label for="login-username">Nombre:</label>
+                <input type="text" id="login-username" required maxlength="20">
+                
+                <label for="login-currency">Moneda:</label>
+                <select id="login-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <button type="submit" class="btn btn-primary">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Registro -->
+    <div id="register-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="register-modal-title">
+        <div class="modal-content">
+            <h2 class="panel-title">
+                <span class="card left-card"></span>
+                <span class="char" style="--i:1">L</span>
+                <span class="char" style="--i:2">a</span>
+                <span class="char" style="--i:3">&nbsp;</span>
+                <span class="char" style="--i:4">5</span>
+                <span class="char" style="--i:5">1</span>
+                <span class="card right-card"></span>
+            </h2>
+            <h3 id="register-modal-title">Registro de Usuario</h3>
+            <form id="register-form">
+                <label for="register-name">Nombre:</label>
+                <input type="text" id="register-name" required maxlength="20">
+                
+                <label for="register-currency">Moneda:</label>
+                <select id="register-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <div class="avatar-selection">
+                    <label>Avatar:</label>
+                    <div class="avatar-gallery">
+                        <div class="avatar-option selected" data-avatar="https://i.pravatar.cc/150?img=1">
+                            <img src="https://i.pravatar.cc/150?img=1" alt="Avatar 1">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=2">
+                            <img src="https://i.pravatar.cc/150?img=2" alt="Avatar 2">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=3">
+                            <img src="https://i.pravatar.cc/150?img=3" alt="Avatar 3">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=4">
+                            <img src="https://i.pravatar.cc/150?img=4" alt="Avatar 4">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=5">
+                            <img src="https://i.pravatar.cc/150?img=5" alt="Avatar 5">
+                        </div>
+                        <div class="avatar-option" data-avatar="https://i.pravatar.cc/150?img=6">
+                            <img src="https://i.pravatar.cc/150?img=6" alt="Avatar 6">
+                        </div>
+                    </div>
+                    <div class="avatar-upload">
+                        <input type="file" id="register-avatar-upload" accept="image/*" style="display: none;">
+                        <button type="button" id="upload-avatar-btn" class="btn btn-secondary">Subir Foto</button>
+                        <div id="avatar-preview-container" style="display: none;">
+                            <img id="avatar-preview" alt="Preview">
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="hand human" id="human-hand">
-                </div>
-                <div class="player-actions">
-                  <button id="start-game-btn" style="display: none;">▶️ Iniciar Partida</button>
-                  
-                  <button onclick="attemptMeld()" id="meld-btn">⬇️ Bajar Combinación</button>
-                  <button onclick="attemptDiscard()" id="discard-btn">🗑️ Descartar</button>
-              </div>
-        </div>
-        </main>
-
-    <div id="ready-overlay" class="overlay">
-        <div class="content">
-            <h2 id="welcome-message"></h2>
-            <p id="bet-info"></p>
-            <p id="penalty-info"></p>
-            <div id="rematch-status"></div>
-            <div class="button-group">
-                <button id="btn-ready-main">Confirmar Revancha</button>
-                <button id="btn-spectator-sit" style="display: none;">✔️ Sentarse en la Próxima Partida</button>
-                <button id="btn-start-rematch" style="display: none;">▶️ Iniciar Partida</button>
-                <button onclick="goBackToLobby()" class="secondary">Volver al Lobby</button>
-            </div>
-            </div>
-    </div>
-
-    <div id="victory-overlay" class="overlay hidden">
-        <div class="content">
-            <h2 id="victory-message">¡Victoria!</h2>
-            <div id="final-scores"></div>
-            <button id="btn-setup-rematch">🏆 Revancha</button>
-            <button onclick="goBackToLobby()" class="secondary">🚪 Volver al Lobby</button>
+                
+                <button type="submit" class="btn btn-primary">Registrarse</button>
+            </form>
         </div>
     </div>
 
-    <div id="elimination-overlay" class="overlay hidden">
-        <div class="content">
-        <h2 style="color:#ff4444;">❌ Eliminación por falta</h2>
-        <div id="elimination-message" style="text-align: left; line-height: 1.5;">Jugador X ha sido eliminado por la falta Y y pagará la multa adicional de Z.</div>
-        <button onclick="closeEliminationOverlay()">Aceptar</button>
+    <!-- Modal de Crear Mesa -->
+    <div id="create-room-modal" class="modal">
+        <div class="modal-content">
+            <h3>Crear Nueva Mesa</h3>
+            <form id="create-room-form">
+                <label for="room-name">Nombre de la Mesa:</label>
+                <input type="text" id="room-name" required maxlength="30">
+                
+                <label for="room-bet">Apuesta:</label>
+                <input type="number" id="room-bet" min="1" max="1000" value="10" required>
+                
+                <label for="room-penalty">Multa:</label>
+                <input type="number" id="room-penalty" min="1" max="100" value="5" required>
+                
+                <label for="room-currency">Moneda:</label>
+                <select id="room-currency">
+                    <option value="USD">USD - Dólar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="COP">COP - Peso Colombiano</option>
+                </select>
+                
+                <button type="submit" class="btn btn-primary">Crear Mesa</button>
+            </form>
         </div>
     </div>
 
-    <div id="practice-victory-modal" class="overlay" style="display: none;">
-        <div class="content">
-            <h2>¡Victoria!</h2>
-            <p>¡Felicidades, has ganado la partida de práctica!</p>
-            <button id="btn-accept-practice-victory">Aceptar</button>
-        </div>
-    </div>
-    <div id="practice-restart-modal" class="overlay" style="display: none;">
-        <div class="content">
-            <h2>Partida de Práctica Terminada</h2>
-            <p>¿Qué deseas hacer ahora?</p>
-            <div class="button-group">
-                <button id="btn-restart-practice">🔄 Reiniciar Práctica</button>
-                <button id="btn-exit-practice" class="secondary">🚪 Volver al Lobby</button>
+    <!-- Modal de Recorte de Avatar -->
+    <div id="avatar-crop-modal" class="modal">
+        <div class="modal-content crop-modal-content">
+            <h3>Recortar Avatar</h3>
+            <div class="crop-container">
+                <canvas id="crop-canvas"></canvas>
+            </div>
+            <div class="crop-controls">
+                <button id="crop-save" class="btn btn-primary">Guardar</button>
+                <button id="crop-cancel" class="btn btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
+
+    <!-- Toast para notificaciones -->
     <div id="toast" class="toast"></div>
 
-    <div id="sit-request-modal" class="overlay" style="display: none;">
-        <div class="content">
-            <h2>Asiento Disponible</h2>
-            <p>Un asiento ha quedado libre. ¿Deseas ocupar el puesto para la siguiente partida?</p>
-            <div class="button-group">
-                <button id="btn-confirm-sit">Sí, sentarme</button>
-                <button id="btn-decline-sit" class="secondary">No, seguir viendo</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirm-leave-modal" class="overlay" style="display: none;">
-        <div class="content">
-            <h2>Confirmar Salida</h2>
-            <p id="confirm-leave-message">¿Estás seguro de que quieres volver al lobby? Si estás jugando, se contará como una derrota y pagarás la apuesta y la multa.</p>
-            <div class="button-group">
-                <button id="btn-confirm-leave-yes">Sí, salir</button>
-                <button id="btn-confirm-leave-no" class="secondary">No, quedarme</button>
-            </div>
-        </div>
-    </div>
-
-
-    <div id="drag-clone-container"></div>
-</div>
-
-<div id="simple-funds-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10005; align-items: center; justify-content: center;">
-    <div style="background: #211e18; border: 2px solid #c5a56a; border-radius: 12px; padding: 25px; text-align: center; color: #e0d3b6; font-family: 'Georgia', serif; width: 90%; max-width: 380px;">
-        <h2 style="color: #ff4444; margin-top: 0; font-size: 1.5rem;">Fondos Insuficientes</h2>
-        <p id="simple-funds-message" style="line-height: 1.6; font-size: 1.1em;">Mensaje de error aquí.</p>
-        <button id="simple-funds-close-btn" style="margin-top: 20px; padding: 10px 30px; border-radius:8px; border: 2px solid #211e18; background: linear-gradient(to bottom, #d1b47a, #b59458); color: #211e18; font-weight: bold; cursor:pointer; font-size: 1rem;">Aceptar</button>
-    </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="game.js?v=1.3"></script>
-
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
