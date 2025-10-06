@@ -2027,9 +2027,10 @@ socket.on('accionDescartar', (data) => {
     }
     // << --- FIN DE LA NUEVA CORRECCIÓN --- >>
 
-    // REGLA 1 (CORREGIDA): El jugador debe haber robado, A MENOS QUE TENGA 15 CARTAS.
-    const isFirstTurnWith15Cards = playerHand.length === 15;
-    if (!room.hasDrawn && !isFirstTurnWith15Cards) {
+    // REGLA 1 (CORREGIDA): El jugador debe haber robado, A MENOS QUE SEA SU PRIMER TURNO.
+    // El primer turno se identifica por: tiene 15 cartas O ya se marcó hasDrawn al iniciar el juego
+    const isFirstTurn = playerHand.length === 15 || (room.hasDrawn && room.turnMelds.length === 0 && !room.drewFromDiscard);
+    if (!room.hasDrawn && !isFirstTurn) {
         const reason = 'Intentó descartar una carta sin haber robado primero.';
         console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
         return handlePlayerElimination(room, socket.id, reason, io);
