@@ -118,7 +118,7 @@ function hideOverlay(id) {
 }
 // ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
 
-const socket = io("http://localhost:3000", { autoConnect: false });
+const socket = io(window.location.origin, { autoConnect: false });
 
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
 let clientExchangeRates = {}; // Para guardar las tasas
