@@ -40,6 +40,9 @@ pool.query('SELECT NOW()', (err, res) => {
 // Función para inicializar las tablas de la base de datos
 async function initializeDatabase() {
   try {
+    // LÍNEA AÑADIDA PARA FORZAR LA RECREACIÓN:
+    await pool.query('DROP TABLE IF EXISTS users CASCADE;');
+
     // Tabla de usuarios
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -90,7 +93,7 @@ async function initializeDatabase() {
       )
     `);
 
-    console.log('✅ Tablas de la base de datos inicializadas correctamente');
+    console.log('✅ Tablas de la base de datos REGENERADAS correctamente');
   } catch (error) {
     console.error('❌ Error inicializando la base de datos:', error);
   }
