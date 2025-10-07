@@ -389,7 +389,12 @@ const adminAuth = (req, res, next) => {
     res.status(401).send('Autenticación requerida.');
 };
 
-// --- RUTAS DE API Y MIDDLEWARE ---
+// --- DEFINICIÓN DE RUTAS DE LA APLICACIÓN ---
+
+// 1. Middleware para parsear JSON (debe ir ANTES de las rutas que lo usan)
+// Ya está definido arriba en la línea 11
+
+// 2. Rutas de la API (deben ir PRIMERO)
 
 // RUTA DE REGISTRO
 app.post('/register', async (req, res) => {
@@ -1524,11 +1529,12 @@ function createAndStartPracticeGame(socket, username, io) {
 
 // --- FIN: SECCIÓN DE ADMINISTRACIÓN ---
 
-// --- SERVIR ARCHIVOS ESTÁTICOS Y RUTA PRINCIPAL ---
-// ESTA ES LA UBICACIÓN CORRECTA
+// 3. Middleware para servir archivos estáticos (CSS, JS del cliente, imágenes)
 app.use(express.static(path.join(__dirname)));
 
-app.get('*', (req, res) => { // Usamos '*' para capturar todas las demás rutas
+// 4. Ruta "catch-all" (debe ir AL FINAL de todas las rutas)
+// Para cualquier otra petición GET, sirve la aplicación principal (index.html)
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
