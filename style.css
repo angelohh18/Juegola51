@@ -942,6 +942,7 @@ body.game-active {
 }
 
 #game-container {
+    position: relative; /* <-- AÑADE ESTA LÍNEA */
     height: 100%;
     width: 100%;
     overflow: hidden; /* Evita el scroll en el cuerpo principal */
