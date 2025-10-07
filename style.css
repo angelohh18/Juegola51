@@ -555,7 +555,8 @@ html {
 }
 
 /* Modal Login */
-#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal {
+#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal,
+#pwa-install-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -570,6 +571,49 @@ html {
 #rules-modal { z-index: 10005; }
 #avatar-crop-modal { z-index: 10006; }
 #credit-modal { z-index: 10001; }
+
+/* --- INICIO: Estilos para el modal de información PWA --- */
+
+#pwa-install-modal {
+    z-index: 10010; /* Z-index específico que tenía */
+}
+
+#pwa-install-modal .modal-content {
+    max-width: 500px; /* Un ancho máximo adecuado para el texto */
+    text-align: left; /* Alineamos el texto a la izquierda para mejor legibilidad */
+}
+
+#pwa-install-modal h3 {
+    text-align: center; /* Centramos solo el título principal */
+}
+
+#pwa-install-modal .pwa-subtitle {
+    color: var(--casino-gold);
+    margin-top: 20px;
+}
+
+#pwa-install-modal .pwa-instructions {
+    padding-left: 20px;
+    line-height: 1.6;
+}
+
+#pwa-install-modal .pwa-alternative {
+    border-top: 1px solid #555;
+    padding-top: 15px;
+}
+
+#pwa-install-modal .pwa-optional-note {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-top: 20px;
+    text-align: center; /* Centramos esta nota opcional */
+}
+
+#pwa-install-modal button {
+    width: 100%; /* Hacemos que el botón ocupe todo el ancho como en los otros modales */
+}
+
+/* --- FIN: Estilos para el modal de información PWA --- */
 
 #register-modal .modal-content {
     width: 360px; /* Ancho específico del modal de registro */
