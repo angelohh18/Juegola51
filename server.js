@@ -9,6 +9,12 @@ const { Pool } = require('pg');
 
 const app = express();
 app.use(express.json()); // <-- AÑADE ESTA LÍNEA (después de const app = express())
+
+// Middleware de logging para debug
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -434,6 +440,10 @@ app.post('/register', async (req, res) => {
 });
 
 // RUTA DE LOGIN
+app.get('/login', (req, res) => {
+    res.status(405).json({ success: false, message: 'Método no permitido. Use POST.' });
+});
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
