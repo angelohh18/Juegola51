@@ -2766,4 +2766,4 @@ server.listen(PORT, async () => {
   } catch (error) {
     console.error('❌ Error verificando estructura de la tabla:', error);
   }
-});
+});// Verificación de servidor - Tue Oct  7 13:42:08 WEST 2025
