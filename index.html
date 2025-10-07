@@ -332,7 +332,10 @@
             <strong>Es opcional.</strong> También puedes seguir jugando perfectamente desde el navegador.
         </p>
 
-        <button id="btn-close-pwa-modal">Aceptar</button>
+        <div class="button-group" style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="btn-install-pwa" style="display: none; width: 100%;">⭐ Instalar Aplicación</button>
+            <button id="btn-close-pwa-modal" style="width: 100%;">Aceptar</button>
+        </div>
     </div>
 </div>
 
@@ -537,14 +540,11 @@ if ('serviceWorker' in navigator) {
 }
 
 // Manejar instalación de PWA
-let deferredPrompt;
+let deferredPrompt; // <-- Hazla global
 window.addEventListener('beforeinstallprompt', (e) => {
     console.log('PWA puede ser instalada');
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Opcional: mostrar botón de instalación personalizado
-    // showInstallButton();
 });
 
 // Manejar cuando la PWA se instala

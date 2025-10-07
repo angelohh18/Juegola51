@@ -27,9 +27,9 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
 // Para solucionarlo de forma segura, creamos un alias que apunta a la función correcta.
 const convertcurrency = convertCurrency;
 
-// ▼▼▼ FUNCIÓN PWA INSTALL MODAL ▼▼▼
+// ▼▼▼ REEMPLAZA LA FUNCIÓN showPwaInstallModal ENTERA CON ESTA VERSIÓN MEJORADA ▼▼▼
 function showPwaInstallModal() {
-    // 1. Comprueba si ya se mostró en esta sesión para no ser molesto.
+    // 1. Comprueba si ya se mostró en esta sesión.
     if (sessionStorage.getItem('pwaModalShown')) {
         return;
     }
@@ -40,22 +40,43 @@ function showPwaInstallModal() {
     if (isMobile) {
         const modal = document.getElementById('pwa-install-modal');
         const closeBtn = document.getElementById('btn-close-pwa-modal');
+        const installBtn = document.getElementById('btn-install-pwa'); // <-- AÑADE ESTA LÍNEA
 
         if (modal && closeBtn) {
             // 3. Muestra el modal.
             modal.style.display = 'flex';
 
-            // 4. Hace que el botón "Aceptar" cierre el modal.
+            // 4. Si la app es instalable (deferredPrompt existe), muestra el botón de instalar.
+            if (installBtn && window.deferredPrompt) {
+                installBtn.style.display = 'block';
+
+                installBtn.onclick = async () => {
+                    // Muestra el prompt de instalación nativo.
+                    window.deferredPrompt.prompt();
+
+                    // Espera a que el usuario responda.
+                    const { outcome } = await window.deferredPrompt.userChoice;
+                    console.log(`Respuesta del usuario al prompt de instalación: ${outcome}`);
+
+                    // Limpiamos el prompt, ya que solo se puede usar una vez.
+                    window.deferredPrompt = null;
+
+                    // Ocultamos el modal y el botón de instalar después de la acción.
+                    modal.style.display = 'none';
+                };
+            }
+
+            // 5. El botón "Aceptar" simplemente cierra el modal.
             closeBtn.onclick = () => {
                 modal.style.display = 'none';
             };
 
-            // 5. Guarda una bandera para que no vuelva a aparecer en esta sesión.
+            // 6. Guarda una bandera para que no vuelva a aparecer en esta sesión.
             sessionStorage.setItem('pwaModalShown', 'true');
         }
     }
 }
-// ▲▲▲ FIN DE LA FUNCIÓN PWA INSTALL MODAL ▲▲▲
+// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 // Nueva función simple para mostrar el modal de fondos insuficientes
 function showInsufficientFundsModal(requiredText, missingText) {
