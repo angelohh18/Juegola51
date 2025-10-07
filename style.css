@@ -926,7 +926,7 @@ html {
         max-height: 100vh !important;
         border-radius: 0;
         border: none;
-        padding: 10px;
+        padding: 0; /* Cambiado de 10px a 0 */
     }
     
     .lobby-main {
@@ -1535,8 +1535,8 @@ body.game-active {
         height: 100vh;
         max-width: none;
         margin: 0;
-        border-width: 0.6vw;
-        outline-width: 0.3vw;
+        border-width: 0;      /* Cambiado de 0.6vw a 0 */
+        outline-width: 0;     /* Cambiado de 0.3vw a 0 */
         border-radius: 0;
         padding-top: 5.5vw;
     }
@@ -1781,21 +1781,70 @@ body.game-active {
 }
 
 @media (max-width: 767px) and (orientation: landscape) {
+    /* -- INICIO: REGLAS COMPLETAS PARA MÓVILES PEQUEÑOS -- */
+
+    /* Oculta el header y ajusta la tabla principal a pantalla completa */
+    #game-container header {
+        display: none;
+    }
     #table {
         padding-top: 0;
-    }
-    
-    .player-area.top {
-        top: 1vw;
+        width: 100vw;
+        height: 100vh;
     }
 
+    /* Ajusta el área de jugadores superior */
+    .player-area.top {
+        top: 1vw;
+        gap: 1.5vw; /* Un poco menos de espacio entre oponentes */
+    }
+
+    /* Define el tamaño de las cartas en las combinaciones (melds) */
     #game-container .meld-group .card {
         width: 4.2vw;
         height: 6.3vw;
     }
     #game-container .meld-group .card:not(:first-child) {
-        margin-left: -2.1vw;
+        margin-left: -2.2vw; /* Un poco más superpuestas */
     }
+
+    /* --- ESTAS SON LAS REGLAS IMPORTANTES QUE FALTABAN O ERAN INCORRECTAS --- */
+
+    /* Redefine el tamaño de las cartas principales en la mano */
+    .card { 
+        width: 7vw;   /* Ligeramente más grandes para mejor visibilidad */
+        height: 10.5vw;
+    }
+
+    /* Ajusta la superposición de las cartas en la mano */
+    .hand.human .card:not(:first-child) { 
+        margin-left: -3.8vw;
+    }
+
+    /* Ajusta el levantamiento de la carta seleccionada */
+    .card.selected { 
+        transform: translateY(-1.5vw);
+    }
+
+    /* Asegura que el área de juego inferior se comporte correctamente */
+    .player-area.bottom {
+        gap: 1.5vw;
+    }
+
+    /* Reduce el tamaño de los botones de acción como solicitaste */
+    .player-actions button {
+        padding: 0.35vw 0.6vw;
+        font-size: 0.9vw; /* Ligeramente más grande para legibilidad */
+        border-radius: 0.5vw;
+    }
+
+     /* Reduce los botones superiores como solicitaste */
+    #game-rules-btn, #btn-back-to-lobby-ingame, #chat-toggle-btn {
+        padding: 0.5vw 1vw;
+        font-size: 1.1vw; /* Ligeramente más grande para legibilidad */
+    }
+
+    /* -- FIN DE LAS REGLAS COMPLETAS -- */
 }
 
 @media (max-width: 900px) and (orientation: portrait) {
