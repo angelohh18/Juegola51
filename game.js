@@ -140,59 +140,59 @@ socket.on('connect', () => {
 });
 
 
-// --- INICIO: SCRIPT DEL LOBBY ---
-(function(){
+// ▼▼▼ FUNCIÓN PWA INSTALL MODAL (GLOBAL) ▼▼▼
+function showPwaInstallModal() {
+    // 1. Comprueba si ya se mostró en esta sesión.
+    if (sessionStorage.getItem('pwaModalShown')) {
+        return;
+    }
 
-    // ▼▼▼ PEGA LA FUNCIÓN COMPLETA AQUÍ ▼▼▼
-    function showPwaInstallModal() {
-        // 1. Comprueba si ya se mostró en esta sesión.
-        if (sessionStorage.getItem('pwaModalShown')) {
-            return;
-        }
+    // 2. Detecta si el usuario está en un dispositivo móvil.
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // 2. Detecta si el usuario está en un dispositivo móvil.
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        const modal = document.getElementById('pwa-install-modal');
+        const closeBtn = document.getElementById('btn-close-pwa-modal');
+        const installBtn = document.getElementById('btn-install-pwa');
 
-        if (isMobile) {
-            const modal = document.getElementById('pwa-install-modal');
-            const closeBtn = document.getElementById('btn-close-pwa-modal');
-            const installBtn = document.getElementById('btn-install-pwa');
+        if (modal && closeBtn) {
+            // 3. Muestra el modal.
+            modal.style.display = 'flex';
 
-            if (modal && closeBtn) {
-                // 3. Muestra el modal.
-                modal.style.display = 'flex';
+            // 4. Si la app es instalable (deferredPrompt existe), muestra el botón de instalar.
+            if (installBtn && window.deferredPrompt) {
+                installBtn.style.display = 'block';
 
-                // 4. Si la app es instalable (deferredPrompt existe), muestra el botón de instalar.
-                if (installBtn && window.deferredPrompt) {
-                    installBtn.style.display = 'block';
+                installBtn.onclick = async () => {
+                    // Muestra el prompt de instalación nativo.
+                    window.deferredPrompt.prompt();
 
-                    installBtn.onclick = async () => {
-                        // Muestra el prompt de instalación nativo.
-                        window.deferredPrompt.prompt();
+                    // Espera a que el usuario responda.
+                    const { outcome } = await window.deferredPrompt.userChoice;
+                    console.log(`Respuesta del usuario al prompt de instalación: ${outcome}`);
 
-                        // Espera a que el usuario responda.
-                        const { outcome } = await window.deferredPrompt.userChoice;
-                        console.log(`Respuesta del usuario al prompt de instalación: ${outcome}`);
+                    // Limpiamos el prompt, ya que solo se puede usar una vez.
+                    window.deferredPrompt = null;
 
-                        // Limpiamos el prompt, ya que solo se puede usar una vez.
-                        window.deferredPrompt = null;
-
-                        // Ocultamos el modal y el botón de instalar después de la acción.
-                        modal.style.display = 'none';
-                    };
-                }
-
-                // 5. El botón "Aceptar" simplemente cierra el modal.
-                closeBtn.onclick = () => {
+                    // Ocultamos el modal y el botón de instalar después de la acción.
                     modal.style.display = 'none';
                 };
-
-                // 6. Guarda una bandera para que no vuelva a aparecer en esta sesión.
-                sessionStorage.setItem('pwaModalShown', 'true');
             }
+
+            // 5. El botón "Aceptar" simplemente cierra el modal.
+            closeBtn.onclick = () => {
+                modal.style.display = 'none';
+            };
+
+            // 6. Guarda una bandera para que no vuelva a aparecer en esta sesión.
+            sessionStorage.setItem('pwaModalShown', 'true');
         }
     }
-    // ▲▲▲ FIN DE LA FUNCIÓN PEGADA ▲▲▲
+}
+// ▲▲▲ FIN DE LA FUNCIÓN PWA INSTALL MODAL ▲▲▲
+
+// --- INICIO: SCRIPT DEL LOBBY ---
+(function(){
 
     socket.on('updateRoomList', (serverRooms) => {
         lastKnownRooms = serverRooms || [];
