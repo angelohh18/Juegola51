@@ -1901,22 +1901,3 @@ body.game-active {
   border: 1px solid #c5a56a44;
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
 }
-
-/* ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE style.css ▼▼▼ */
-
-#pwa-install-modal .modal-content {
-    width: 90vw;
-    max-width: 450px;
-    text-align: center;
-    line-height: 1.5;
-}
-
-#pwa-install-modal ol {
-    margin-bottom: 20px;
-}
-
-#pwa-install-modal li {
-    margin-bottom: 10px;
-}
-
-/* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
