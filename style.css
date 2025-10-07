@@ -1491,6 +1491,23 @@ body.game-active {
     }
 }
 
+/* Reglas específicas para dispositivos móviles */
+@media (max-width: 768px) and (orientation: landscape) {
+    #table {
+        transform: translate(-50%, -50%) scale(min(calc(100vw / 1400), calc(100vh / 788)));
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+}
+
+@media (max-width: 480px) and (orientation: landscape) {
+    #table {
+        transform: translate(-50%, -50%) scale(min(calc(100vw / 1400), calc(100vh / 788)));
+        max-width: 98vw;
+        max-height: 98vh;
+    }
+}
+
 @media (max-width: 900px) and (orientation: portrait) {
   #game-container #rotate-device-overlay {
     display: flex;
