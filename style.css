@@ -4,97 +4,16 @@
     box-sizing: border-box;
 }
 body, html {
-    margin: 0;
-    padding: 0;
+    margin: 0; padding: 0; height: 100%;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #211e18;
+    background: #211e18; /* Cambiado de gradiente a sólido */
     color: #e0d3b6;
-    
-    /* --- LA CLAVE PARA UNA PANTALLA ESTABLE --- */
-    overflow: hidden; /* Prevenimos el scroll en el nivel más alto */
-    position: fixed;  /* Asegura que el layout no se mueva */
-    width: 100%;
-    height: 100%;
-    
-    -webkit-touch-callout: none;
-    user-select: none;
+    overflow: hidden; /* Prevenir movimiento de layout al arrastrar elementos */
 }
 
 /* Tipografía fluida para responsividad */
 html {
     font-size: clamp(12px, 1.5vw, 16px);
-}
-
-/* ==========================================================
-   SISTEMA UNIFICADO DE MODALES Y OVERLAYS
-   ========================================================== */
-
-/* 1. Base para todos los contenedores de pantalla completa (Overlays) */
-.overlay, 
-#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #pwa-install-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    backdrop-filter: blur(4px);
-    display: none; /* Ocultos por defecto, JS los mostrará con display: flex */
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
-
-/* 2. Estilo para el contenido interno de TODOS los modales */
-.modal-content {
-    background: #211e18;
-    border: 2px solid #c5a56a;
-    border-radius: 20px;
-    padding: clamp(15px, 4vw, 30px);
-    box-shadow: 0 0 25px rgba(197, 165, 106, 0.4);
-    
-    /* --- LA MAGIA PARA EL CENTRADO Y ESCALADO PERFECTO --- */
-    width: 90vw;           /* Ocupa el 90% del ancho de la pantalla */
-    max-width: 420px;      /* Pero nunca más de 420px de ancho */
-    max-height: 85vh;      /* Ni más del 85% de la altura de la pantalla */
-    overflow-y: auto;      /* Si el contenido no cabe, AÑADE SCROLL INTERNO */
-    
-    display: flex;
-    flex-direction: column;
-}
-
-/* 3. Ajustes específicos para modales que necesitan ser más anchos */
-#rules-modal .modal-content {
-    max-width: 600px;
-}
-
-#pwa-install-modal .modal-content {
-    max-width: 450px;
-}
-
-/* Variable CSS para altura real en móviles (maneja notch) */
-:root {
-    --vh: 1vh;
-}
-
-/* Forzar pantalla completa en móviles */
-@media (max-width: 992px) {
-    html, body {
-        height: 100% !important;
-        height: calc(var(--vh, 1vh) * 100) !important;
-        overflow: hidden !important;
-        position: fixed !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Asegurar que todos los elementos usen la altura completa */
-    #lobby-overlay,
-    #game-container,
-    main#table {
-        height: 100% !important;
-        height: calc(var(--vh, 1vh) * 100) !important;
-        min-height: 100% !important;
-        min-height: calc(var(--vh, 1vh) * 100) !important;
-    }
 }
 
 /* Overlay que ocupa toda la pantalla */
@@ -109,20 +28,23 @@ html {
     padding: 0; /* CORREGIDO: Padding ajustado para mejor escala en móviles */
 }
 
-/* Contenedor del Lobby */
+/* Contenedor principal con borde dorado sutil - CORREGIDO */
 .overlay-content {
     background: #211e18;
     border: 2px solid #c5a56a;
     border-radius: 20px;
-    box-shadow: 0 0 10px #c5a56a88, inset 0 0 15px #c5a56a55;
-    width: 1100px;
-    max-width: 1100px;
-    height: 700px;
-    max-height: 95vh;
+    box-shadow:
+    0 0 10px #c5a56a88,
+    inset 0 0 15px #c5a56a55;
+    width: 1100px; /* Ancho fijo para emular escritorio */
+    max-width: 1100px; /* Asegurar ancho fijo */
+    height: 700px; /* Alto fijo para mantener proporción y evitar distorsión al escalar */
+    max-height: 95vh; /* Salvaguarda para que no se salga de pantallas con aspect ratio extremo */
     display: flex;
     flex-direction: column;
-    padding: clamp(10px, 2vw, 20px) clamp(15px, 2.5vw, 30px);
+    padding: clamp(10px, 2vw, 20px) clamp(15px, 2.5vw, 30px); /* Padding fluido */
     color: #e0d3b6;
+    /* Para el centrado en la vista de escritorio */
     position: relative;
 }
 
@@ -519,8 +441,146 @@ html {
     border: 2px solid var(--casino-dark-panel);
 }
 
+/* CORRECCIÓN: Estilos generales para todos los modales */
+#login-modal .modal-content,
+#register-modal .modal-content,
+#credit-modal .modal-content,
+#rules-modal .modal-content,
+#create-room-modal .modal-content,
+#avatar-crop-modal .modal-content,
+#insufficient-credits-modal .modal-content {
+    background: #211e18;
+    border: 2px solid #c5a56a;
+    border-radius: 20px;
+    padding: 20px;
+    width: 320px;
+    color: #e0d3b6;
+    font-weight: 700;
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+}
 
+#login-modal .modal-content h3,
+#register-modal .modal-content h3,
+#credit-modal .modal-content h3,
+#rules-modal .modal-content h3,
+#create-room-modal .modal-content h3,
+#avatar-crop-modal .modal-content h3 {
+    margin-top: 0;
+    text-align: center;
+}
 
+#login-modal .modal-content label,
+#register-modal .modal-content label,
+#create-room-modal .modal-content label {
+    display: block;
+    margin-top: 15px;
+}
+
+#login-modal .modal-content input,
+#register-modal .modal-content input,
+#register-modal .modal-content select,
+#create-room-modal .modal-content input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 10px;
+    border: none;
+    box-shadow: inset 0 0 5px #c5a56a88;
+    font-weight: 700;
+    color: #6d2932; /* Color actualizado */
+}
+
+#login-modal .error,
+#register-modal .error,
+#create-room-modal .error {
+    display: none;
+    margin-top: 10px;
+    color: #c5a56a;
+    font-weight: 900;
+}
+
+#credit-modal .modal-content a {
+    color: #c5a56a;
+    font-weight: 900;
+    text-decoration: none;
+}
+#credit-modal .modal-content a:hover {
+    text-decoration: underline;
+}
+
+#login-modal .modal-content button,
+#register-modal .modal-content button,
+#credit-modal .modal-content button,
+#rules-modal .modal-content button,
+#create-room-modal .modal-content button,
+#avatar-crop-modal .modal-content button,
+#insufficient-credits-modal .modal-content button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 15px;
+    border: none;
+    background: #c5a56a; /* Cambiado de gradiente a sólido */
+    color: #211e18;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1rem;
+    box-shadow: inset 0 0 8px #e0d3b6;
+    transition: background 0.3s ease;
+}
+
+#login-modal .modal-content button:hover,
+#register-modal .modal-content button:hover,
+#credit-modal .modal-content button:hover,
+#rules-modal .modal-content button:hover,
+#create-room-modal .modal-content button:hover,
+#avatar-crop-modal .modal-content button:hover,
+#insufficient-credits-modal .modal-content button:hover {
+    background: #9d7b40; /* Cambiado de gradiente a sólido */
+}
+
+#login-modal .modal-content button.secondary,
+#register-modal .modal-content button.secondary,
+#create-room-modal .modal-content button.secondary,
+#avatar-crop-modal .modal-content button.secondary {
+    background: #6D2932;
+    color: #e0d3b6;
+    margin-top: 10px;
+}
+
+#login-modal .modal-content button.secondary:hover,
+#register-modal .modal-content button.secondary:hover,
+#create-room-modal .modal-content button.secondary:hover,
+#avatar-crop-modal .modal-content button.secondary:hover {
+    background: #58141f;
+}
+
+/* Modal Login */
+#login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    align-items: center;
+    justify-content: center;
+    z-index: 10002;
+}
+
+#register-modal { z-index: 10003; }
+#create-room-modal { z-index: 10004; }
+#rules-modal { z-index: 10005; }
+#avatar-crop-modal { z-index: 10006; }
+#credit-modal { z-index: 10001; }
+
+#register-modal .modal-content {
+    width: 360px; /* Ancho específico del modal de registro */
+}
+
+#register-modal .success {
+    display: none;
+    margin-top: 10px;
+    color: #e0d3b6;
+    font-weight: 900;
+}
 
 #credit-modal .modal-content {
     text-align: center;
@@ -695,45 +755,117 @@ html {
     padding: 20px;
 }
 
+@media (hover: none) and (orientation: portrait) {
+    body.is-logged-in #lobby-overlay,
+    body.is-logged-in #create-room-modal,
+    body.is-logged-in #credit-modal {
+    display: none !important;
+    }
+    body.is-logged-in #orientation-message {
+    display: flex;
+    }
+}
 
 @media (max-width: 992px) and (orientation: landscape) {
     .overlay-content {
-        transform: none !important;
-        left: 0 !important;
-        top: 0 !important;
-        position: absolute !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        max-width: 100vw !important;
-        max-height: 100vh !important;
-        border-radius: 0;
-        border: none;
+    transform: none !important;
+    left: 0 !important;
+    top: 0 !important;
+    position: absolute !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0;
+    border: none;
+    padding: 10px;
+    }
+    .user-panel {
         padding: 10px;
     }
-    .user-panel { padding: 10px; }
-    .user-panel .panel-title { font-size: 2rem; margin-bottom: 8px; }
-    .user-panel .avatar-container, .user-panel .avatar { width: 95px; height: 95px; margin-bottom: 8px; }
-    .user-panel .username { font-size: 1.1rem; margin-bottom: 8px; }
-    .user-panel .credits { margin-bottom: 10px; padding: 9px; font-size: 0.9rem; }
-    .button { padding: 9px 0; margin-bottom: 8px; font-size: 0.85rem; border-radius: 10px; }
+    .user-panel .panel-title {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 95px;
+        height: 95px;
+        margin-bottom: 8px;
+    }
+    .user-panel .username {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+    .user-panel .credits {
+        margin-bottom: 10px;
+        padding: 9px;
+        font-size: 0.9rem;
+    }
+    .button {
+        padding: 9px 0;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
 }
 
 @media (max-width: 767px) and (orientation: landscape) {
-    .lobby-main { gap: 8px; }
-    .overlay-content { padding: 8px !important; }
-    .user-panel, .tables-panel, .chat-header, .chat-messages, .chat-input { padding: 10px; }
-    .user-panel { min-width: 160px; flex-basis: 160px; }
-    .tables-panel { min-width: 0; }
-    .chat-panel { min-width: 200px; flex-basis: 220px; }
-    .user-panel .avatar-container, .user-panel .avatar { width: 90px; height: 90px; }
-    .user-panel .avatar-label { width: 30px; height: 30px; font-size: 18px; }
-    .user-panel .username { font-size: 1rem; }
-    .user-panel .credits { padding: 8px; font-size: 0.9rem; margin-bottom: 12px; }
-    .button { padding: 8px 0; font-size: 0.85rem; border-radius: 8px; margin-bottom: 6px; }
-    .table-item { padding: 12px; min-height: 160px; }
-    .tables-panel { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-    .chat-input textarea { padding: 8px; }
-    .chat-input button { padding: 8px 15px; }
+    .lobby-main {
+        gap: 8px;
+    }
+    .overlay-content {
+        padding: 8px !important;
+    }
+    .user-panel, .tables-panel, .chat-header, .chat-messages, .chat-input {
+        padding: 10px;
+    }
+    .user-panel {
+        min-width: 160px; /* Reducir ancho mínimo */
+        flex-basis: 160px;
+    }
+    .tables-panel {
+        min-width: 0; /* Permitir que se encoja más */
+    }
+    .chat-panel {
+        min-width: 200px; /* Reducir ancho mínimo */
+        flex-basis: 220px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 90px;
+        height: 90px;
+    }
+    .user-panel .avatar-label {
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+    }
+    .user-panel .username {
+        font-size: 1rem;
+    }
+    .user-panel .credits {
+        padding: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+    .button {
+        padding: 8px 0;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        margin-bottom: 6px;
+    }
+    .table-item {
+        padding: 12px;
+        min-height: 160px;
+    }
+    .tables-panel {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .chat-input textarea {
+        padding: 8px;
+    }
+    .chat-input button {
+        padding: 8px 15px;
+    }
 }
 /* --- FIN DE ESTILOS DE LOBBY.HTML --- */
 
@@ -783,19 +915,14 @@ body.game-active {
     box-shadow:0 2px 10px rgba(0,0,0,0.5);
 }
 #game-container header h1 { color: var(--casino-gold); font-size:2.2rem; margin:0; text-shadow: 1px 1px 3px #000; }
-/* Contenedor de la Mesa de Juego */
 #table {
-    width: 95%;
-    max-width: 1400px;
-    height: 700px;
-    margin: 20px auto;
+    width:95%; max-width:1400px; height:700px; margin:20px auto;
     border: 8px solid var(--casino-dark-panel);
     outline: 4px solid var(--casino-gold);
-    border-radius: 16px;
+    border-radius:16px;
     background: var(--casino-bg);
     box-shadow: 0 0 30px rgba(0,0,0,0.6);
-    position: relative;
-    overflow: hidden;
+    position:relative; overflow:hidden;
 }
 .player-area { position:absolute; text-align:center; }
 .player-area.top {
@@ -1337,7 +1464,7 @@ body.game-active {
 
     .player-area.bottom {
         bottom: 0.5vw; 
-        flex-direction: row;
+        flex-direction: row; /* Changed from column */
         gap: 2vw;
         width: 98%;
         margin: 0 auto;
@@ -1348,12 +1475,12 @@ body.game-active {
         padding: 0.85vw;
         min-height: auto;
         border-radius: 0.85vw;
-        margin: 0;
-        width: auto;
-        flex-grow: 1;
+        margin: 0; /* Changed */
+        width: auto; /* Changed */
+        flex-grow: 1; /* Added */
     }
     .player-actions {
-        position: relative;
+        position: relative; /* Ensure relative positioning */
         right: auto;
         transform: none;
         gap: 0.8vw;
@@ -1367,7 +1494,7 @@ body.game-active {
     }
     
     #game-container:not(.spectator-view) .info-bot.human-info {
-        transform: scale(0.75);
+        transform: scale(0.75); /* Más pequeño */
     }
 
     .info-bot { 
@@ -1377,8 +1504,8 @@ body.game-active {
     }
 
     .player-avatar {
-        width: 2.8vw;
-        height: 2.8vw;
+        width: 2.8vw; /* Más pequeño */
+        height: 2.8vw; /* Más pequeño */
         border-width: 0.14vw;
         margin-right: 0.6vw;
     }
@@ -1387,11 +1514,11 @@ body.game-active {
     }
     
     .card-counter { 
-        font-size: 0.9vw;
+        font-size: 0.9vw; /* Más pequeño */
         padding: 0.28vw 0.57vw;
         border-radius: 0.42vw;
     }
-    .player-name { font-size: 1vw; }
+    .player-name { font-size: 1vw; } /* Más pequeño */
 
     .card { 
         width: 6.4vw;
@@ -1455,14 +1582,18 @@ body.game-active {
         font-size: 0.85vw;
     }
   
+    /* --- INICIO: MODIFICACIÓN DE TAMAÑO DE BOTONES --- */
+    /* Esta regla unificada reduce el tamaño de todos los botones de la interfaz de juego
+       para mejorar la visibilidad de la mesa en dispositivos pequeños. */
     .top-controls-wrapper button,
     .player-actions button {
-        padding: 0.4vw 0.8vw;
-        font-size: 0.75vw;
+        padding: 0.4vw 0.8vw;       /* Reducimos el padding para hacer el botón más compacto */
+        font-size: 0.75vw;          /* Unificamos y reducimos el tamaño de la fuente */
         border-radius: 0.5vw;
         border-width: 0.14vw;
         margin: 0;
     }
+    /* --- FIN: MODIFICACIÓN DE TAMAÑO DE BOTONES --- */
 
     #turn-indicator, #points-indicator, #debug-info {
         font-size: 0.85vw;
@@ -1561,33 +1692,23 @@ body.game-active {
         margin-left: -2.1vw;
     }
 
+    /* ▼▼▼ AÑADE ESTA REGLA DENTRO DEL MEDIA QUERY ▼▼▼ */
     #game-pot-container {
-        top: 0.5vw;
+        top: 0.5vw;  /* Un poco más arriba */
         left: 1.5vw;
-        transform: scale(0.85);
+        transform: scale(0.85); /* Un poco más pequeño */
         transform-origin: top left;
     }
+    /* ▲▲▲ FIN DE LA REGLA A AÑADIR ▲▲▲ */
 }
 
-/* Media query para dispositivos muy pequeños en portrait */
-
-/* Media query para dispositivos extremadamente pequeños */
-@media (max-width: 480px) and (orientation: landscape) {
-    .overlay-content {
-        /* Mantener diseño original pero escalado para pantallas muy pequeñas */
-        transform: scale(calc(min(100vw / 1100, 100vh / 700))) !important;
-        transform-origin: center center !important;
-        left: 50% !important;
-        top: 50% !important;
-        margin-left: -550px !important;
-        margin-top: -350px !important;
-        position: absolute !important;
-        width: 1100px !important;
-        height: 700px !important;
-        border-radius: 20px !important;
-        border: 2px solid #c5a56a !important;
-        padding: clamp(5px, 1vw, 10px) clamp(10px, 1.5vw, 20px) !important;
-    }
+@media (max-width: 900px) and (orientation: portrait) {
+  #game-container #rotate-device-overlay {
+    display: flex;
+  }
+  main#table, #game-container header {
+    display: none;
+  }
 }
 /* --- FIN DE ESTILOS DE INDEX.HTML --- */
 
@@ -1764,6 +1885,9 @@ body.game-active {
   /* 2. Nuevo color de fondo para que resalte */
   background: #6D2932; /* Usamos el color borgoña del tapete */
 
+  /* 3. Aumentamos el tamaño general (título y cartas) */
+  transform: scale(1.2); /* Lo hace un 20% más grande */
+
   /* --- Estilos base copiados del original para mantener la consistencia --- */
   font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
   font-weight: 900;
@@ -1776,32 +1900,6 @@ body.game-active {
   border-radius: 10px;
   border: 1px solid #c5a56a44;
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
-}
-
-/* Media Query para corregir modales en móviles (vista vertical) */
-@media (max-width: 600px) and (orientation: portrait) {
-    /* Hacemos que todos los modales sean fluidos y nunca más altos que la pantalla */
-    #login-modal .modal-content,
-    #register-modal .modal-content,
-    #credit-modal .modal-content,
-    #rules-modal .modal-content,
-    #create-room-modal .modal-content,
-    #avatar-crop-modal .modal-content,
-    #insufficient-credits-modal .modal-content {
-        width: 90vw; /* El ancho será el 90% de la pantalla */
-        max-width: 400px; /* Pero nunca más de 400px */
-        
-        /* LA SOLUCIÓN CLAVE: */
-        max-height: 85vh; /* La altura nunca superará el 85% de la pantalla */
-        overflow-y: auto; /* Si el contenido no cabe, se podrá hacer scroll */
-
-        padding: 15px; /* Un poco menos de padding en pantallas pequeñas */
-    }
-
-    /* Ajuste específico para la galería de avatares en el registro */
-    #register-modal .avatar-gallery {
-        max-height: 110px; /* Reducimos la altura de la galería de avatares */
-    }
 }
 
 /* ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE style.css ▼▼▼ */
@@ -1822,55 +1920,3 @@ body.game-active {
 }
 
 /* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
-
-/* ==========================================================
-   PULIDO FINAL DE DISEÑO
-   ========================================================== */
-
-/* 1. Hacemos más compacta la galería de avatares en el modal de registro */
-#register-modal .modal-content .avatar-gallery {
-    max-height: 120px; /* Reducimos su altura máxima */
-    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); /* Columnas más pequeñas */
-}
-#register-modal .modal-content .avatar-item {
-    width: 50px;
-    height: 50px;
-}
-
-/* 2. Damos un margen a la mesa de juego para que no toque los bordes */
-/* Regla eliminada - ahora se usa el nuevo enfoque responsive */
-
-/* 3. Ajustamos la posición de los controles del juego para que respeten el margen */
-#chat-container {
-    top: 2vh;
-    right: 2vw;
-}
-#game-pot-container {
-    top: 2vh;
-    left: 2vw;
-}
-
-/* ==========================================================
-   CONTROL DE ORIENTACIÓN PARA LOBBY Y JUEGO
-   ========================================================== */
-
-/* Esta regla se activa solo en dispositivos móviles (<900px) en modo vertical */
-@media (max-width: 900px) and (orientation: portrait) {
-
-    /* 1. Oculta el lobby y la mesa de juego */
-    body.is-logged-in #lobby-overlay,
-    body.game-active #game-container {
-        display: none !important;
-    }
-    
-    /* 2. Muestra el mensaje para girar el dispositivo SOLO si el lobby o el juego están activos */
-    body.is-logged-in #orientation-message,
-    body.game-active #orientation-message {
-        display: flex;
-    }
-
-    /* 3. Nos aseguramos de que el overlay de rotación del juego se oculte para no interferir */
-    #game-container #rotate-device-overlay {
-        display: none;
-    }
-}
