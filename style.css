@@ -961,17 +961,16 @@ body.game-active {
 }
 #game-container header h1 { color: var(--casino-gold); font-size:2.2rem; margin:0; text-shadow: 1px 1px 3px #000; }
 #table {
-    width: 1400px;         /* Ancho fijo */
-    height: 788px;         /* Alto fijo (proporción 16:9) */
-    margin: 0;             /* Sin margen */
-    position: absolute;    /* Posición absoluta */
-    top: 50%;
-    left: 50%;
+    width: 95%;
+    max-width: 1400px;
+    height: 700px;
+    margin: 20px auto;
     border: 8px solid var(--casino-dark-panel);
     outline: 4px solid var(--casino-gold);
     border-radius: 16px;
     background: var(--casino-bg);
     box-shadow: 0 0 30px rgba(0,0,0,0.6);
+    position: relative;
     overflow: hidden;
 }
 .player-area { position:absolute; text-align:center; }
@@ -1484,27 +1483,276 @@ body.game-active {
 
 /* Bloque eliminado - era el causante del problema de escalado */
 
-/* Nueva regla de escalado simple y efectiva */
-@media (orientation: landscape) {
+/* Reglas adaptativas para dispositivos móviles */
+@media (max-width: 992px) and (orientation: landscape) {
     #table {
-        transform: translate(-50%, -50%) scale(min(calc(100vw / 1400), calc(100vh / 788)));
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        border-width: 0.6vw;
+        outline-width: 0.3vw;
+        border-radius: 0;
+        padding-top: 5.5vw;
+    }
+    
+    .player-area.top { 
+        top: 1.2vw; 
+        width: 90%;
+    }
+    .opponents-container {
+        gap: 2vw;
+    }
+
+    .player-area.bottom {
+        bottom: 0.5vw; 
+        flex-direction: row;
+        gap: 2vw;
+        width: 98%;
+        margin: 0 auto;
+        left: auto;
+        transform: none;
+    }
+    .hand.human { 
+        padding: 0.85vw;
+        min-height: auto;
+        border-radius: 0.85vw;
+        margin: 0;
+        width: auto;
+        flex-grow: 1;
+    }
+    .player-actions {
+        position: relative;
+        right: auto;
+        transform: none;
+        gap: 0.8vw;
+        flex-shrink: 0;
+    }
+    
+    .bottom-ui-container {
+        padding: 0 1vw;
+        margin-top: 0;
+        min-height: auto;
+    }
+    
+    #game-container:not(.spectator-view) .info-bot.human-info {
+        transform: scale(0.75);
+    }
+
+    .info-bot { 
+        padding: 0.57vw;
+        border-radius: 0.57vw;
+        border-width: 0.14vw;
+    }
+
+    .player-avatar {
+        width: 2.8vw;
+        height: 2.8vw;
+        border-width: 0.14vw;
+        margin-right: 0.6vw;
+    }
+    .player-name {
+        margin-bottom: 0.3vw;
+    }
+    
+    .card-counter { 
+        font-size: 0.9vw;
+        padding: 0.28vw 0.57vw;
+        border-radius: 0.42vw;
+    }
+    .player-name { font-size: 1vw; }
+
+    .card { 
+        width: 6.4vw;
+        height: 9.6vw;
+        border-radius: 0.57vw;
+        border-width: 0.07vw;
+    }
+    .hand.human .card:not(:first-child) { 
+        margin-left: -3.2vw;
+    }
+    .card.selected { 
+        outline-width: 0.28vw;
+        transform: translateY(-1.2vw);
+    } 
+    
+    .center-area {
+        top: 45%;
+        width: 98%;
+        height: 60%;
+        border-width: 0.2vw;
+        outline-width: 0.15vw;
+        border-radius: 0.85vw;
+        padding: 0.85vw;
+    }
+    .melds { padding: 0.57vw; }
+    .meld-display { gap: 0.85vw; }
+    .meld-group {
+        padding: 0.28vw;
+        border-radius: 0.42vw;
+        border-width: 0.07vw;
+    }
+    #game-container .meld-group .card {
+        width: 4.2vw;
+        height: 6.3vw;
+    }
+    #game-container .meld-group .card:not(:first-child) { margin-left: -2.1vw; }
+    
+    .piles-container { gap: 1.5vw; margin-top: 0.57vw; }
+    .pile {
+        width: 5vw;
+        height: 7.5vw;
+        border-radius: 0.71vw;
+        border-width: 0.21vw;
+        font-size: 1vw;
+    }
+    .pile .card {
+        width: 4.5vw !important;
+        height: 6.75vw !important;
+    }
+
+    #discard .card-image-wrapper {
+        width: 4.5vw;
+        height: 6.75vw;
+    }
+
+    .organize-buttons { margin-bottom: 0.42vw; }
+    .organize-buttons button { 
+        margin: 0 0.42vw;
+        padding: 0.42vw 0.57vw;
+        border-radius: 0.42vw;
+        font-size: 0.85vw;
+    }
+  
+    .top-controls-wrapper button,
+    .player-actions button {
+        padding: 0.4vw 0.8vw;
+        font-size: 0.75vw;
+        border-radius: 0.5vw;
+        border-width: 0.14vw;
+        margin: 0;
+    }
+
+    #turn-indicator, #points-indicator, #debug-info {
+        font-size: 0.85vw;
+        padding: 0.42vw 0.71vw;
+        border-radius: 0.57vw;
+        border-width: 0.14vw;
+    }
+    #turn-indicator { top: 1.5vw; left: 1.5vw; }
+    #points-indicator { top: 1.5vw; right: 1.5vw; left: auto; }
+    #debug-info {
+        bottom: 1.5vw;
+        left: 1.5vw;
+        top: auto;
+    }
+
+    #game-container .overlay .content {
+        padding: 1.4vw;
+        border-radius: 0.85vw;
+        border-width: 0.21vw;
+        max-width: 40vw;
+    }
+    #game-container .overlay .content p { font-size: 1.1vw; }
+    #game-container .overlay .content button { 
+        padding: 0.71vw 1.4vw;
+        font-size: 1vw;
+        border-radius: 0.57vw;
+        margin-top: 1vw;
+    }
+
+    .toast {
+        font-size: 1vw;
+        padding: 0.71vw 1.14vw;
+        border-width: 0.14vw;
+        border-radius: 0.57vw;
+        bottom: 1.8vw;
+    }
+    
+    #chat-container {
+        top: 1vw;
+        right: 1.5vw;
+    }
+    .top-controls-wrapper {
+        gap: 0.5vw;
+    }
+    #chat-window {
+        width: 28vw;
+        max-width: 300px;
+        margin-top: 0.7vw;
+        border-radius: 0.57vw;
+    }
+    #chat-window.visible {
+        max-height: 50vh; 
+    }
+    #chat-messages {
+        padding: 0.7vw;
+        max-height: 35vh;
+    }
+    #chat-messages li {
+        font-size: 1vw;
+        padding: 0.4vw 0.7vw;
+        margin-bottom: 0.5vw;
+    }
+    #game-container .chat-input-area {
+        padding: 0.7vw;
+    }
+    #chat-input {
+        padding: 0.6vw;
+        font-size: 1vw;
+    }
+    #spectator-controls, #spectators-list-host {
+        padding: 0.7vw;
+    }
+    #spectator-controls button {
+        font-size: 1vw;
+    }
+    #spectators-list-host .kick-btn {
+        font-size: 0.8vw;
+    }
+
+    #game-container header {
+        display: none;
+    }
+    #table {
+        padding-top: 0;
+    }
+    
+    .player-area.top {
+        top: 1vw;
+    }
+
+    #game-container .meld-group .card {
+        width: 4.2vw;
+        height: 6.3vw;
+    }
+    #game-container .meld-group .card:not(:first-child) {
+        margin-left: -2.1vw;
+    }
+
+    #game-pot-container {
+        top: 0.5vw;
+        left: 1.5vw;
+        transform: scale(0.85);
+        transform-origin: top left;
     }
 }
 
-/* Reglas específicas para dispositivos móviles */
-@media (max-width: 768px) and (orientation: landscape) {
+@media (max-width: 767px) and (orientation: landscape) {
     #table {
-        transform: translate(-50%, -50%) scale(min(calc(100vw / 1400), calc(100vh / 788)));
-        max-width: 95vw;
-        max-height: 95vh;
+        padding-top: 0;
     }
-}
+    
+    .player-area.top {
+        top: 1vw;
+    }
 
-@media (max-width: 480px) and (orientation: landscape) {
-    #table {
-        transform: translate(-50%, -50%) scale(min(calc(100vw / 1400), calc(100vh / 788)));
-        max-width: 98vw;
-        max-height: 98vh;
+    #game-container .meld-group .card {
+        width: 4.2vw;
+        height: 6.3vw;
+    }
+    #game-container .meld-group .card:not(:first-child) {
+        margin-left: -2.1vw;
     }
 }
 
