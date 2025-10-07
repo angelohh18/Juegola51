@@ -27,6 +27,36 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
 // Para solucionarlo de forma segura, creamos un alias que apunta a la función correcta.
 const convertcurrency = convertCurrency;
 
+// ▼▼▼ FUNCIÓN PWA INSTALL MODAL ▼▼▼
+function showPwaInstallModal() {
+    // 1. Comprueba si ya se mostró en esta sesión para no ser molesto.
+    if (sessionStorage.getItem('pwaModalShown')) {
+        return;
+    }
+
+    // 2. Detecta si el usuario está en un dispositivo móvil.
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        const modal = document.getElementById('pwa-install-modal');
+        const closeBtn = document.getElementById('btn-close-pwa-modal');
+
+        if (modal && closeBtn) {
+            // 3. Muestra el modal.
+            modal.style.display = 'flex';
+
+            // 4. Hace que el botón "Aceptar" cierre el modal.
+            closeBtn.onclick = () => {
+                modal.style.display = 'none';
+            };
+
+            // 5. Guarda una bandera para que no vuelva a aparecer en esta sesión.
+            sessionStorage.setItem('pwaModalShown', 'true');
+        }
+    }
+}
+// ▲▲▲ FIN DE LA FUNCIÓN PWA INSTALL MODAL ▲▲▲
+
 // Nueva función simple para mostrar el modal de fondos insuficientes
 function showInsufficientFundsModal(requiredText, missingText) {
     const modal = document.getElementById('simple-funds-modal');
@@ -64,36 +94,6 @@ function showRematchFundsModal(requiredText, missingText) {
 
     modal.style.display = 'flex';
 }
-
-// ▼▼▼ FUNCIÓN PWA INSTALL MODAL ▼▼▼
-function showPwaInstallModal() {
-    // 1. Comprueba si ya se mostró en esta sesión para no ser molesto.
-    if (sessionStorage.getItem('pwaModalShown')) {
-        return;
-    }
-
-    // 2. Detecta si el usuario está en un dispositivo móvil.
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (isMobile) {
-        const modal = document.getElementById('pwa-install-modal');
-        const closeBtn = document.getElementById('btn-close-pwa-modal');
-
-        if (modal && closeBtn) {
-            // 3. Muestra el modal.
-            modal.style.display = 'flex';
-
-            // 4. Hace que el botón "Aceptar" cierre el modal.
-            closeBtn.onclick = () => {
-                modal.style.display = 'none';
-            };
-
-            // 5. Guarda una bandera para que no vuelva a aparecer en esta sesión.
-            sessionStorage.setItem('pwaModalShown', 'true');
-        }
-    }
-}
-// ▲▲▲ FIN DE LA FUNCIÓN PWA INSTALL MODAL ▲▲▲
 
 // --- INICIO: SCRIPT DE PUENTE (BRIDGE) ---
 
