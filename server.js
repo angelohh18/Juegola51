@@ -25,11 +25,9 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 
 // Configuración de la base de datos PostgreSQL
+// ▼▼▼ REEMPLÁZALO CON ESTO ▼▼▼
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  connectionString: process.env.DATABASE_URL
 });
 
 // Probar la conexión a la base de datos
