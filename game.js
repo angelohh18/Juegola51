@@ -365,6 +365,16 @@ function showPwaInstallModal() {
     let onCropCompleteCallback = null; // <-- AÑADE ESTA LÍNEA
 
     function scaleAndCenterLobby() {
+        // MODIFICACIÓN DEFINITIVA: Desactivar el escalado JS en pantallas pequeñas
+        if (window.innerWidth <= 992) {
+            // Resetea cualquier transformación que la función haya aplicado antes
+            overlayContent.style.transform = '';
+            overlayContent.style.left = '';
+            overlayContent.style.top = '';
+            overlayContent.style.position = 'relative'; // Asegura que el CSS controle la posición
+            return; // ¡Esta es la línea más importante! Detiene la función aquí.
+        }
+
         if (window.getComputedStyle(lobbyOverlay).display === 'none' || !body.classList.contains('is-logged-in')) {
             overlayContent.style.transform = '';
             overlayContent.style.left = '';
