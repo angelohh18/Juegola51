@@ -996,13 +996,12 @@ body.game-active {
 }
 #game-container header h1 { color: var(--casino-gold); font-size:2.2rem; margin:0; text-shadow: 1px 1px 3px #000; }
 #table {
-    width: 95%;
-    max-width: 1400px;
-    height: 700px;
-    margin: 20px auto;
-    border: 8px solid var(--casino-dark-panel);
-    outline: 4px solid var(--casino-gold);
-    border-radius: 16px;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border: none;
+    outline: none;
+    border-radius: 0;
     background: var(--casino-bg);
     box-shadow: 0 0 30px rgba(0,0,0,0.6);
     position: relative;
@@ -1324,7 +1323,7 @@ body.game-active {
 }
 
 #chat-container {
-    position: fixed;
+    position: absolute;
     top: 15px;
     right: 20px;
     z-index: 900;
