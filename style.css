@@ -937,6 +937,59 @@ html {
         padding: 8px 15px;
     }
 }
+
+/* ▼▼▼ INICIO: ESTILOS PARA LA LISTA DE JUGADORES CONECTADOS ▼▼▼ */
+.online-users {
+    padding: 0 15px 10px 15px;
+    border-bottom: 2px solid #c5a56a;
+    background: #e0d3b6;
+}
+.online-users-title {
+    margin: 0 0 8px 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #6d2932;
+    padding-top: 10px;
+}
+#online-users-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 120px; /* Altura máxima antes de activar el scroll */
+    overflow-y: auto;
+    font-size: 0.85rem;
+}
+#online-users-list::-webkit-scrollbar {
+    width: 6px;
+}
+#online-users-list::-webkit-scrollbar-track {
+    background: #c5a56a66;
+    border-radius: 10px;
+}
+#online-users-list::-webkit-scrollbar-thumb {
+    background: #6d2932;
+    border-radius: 10px;
+}
+#online-users-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-radius: 5px;
+}
+#online-users-list li:nth-child(odd) {
+    background-color: rgba(109, 41, 50, 0.08); /* Sombreado ligero para filas impares */
+}
+.user-status {
+    font-weight: bold;
+}
+.status-lobby {
+    color: #28a745; /* Verde para 'En el Lobby' */
+}
+.status-playing {
+    color: #ffc107; /* Amarillo/Naranja para 'Jugando' */
+}
+/* ▲▲▲ FIN: ESTILOS PARA LA LISTA DE JUGADORES ▲▲▲ */
+
 /* --- FIN DE ESTILOS DE LOBBY.HTML --- */
 
 /* --- INICIO: Estilos PWA para lobby --- */

@@ -247,6 +247,34 @@ function showPwaInstallModal() {
         renderRoomsOverview(lastKnownRooms); 
     });
 
+    // ▼▼▼ FUNCIÓN PARA RENDERIZAR LISTA DE JUGADORES ▼▼▼
+    function renderOnlineUsers(userList = []) {
+        const listElement = document.getElementById('online-users-list');
+        if (!listElement) return;
+
+        listElement.innerHTML = ''; // Limpia la lista actual
+
+        // Ordena la lista alfabéticamente por nombre de usuario
+        userList.sort((a, b) => a.username.localeCompare(b.username));
+
+        userList.forEach(user => {
+            const li = document.createElement('li');
+            const statusClass = user.status === 'Jugando' ? 'status-playing' : 'status-lobby';
+            li.innerHTML = `
+                <span>${user.username}</span>
+                <span class="user-status ${statusClass}">${user.status}</span>
+            `;
+            listElement.appendChild(li);
+        });
+    }
+    // ▲▲▲ FIN: FUNCIÓN AÑADIDA ▲▲▲
+
+    // ▼▼▼ LISTENER PARA ACTUALIZAR LISTA DE USUARIOS ▼▼▼
+    socket.on('updateUserList', (userList) => {
+        renderOnlineUsers(userList);
+    });
+    // ▲▲▲ FIN: LISTENER AÑADIDO ▲▲▲
+
     // ▼▼▼ AÑADE ESTOS DOS LISTENERS DENTRO DE LA LÓGICA DEL LOBBY ▼▼▼
     socket.on('lobbyChatHistory', (history) => {
         console.log('Historial del chat del lobby recibido.');

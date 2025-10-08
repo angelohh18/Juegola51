@@ -285,6 +285,15 @@ function checkAndCleanRoom(roomId, io) {
     broadcastRoomListUpdate(io);
 }
 
+// ▼▼▼ FUNCIÓN PARA ACTUALIZAR LISTA DE USUARIOS ▼▼▼
+function broadcastUserListUpdate(io) {
+    // Convierte el objeto de usuarios en un array simple para enviarlo al cliente
+    const userList = Object.values(connectedUsers);
+    io.emit('updateUserList', userList);
+    console.log(`[User List] Transmitiendo lista actualizada de ${userList.length} usuarios.`);
+}
+// ▲▲▲ FIN: FUNCIÓN A AÑADIR ▲▲▲
+
 // ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA AL INICIO DE TU ARCHIVO ▼▼▼
 function getSanitizedRoomForClient(room) {
     if (!room) return null;
@@ -326,6 +335,7 @@ function generateRoomId() {
 // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
 
 let rooms = {}; // Estado de las mesas se mantiene en memoria
+let connectedUsers = {}; // Objeto para rastrear usuarios activos
 
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
@@ -1721,6 +1731,14 @@ io.on('connection', (socket) => {
         const userId = 'user_' + username.toLowerCase();
         socket.userId = userId;
 
+        // ▼▼▼ AÑADIR AL USUARIO A LA LISTA DE CONECTADOS ▼▼▼
+        connectedUsers[socket.id] = {
+            username: username,
+            status: 'En el Lobby'
+        };
+        broadcastUserListUpdate(io);
+        // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
+
         try {
             // ▼▼▼ REEMPLAZA ESTA LÍNEA ▼▼▼
             const userData = await getUserByUsername(username); // Corregido para usar la nueva función
@@ -1851,6 +1869,13 @@ io.on('connection', (socket) => {
     rooms[roomId] = newRoom;
     socket.join(roomId);
     
+    // ▼▼▼ CAMBIAR ESTADO A "JUGANDO" ▼▼▼
+    if (connectedUsers[socket.id]) {
+        connectedUsers[socket.id].status = 'Jugando';
+        broadcastUserListUpdate(io);
+    }
+    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
+    
     socket.currentRoomId = roomId;
     
     socket.emit('roomCreatedSuccessfully', newRoom);
@@ -1976,6 +2001,13 @@ io.on('connection', (socket) => {
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     socket.join(roomId);
+    
+    // ▼▼▼ CAMBIAR ESTADO A "JUGANDO" ▼▼▼
+    if (connectedUsers[socket.id]) {
+        connectedUsers[socket.id].status = 'Jugando';
+        broadcastUserListUpdate(io);
+    }
+    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
     
     // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
     socket.currentRoomId = roomId; // Guardamos en la conexión la sala actual del jugador.
@@ -2537,6 +2569,12 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     console.log('❌ Un jugador se ha desconectado:', socket.id);
     const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
 
+    // Elimina al usuario de la lista de conectados y notifica a todos
+    if (connectedUsers[socket.id]) {
+        delete connectedUsers[socket.id];
+        broadcastUserListUpdate(io);
+    }
+
     if (roomId && rooms[roomId]) {
         // Si el jugador estaba en una sala válida, procesamos su salida.
         console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
@@ -2781,6 +2819,14 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
     // 2. (Línea existente) Limpiamos nuestra variable de seguimiento personalizada.
     delete socket.currentRoomId;
+
+    // ▼▼▼ CAMBIAR ESTADO DE VUELTA A "EN EL LOBBY" ▼▼▼
+    // Cambia el estado del usuario de vuelta a "En el Lobby"
+    if (connectedUsers[socket.id]) {
+        connectedUsers[socket.id].status = 'En el Lobby';
+        broadcastUserListUpdate(io);
+    }
+    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
     
     // 3. (Línea existente) Ejecutamos la lógica para liberar el asiento y limpiar la mesa.
     handlePlayerDeparture(roomId, socket.id, io);
