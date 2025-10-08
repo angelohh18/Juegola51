@@ -2054,20 +2054,10 @@ body.game-active {
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
 }
 
-/* ▼▼▼ ESTILOS PARA EL BOTÓN DE GUÍA DE FUNCIONES ▼▼▼ */
+/* ▼▼▼ ESTILOS CORREGIDOS PARA EL BOTÓN DE GUÍA DE FUNCIONES ▼▼▼ */
 #btn-show-functions {
-    position: absolute;
-    bottom: -5px; /* Lo posiciona debajo del área de acciones */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    font-size: 20px;
-    line-height: 1;
-    padding: 0;
-    font-family: 'Georgia', serif;
-    font-weight: bold;
-    text-align: center;
+    grid-column: 1; /* Lo posiciona en la primera columna */
+    grid-row: 2;    /* Lo posiciona en la segunda fila, debajo de Reglas */
+    margin: 0;      /* Quitamos márgenes innecesarios */
 }
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
