@@ -1747,10 +1747,11 @@ body.game-active {
     .top-controls-wrapper {
         gap: 0.5vw;
     }
-    #game-rules-btn, #btn-back-to-lobby-ingame, #chat-toggle-btn {
-        padding: 0.5vw 1vw;      /* Reducido de 0.6vw 1.2vw */
-        font-size: 1.0vw;        /* Reducido de 1.1vw */
-        border-radius: 0.57vw;
+    /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
+    .top-controls-wrapper button {
+        padding: 0.4vw 0.8vw;  /* Aún más reducido */
+        font-size: 0.9vw;      /* Aún más reducido */
+        border-radius: 0.5vw;
     }
     #chat-window {
         width: 28vw;
@@ -1865,10 +1866,10 @@ body.game-active {
         border-radius: 0.5vw;
     }
 
-     /* Reduce los botones superiores como solicitaste */
-    #game-rules-btn, #btn-back-to-lobby-ingame, #chat-toggle-btn {
-        padding: 0.5vw 1vw;
-        font-size: 1.1vw; /* Ligeramente más grande para legibilidad */
+    /* Selector unificado y tamaño reducido para móviles pequeños */
+    .top-controls-wrapper button {
+        padding: 0.4vw 0.8vw; /* Reducido y unificado con el anterior */
+        font-size: 1.0vw;     /* Reducido pero manteniendo legibilidad */
     }
 
     /* -- FIN DE LAS REGLAS COMPLETAS -- */
