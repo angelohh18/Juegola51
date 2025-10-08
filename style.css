@@ -1560,7 +1560,7 @@ body.game-active {
     
     #table {
         width: 100vw;
-        height: 100vh;
+        height: calc(100svh - 5px); /* <-- LÍNEA MODIFICADA */
         max-width: none;
         margin: 0;
         border-width: 0;      /* Cambiado de 0.6vw a 0 */
