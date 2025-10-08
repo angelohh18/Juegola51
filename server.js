@@ -635,8 +635,19 @@ function sortCardsForRun(cards) {
   });
 }
 
-// REEMPLAZA LA FUNCIÓN validateMeld COMPLETA
+// PEGA ESTA FUNCIÓN ORIGINAL COMPLETA
 function validateMeld(cards) {
+    if (isValidSet(cards)) {
+        return { type: 'grupo', cards: cards };
+    }
+    if (isValidRun(cards)) {
+        return { type: 'escalera', cards: cards };
+    }
+    return false;
+}
+
+// FUNCIÓN INTELIGENTE PARA BOTS
+function validateMeldAndCorrect(cards) {
     if (!cards || cards.length < 3) return false;
 
     // Intenta validar como si fuera un grupo (Set)
@@ -1131,7 +1142,7 @@ function findAndValidateAllMelds(cards) {
         // Buscamos desde la combinación más grande posible hacia abajo
         for (let size = Math.min(7, remainingCards.length); size >= 3; size--) {
             for (const combo of getCombinations(remainingCards, size)) {
-                const validationResult = validateMeld(combo);
+                const validationResult = validateMeldAndCorrect(combo);
                 if (validationResult) {
                     bestCombo = validationResult.cards;
                     bestType = validationResult.type;
@@ -1180,7 +1191,7 @@ function findOptimalMelds(hand) {
       for (const combo of getCombinations(availableCards, size)) {
         
         // La nueva validación nos devuelve el tipo y las cartas ya ordenadas
-        const validationResult = validateMeld(combo); 
+        const validationResult = validateMeldAndCorrect(combo); 
         
         if (validationResult) {
           const { type, cards: orderedCards } = validationResult;
