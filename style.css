@@ -460,6 +460,7 @@ html {
     color: #e0d3b6;
     font-weight: 700;
     font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    position: relative; /* <-- AÑADIDO */
 }
 
 #login-modal .modal-content h3,
@@ -711,12 +712,14 @@ html {
     font-size: 0.9em;
 }
 #btn-close-rules-modal,
+#btn-close-functions-modal,
 #pwa-install-modal #btn-close-pwa-modal,
 #functions-modal button {
     background: #6D2932;
     color: #e0d3b6;
 }
 #btn-close-rules-modal:hover,
+#btn-close-functions-modal:hover,
 #pwa-install-modal #btn-close-pwa-modal:hover,
 #functions-modal button:hover {
     background: #58141f;
