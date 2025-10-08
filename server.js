@@ -1238,7 +1238,7 @@ async function botPlay(room, botPlayerId, io) {
                 // Si no puede robar, debe pasar el turno (esto es un caso raro)
                 // Aquí podrías implementar la lógica para terminar el juego si no hay más movimientos.
                 // Por ahora, simplemente avanzaremos el turno.
-                return await advanceTurnAfterAction(room, botPlayerId, null, io);
+                return advanceTurnAfterAction(room, botPlayerId, null, io);
             }
         }
         cardDrawn = room.deck.shift();
@@ -1323,18 +1323,18 @@ async function botPlay(room, botPlayerId, io) {
             if (cardIndex !== -1) {
                 const [discardedCard] = botHand.splice(cardIndex, 1);
                 room.discardPile.push(discardedCard);
-                await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+                advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
             }
         } else { // Fallback por si algo falla
             const [discardedCard] = botHand.splice(0, 1);
             room.discardPile.push(discardedCard);
-            await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+            advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
         }
     }
 }
 
-async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    if (await checkVictoryCondition(room, room.roomId, io)) return;
+function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
+    if (checkVictoryCondition(room, room.roomId, io)) return;
 
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
