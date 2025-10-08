@@ -475,7 +475,29 @@ function showPwaInstallModal() {
     });
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
-    btnReloadCredits.addEventListener('click', () => { creditModal.style.display = 'flex'; });
+    btnReloadCredits.addEventListener('click', () => {
+        // 1. Obtiene el nombre de usuario actual de la variable global.
+        const username = currentUser.username || 'Usuario no identificado';
+
+        // 2. Prepara el mensaje y lo codifica para una URL.
+        const message = `Hola, mi nombre de usuario es ${username} y quiero recargar los créditos. Me das información por favor. Gracias.`;
+        const encodedMessage = encodeURIComponent(message);
+
+        // 3. Selecciona los dos enlaces por su ID.
+        const primaryLink = document.getElementById('whatsapp-link-primary');
+        const secondaryLink = document.getElementById('whatsapp-link-secondary');
+
+        // 4. Construye y asigna las URLs completas a los enlaces.
+        if (primaryLink) {
+            primaryLink.href = `https://wa.me/34665530984?text=${encodedMessage}`;
+        }
+        if (secondaryLink) {
+            secondaryLink.href = `https://wa.me/573004280833?text=${encodedMessage}`;
+        }
+
+        // 5. Finalmente, muestra el modal ya con los enlaces listos.
+        creditModal.style.display = 'flex';
+    });
     btnCloseCreditModal.addEventListener('click', () => { creditModal.style.display = 'none'; });
     btnRules.addEventListener('click', () => { rulesModal.style.display = 'flex'; });
     btnCloseRulesModal.addEventListener('click', () => { rulesModal.style.display = 'none'; });
