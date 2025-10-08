@@ -1,4 +1,4 @@
-// server.js (Archivo completo y actualizado)
+// server.js (Archivo completo y actualizado) - v1.0
 
 const express = require('express');
 const bcrypt = require('bcrypt'); // <-- AÑADE ESTA LÍNEA
