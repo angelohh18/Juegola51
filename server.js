@@ -1303,7 +1303,13 @@ async function botPlay(room, botPlayerId, io) {
         botHand.push(cardDrawn);
     }
 
-    io.to(room.roomId).emit('playerDrewCard', { playerId: botPlayerId, source: source, card: source === 'discard' ? cardDrawn : null });
+    // LÍNEA CORREGIDA
+    io.to(room.roomId).emit('playerDrewCard', {
+        playerId: botPlayerId,
+        source: source,
+        card: source === 'discard' ? cardDrawn : null,
+        newDiscardPile: room.discardPile // <-- AÑADE ESTA LÍNEA
+    });
     io.to(room.roomId).emit('handCountsUpdate', { playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
 
     await pause(1500);

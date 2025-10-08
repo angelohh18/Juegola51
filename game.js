@@ -2850,25 +2850,31 @@ function updatePlayersView(seats, inGame = false) {
         invalidComboContainer.style.display = 'none';
         correctComboContainer.style.display = 'none';
 
+        // PEGA ESTA VERSIÓN CORREGIDA EN SU LUGAR
         if (faultData.invalidCards) {
-            let invalidHTML = '';
-            if (faultData.contextCards) { // Para descarte ilegal
-                invalidHTML += createCardDisplayHTML(faultData.contextCards);
-                invalidHTML += '<div class="fault-separator">+</div>';
-                invalidHTML += createCardDisplayHTML(faultData.invalidCards);
-                invalidComboContainer.querySelector('h4').textContent = 'Intento de Descarte Ilegal:';
-            } else { // Para bajada inválida
-                invalidHTML = createCardDisplayHTML(faultData.invalidCards);
-                invalidComboContainer.querySelector('h4').textContent = 'Combinación Inválida Presentada:';
-            }
-            invalidDisplay.innerHTML = invalidHTML;
-            invalidComboContainer.style.display = 'block';
-            faultDetailsContainer.style.display = 'block';
-        }
+            if (faultData.contextCards) { // CASO: Descarte Ilegal
+                // Contenedor 1: Muestra LA CARTA que se intentó descartar.
+                invalidComboContainer.querySelector('h4').textContent = 'Carta Descartada Ilegalmente:';
+                invalidDisplay.innerHTML = createCardDisplayHTML(faultData.invalidCards);
+                invalidComboContainer.style.display = 'block';
 
-        if (faultData.correctCards) {
-            correctDisplay.innerHTML = createCardDisplayHTML(faultData.correctCards);
-            correctComboContainer.style.display = 'block';
+                // Contenedor 2: Muestra EL JUEGO en mesa donde se podía añadir.
+                correctComboContainer.querySelector('h4').textContent = 'Se Podía Añadir a este Juego:';
+                correctDisplay.innerHTML = createCardDisplayHTML(faultData.contextCards);
+                correctComboContainer.style.display = 'block';
+
+            } else { // CASO: Bajada Inválida (lógica anterior se mantiene)
+                invalidComboContainer.querySelector('h4').textContent = 'Combinación Inválida Presentada:';
+                invalidDisplay.innerHTML = createCardDisplayHTML(faultData.invalidCards);
+                invalidComboContainer.style.display = 'block';
+
+                if (faultData.correctCards) {
+                    correctComboContainer.querySelector('h4').textContent = 'Forma Correcta Sugerida:';
+                    correctDisplay.innerHTML = createCardDisplayHTML(faultData.correctCards);
+                    correctComboContainer.style.display = 'block';
+                }
+            }
+            faultDetailsContainer.style.display = 'block';
         }
 
         showOverlay('elimination-overlay');
