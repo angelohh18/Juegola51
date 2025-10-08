@@ -870,6 +870,7 @@ function renderRoomsOverview(rooms = []) {
         const who = document.createElement('div');
         who.style.fontSize = '12px';
         who.style.color = '#6D2932';
+        who.style.textDecoration = 'underline'; // <-- LÍNEA AÑADIDA
         who.textContent = msg.from;
 
         const txt = document.createElement('div');
@@ -892,8 +893,15 @@ function renderRoomsOverview(rooms = []) {
     function renderLobbyChat(messages = []) {
         chatEl.innerHTML = ''; // Limpiamos el chat
         if (messages.length === 0) {
-            // Mensaje de bienvenida si el historial está vacío
-            addLobbyChatMessage({ from: 'Sistema', text: '¡Bienvenido al Lobby! Sé respetuoso y disfruta del juego.', ts: Date.now() });
+            // ▼▼▼ BLOQUE MODIFICADO ▼▼▼
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.style.fontStyle = 'italic';
+            welcomeDiv.style.color = '#888';
+            welcomeDiv.style.textAlign = 'center';
+            welcomeDiv.style.padding = '10px 0';
+            welcomeDiv.textContent = '¡Bienvenido al lobby de LA 51! Sé respetuoso y disfruta del juego.';
+            chatEl.appendChild(welcomeDiv);
+            // ▲▲▲ FIN DEL BLOQUE ▲▲▲
         } else {
             messages.forEach(msg => addLobbyChatMessage(msg));
         }
