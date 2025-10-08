@@ -138,6 +138,20 @@ function showFunctionsModalOnce() {
         localStorage.setItem('la51_functions_modal_shown', 'true');
     }
 }
+
+// ▼▼▼ NUEVAS FUNCIONES PARA EL MODAL DE INFORMACIÓN DE BOTS ▼▼▼
+function showBotInfoModal() {
+    showOverlay('bot-info-modal');
+}
+function hideBotInfoModal() {
+    hideOverlay('bot-info-modal');
+}
+function showBotInfoModalOnce() {
+    if (localStorage.getItem('la51_bot_info_shown') !== 'true') {
+        showBotInfoModal();
+        localStorage.setItem('la51_bot_info_shown', 'true');
+    }
+}
 // ▲▲▲ FIN DE LAS NUEVAS FUNCIONES ▲▲▲
 // ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
 
@@ -1736,8 +1750,30 @@ function showRoomsOverview() {
             btnShowFunctions.onclick = showFunctionsModal;
         }
         if (btnCloseFunctions) {
-            btnCloseFunctions.onclick = hideFunctionsModal;
+            btnCloseFunctions.onclick = () => {
+                hideFunctionsModal();
+                // Si estamos en una partida de práctica, mostramos el siguiente modal.
+                if (currentGameSettings && currentGameSettings.isPractice) {
+                    showBotInfoModalOnce();
+                }
+            };
         }
+        // Añade el handler para el botón del nuevo modal
+        const btnCloseBotInfo = document.getElementById('btn-close-bot-info');
+        if (btnCloseBotInfo) {
+            btnCloseBotInfo.onclick = hideBotInfoModal;
+        }
+
+        // ▼▼▼ LÓGICA GLOBAL PARA LOS BOTONES DE CERRAR (X) ▼▼▼
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.onclick = () => {
+                // Busca el modal padre más cercano y lo oculta
+                const modal = btn.closest('.overlay, [role="dialog"]');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            };
+        });
         // ▲▲▲ FIN DEL CÓDIGO AÑADIDO ▲▲▲
 
         // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ DENTRO ▼▼▼

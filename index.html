@@ -79,6 +79,7 @@
 
 <div id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
     <div class="modal-content">
+    <span class="close-modal-btn">&times;</span>
     <h3>Reglas Completas de La 51</h3>
 
     <h4>1. El Objetivo</h4>
@@ -182,6 +183,7 @@
 
 <div id="create-room-modal" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
   <div class="modal-content">
+    <span class="close-modal-btn">&times;</span>
     <h3 id="create-room-title">Crear Mesa</h3>
     <label for="bet-input">Apuesta:</label>
     <input type="number" id="bet-input" min="1" value="10" />
@@ -203,6 +205,7 @@
 
 <div id="credit-modal" role="dialog" aria-modal="true" aria-labelledby="credit-modal-title">
   <div class="modal-content">
+    <span class="close-modal-btn">&times;</span>
     <h3 id="credit-modal-title">Recargar Créditos</h3>
     <p>Para recargar tus créditos, comunícate al WhatsApp: <a href="https://wa.me/34665530984" target="_blank" rel="noopener noreferrer">+34 665 530 984</a></p>
     <button id="btn-close-credit-modal">Cerrar</button>
@@ -515,6 +518,7 @@
 
 <div id="functions-modal" role="dialog" aria-modal="true" aria-labelledby="functions-modal-title">
     <div class="modal-content">
+        <span class="close-modal-btn">&times;</span>
         <h3 id="functions-modal-title">Guía Rápida de Funciones</h3>
 
         <h4>1. Cómo Robar una Carta</h4>
@@ -552,7 +556,28 @@
             <li>Selecciona todas las cartas, <strong>arrástralas</strong> hasta la zona central de la mesa y suéltalas.</li>
         </ol>
 
+        <h4>5. Cómo Añadir una Carta a un Juego</h4>
+        <p>Si ya has bajado tus 51 puntos en un turno anterior, puedes añadir cartas a juegos que ya estén en la mesa (tuyos o de otros jugadores), si vas a añadir una carta en el mismo turno en el que estas bajando los 51 puntos, solo puedes añadir cartas a los conjuntos bajados de otros jugadores pero no a los tuyos.</p>
+        <ol>
+            <li>Selecciona la carta que quieres añadir.</li>
+            <li>Haz <strong>clic/tap</strong> en la combinación de la mesa donde quieres añadirla, o <strong>arrastra y suelta</strong> la carta sobre esa combinación.</li>
+        </ol>
+
         <button id="btn-close-functions-modal" class="secondary">Entendido</button>
+    </div>
+</div>
+
+<div id="bot-info-modal" class="overlay" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal-btn">&times;</span>
+        <h3>Aviso sobre los Bots</h3>
+        <p>
+            En las partidas de práctica, los bots pueden bajar combinaciones robando cartas tanto del <strong>mazo</strong> como del <strong>descarte</strong>. Esto se hace para asegurar una mayor fluidez y dinamismo en el juego.
+        </p>
+        <div class="example penalty" style="text-align: center; font-style: normal;">
+            Recuerda que como jugador humano, tú sí debes <strong>seguir estrictamente las reglas</strong>. Por ejemplo, si robas del mazo, solo puedes bajar si vas a ganar en ese turno.
+        </div>
+        <button id="btn-close-bot-info" class="secondary">Entendido</button>
     </div>
 </div>
 

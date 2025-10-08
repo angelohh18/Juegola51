@@ -2380,19 +2380,17 @@ socket.on('accionDescartar', async (data) => {
 // Pequeña corrección en getSuitIcon para que funcione en el servidor
 function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
 
-  socket.on('drawFromDeck', (roomId) => {
+  // ▼▼▼ LISTENER drawFromDeck CON SINCRONIZACIÓN MEJORADA ▼▼▼
+  socket.on('drawFromDeck', async (roomId) => { // <-- Se añade 'async'
     const room = rooms[roomId];
     if (!room || room.currentPlayerId !== socket.id) {
         return;
     }
 
-    // --- INICIO DE LA NUEVA VALIDACIÓN ---
     if (room.hasDrawn) {
         const reason = 'Intento de robar más de una vez en el mismo turno.';
-        console.log(`FALTA: Jugador ${socket.id} - ${reason}`);
         return handlePlayerElimination(room, socket.id, reason, io);
     }
-    // --- FIN DE LA NUEVA VALIDACIÓN ---
 
     if (room.deck.length === 0) {
         if (room.discardPile.length > 1) {
@@ -2400,9 +2398,11 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
             room.deck = room.discardPile;
             shuffle(room.deck);
             room.discardPile = [topCard];
+            io.to(roomId).emit('deckShuffled');
 
-            // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
-            io.to(roomId).emit('deckShuffled'); // Notifica a todos que se ha barajado el mazo.
+            // --- ESTA ES LA CORRECCIÓN CLAVE ---
+            // Esperamos 5 segundos (la duración de la animación) ANTES de continuar.
+            await new Promise(r => setTimeout(r, 5000));
             
         } else {
             socket.emit('fault', { reason: 'No hay cartas disponibles para robar.' });
@@ -2422,13 +2422,13 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
     room.hasDrawn = true;
     
-    // Notificar a todos en la sala sobre el robo
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
         source: 'deck',
-        playerHandCounts: playerHandCounts // Enviamos los conteos actualizados
+        playerHandCounts: playerHandCounts
     });
     
+    // Este evento ahora se enviará DESPUÉS de la pausa y la animación.
     socket.emit('cardDrawn', { 
         card: cardDrawn,
         newDeckSize: room.deck.length,

@@ -450,7 +450,8 @@ html {
 #avatar-crop-modal .modal-content,
 #insufficient-credits-modal .modal-content,
 #pwa-install-modal .modal-content,
-#functions-modal .modal-content {
+#functions-modal .modal-content,
+#bot-info-modal .modal-content {
     background: #211e18;
     border: 2px solid #c5a56a;
     border-radius: 20px;
@@ -559,7 +560,8 @@ html {
 /* Modal Login */
 #login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal,
 #pwa-install-modal,
-#functions-modal {
+#functions-modal,
+#bot-info-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -638,7 +640,8 @@ html {
 }
 #rules-modal .modal-content,
 #pwa-install-modal .modal-content,
-#functions-modal .modal-content {
+#functions-modal .modal-content,
+#bot-info-modal .modal-content {
     width: 90vw; /* Usa ancho de viewport */
     max-width: 550px; /* Ancho máximo reducido */
     max-height: 85vh; /* Alto máximo para evitar desbordamiento vertical */
@@ -653,7 +656,8 @@ html {
 
 #rules-modal .modal-content h3,
 #pwa-install-modal .modal-content h3,
-#functions-modal .modal-content h3 {
+#functions-modal .modal-content h3,
+#bot-info-modal .modal-content h3 {
     font-size: clamp(1.4rem, 4vw, 1.8rem); /* Tipografía fluida */
     color: #c5a56a;
     border-bottom: 1px solid #c5a56a;
@@ -662,7 +666,8 @@ html {
 }
 #rules-modal .modal-content h4,
 #pwa-install-modal .modal-content .pwa-subtitle,
-#functions-modal .modal-content h4 {
+#functions-modal .modal-content h4,
+#bot-info-modal .modal-content h4 {
     font-size: clamp(1rem, 3vw, 1.2rem); /* Tipografía fluida */
     color: #c5a56a;
     margin-top: 20px;
@@ -672,25 +677,31 @@ html {
 #rules-modal .modal-content ul,
 #pwa-install-modal .modal-content ol,
 #functions-modal .modal-content ul,
-#functions-modal .modal-content ol {
+#functions-modal .modal-content ol,
+#bot-info-modal .modal-content ul,
+#bot-info-modal .modal-content ol {
     padding-left: 20px;
     list-style: disc;
 }
 #rules-modal .modal-content li,
-#functions-modal .modal-content li {
+#functions-modal .modal-content li,
+#bot-info-modal .modal-content li {
     margin-bottom: 8px;
 }
 #rules-modal .modal-content strong,
-#functions-modal .modal-content strong {
+#functions-modal .modal-content strong,
+#bot-info-modal .modal-content strong {
     color: #c5a56a;
 }
 #rules-modal .modal-content .penalty,
-#functions-modal .modal-content .penalty {
+#functions-modal .modal-content .penalty,
+#bot-info-modal .modal-content .penalty {
     color: #e87272;
     font-weight: bold;
 }
 #rules-modal .modal-content .example,
-#functions-modal .modal-content .example {
+#functions-modal .modal-content .example,
+#bot-info-modal .modal-content .example {
     background: #3a3a2a; /* <-- LÍNEA MODIFICADA */
     border-left: 3px solid #c5a56a;
     padding: 10px;
@@ -700,12 +711,14 @@ html {
     font-size: 0.9em;
 }
 #btn-close-rules-modal,
-#pwa-install-modal #btn-close-pwa-modal {
+#pwa-install-modal #btn-close-pwa-modal,
+#functions-modal button {
     background: #6D2932;
     color: #e0d3b6;
 }
 #btn-close-rules-modal:hover,
-#pwa-install-modal #btn-close-pwa-modal:hover {
+#pwa-install-modal #btn-close-pwa-modal:hover,
+#functions-modal button:hover {
     background: #58141f;
 }
 
@@ -2060,5 +2073,22 @@ body.game-active {
     grid-column: 1; /* Lo posiciona en la primera columna */
     grid-row: 2;    /* Lo posiciona en la segunda fila, debajo de Reglas */
     margin: 0;      /* Quitamos márgenes innecesarios */
+}
+/* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
+
+/* ▼▼▼ ESTILOS PARA EL BOTÓN DE CERRAR MODALES ▼▼▼ */
+.close-modal-btn {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 2.5rem;
+    color: #c5a56a;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.2s, color 0.2s;
+}
+.close-modal-btn:hover {
+    color: #fff;
+    transform: scale(1.2);
 }
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
