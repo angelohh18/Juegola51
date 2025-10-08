@@ -517,7 +517,9 @@ html {
 #rules-modal .modal-content button,
 #create-room-modal .modal-content button,
 #avatar-crop-modal .modal-content button,
-#insufficient-credits-modal .modal-content button {
+#insufficient-credits-modal .modal-content button,
+#functions-modal .modal-content button,
+#bot-info-modal .modal-content button {
     margin-top: 20px;
     width: 100%;
     padding: 12px;
@@ -538,7 +540,9 @@ html {
 #rules-modal .modal-content button:hover,
 #create-room-modal .modal-content button:hover,
 #avatar-crop-modal .modal-content button:hover,
-#insufficient-credits-modal .modal-content button:hover {
+#insufficient-credits-modal .modal-content button:hover,
+#functions-modal .modal-content button:hover,
+#bot-info-modal .modal-content button:hover {
     background: #9d7b40; /* Cambiado de gradiente a sólido */
 }
 
