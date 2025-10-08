@@ -1295,7 +1295,7 @@ async function botPlay(room, botPlayerId, io) {
             }
             botSeat.doneFirstMeld = true;
             io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
-            if (checkVictoryCondition(room, room.roomId, io)) return;
+            if (await checkVictoryCondition(room, room.roomId, io)) return;
             await pause(1500);
         }
     }
