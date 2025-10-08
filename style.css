@@ -986,7 +986,7 @@ html {
     color: #28a745; /* Verde para 'En el Lobby' */
 }
 .status-playing {
-    color: #ffc107; /* Amarillo/Naranja para 'Jugando' */
+    color: #E67E22; /* Naranja oscuro para 'Jugando' (mejor contraste) */
 }
 /* ▲▲▲ FIN: ESTILOS PARA LA LISTA DE JUGADORES ▲▲▲ */
 
