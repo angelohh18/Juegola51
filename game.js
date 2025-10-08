@@ -480,7 +480,7 @@ function showPwaInstallModal() {
         const username = currentUser.username || 'Usuario no identificado';
 
         // 2. Prepara el mensaje y lo codifica para una URL.
-        const message = `Hola, mi nombre de usuario es ${username} y quiero recargar los créditos EN EL JUEGO LA 51. Me das información por favor. Gracias.`;
+        const message = `Hola, mi nombre de usuario es ${username} y quiero recargar/retirar los créditos EN EL JUEGO LA 51. Me das información por favor. Gracias.`;
         const encodedMessage = encodeURIComponent(message);
 
         // 3. Selecciona los dos enlaces por su ID.

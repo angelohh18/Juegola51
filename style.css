@@ -853,27 +853,28 @@ html {
         padding: 10px;
     }
     .user-panel .panel-title {
-        font-size: 2rem;
+        font-size: 1.8rem; /* Reducido */
         margin-bottom: 8px;
+        transform: scale(0.9); /* Encogido */
     }
     .user-panel .avatar-container, .user-panel .avatar {
-        width: 95px;
-        height: 95px;
+        width: 85px; /* Reducido */
+        height: 85px; /* Reducido */
         margin-bottom: 8px;
     }
     .user-panel .username {
-        font-size: 1.1rem;
+        font-size: 1.0rem; /* Reducido */
         margin-bottom: 8px;
     }
     .user-panel .credits {
         margin-bottom: 10px;
-        padding: 9px;
-        font-size: 0.9rem;
+        padding: 8px; /* Reducido */
+        font-size: 0.85rem; /* Reducido */
     }
     .button {
-        padding: 9px 0;
+        padding: 8px 0; /* Reducido */
         margin-bottom: 8px;
-        font-size: 0.85rem;
+        font-size: 0.8rem; /* Reducido */
         border-radius: 10px;
     }
 }
@@ -900,25 +901,25 @@ html {
         flex-basis: 220px;
     }
     .user-panel .avatar-container, .user-panel .avatar {
-        width: 90px;
-        height: 90px;
+        width: 80px; /* Reducido */
+        height: 80px; /* Reducido */
     }
     .user-panel .avatar-label {
-        width: 30px;
-        height: 30px;
-        font-size: 18px;
+        width: 28px; /* Reducido */
+        height: 28px; /* Reducido */
+        font-size: 16px; /* Reducido */
     }
     .user-panel .username {
-        font-size: 1rem;
+        font-size: 0.9rem; /* Reducido */
     }
     .user-panel .credits {
-        padding: 8px;
-        font-size: 0.9rem;
-        margin-bottom: 12px;
+        padding: 7px; /* Reducido */
+        font-size: 0.85rem; /* Reducido */
+        margin-bottom: 10px; /* Reducido */
     }
     .button {
-        padding: 8px 0;
-        font-size: 0.85rem;
+        padding: 7px 0; /* Reducido */
+        font-size: 0.8rem; /* Reducido */
         border-radius: 8px;
         margin-bottom: 6px;
     }
@@ -1749,10 +1750,26 @@ body.game-active {
     }
     /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
     .top-controls-wrapper button {
-        padding: 0.4vw 0.8vw;  /* Aún más reducido */
-        font-size: 0.9vw;      /* Aún más reducido */
+        padding: 0.35vw 0.7vw;  /* Reducido */
+        font-size: 0.85vw;      /* Reducido */
         border-radius: 0.5vw;
     }
+    
+    /* --- INICIO: Ajustes de tamaño para el Bote en móviles --- */
+    #game-pot-container {
+        padding: 4px 10px; /* Reducido */
+        min-width: 85px;   /* Reducido */
+        top: 10px;         /* Más pegado a la esquina */
+        left: 10px;        /* Más pegado a la esquina */
+    }
+    .pot-title {
+        font-size: 0.7rem; /* Reducido */
+    }
+    .pot-value {
+        font-size: 1.3rem; /* Reducido */
+    }
+    /* --- FIN: Ajustes de tamaño para el Bote --- */
+    
     #chat-window {
         width: 28vw;
         max-width: 300px;
@@ -1868,8 +1885,8 @@ body.game-active {
 
     /* Selector unificado y tamaño reducido para móviles pequeños */
     .top-controls-wrapper button {
-        padding: 0.4vw 0.8vw; /* Reducido y unificado con el anterior */
-        font-size: 1.0vw;     /* Reducido pero manteniendo legibilidad */
+        padding: 0.35vw 0.7vw; /* Reducido */
+        font-size: 0.95vw;     /* Reducido */
     }
 
     /* -- FIN DE LAS REGLAS COMPLETAS -- */
