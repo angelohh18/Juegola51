@@ -632,7 +632,41 @@ function sortCardsForRun(cards) {
   });
 }
 
-// ▼▼▼ FUNCIÓN validateMeld ESTRICTA Y ORIGINAL ▼▼▼
+// ▼▼▼ PEGA ESTA FUNCIÓN "INTELIGENTE" COMPLETA ▼▼▼
+// Esta función será usada EXCLUSIVAMENTE por los bots.
+function validateMeldAndCorrect(cards) {
+    if (!cards || cards.length < 3) return false;
+
+    // Intenta validar como si fuera un grupo (Set)
+    const suits = new Set(cards.map(c => c.suit));
+    const values = new Set(cards.map(c => c.value));
+
+    if (values.size === 1 && suits.size === cards.length && (cards.length === 3 || cards.length === 4)) {
+        const perms = [ [0,1,2], [0,2,1], [1,0,2], [1,2,0], [2,0,1], [2,1,0] ];
+        if (cards.length === 3) {
+            for (const p of perms) {
+                const reordered = [cards[p[0]], cards[p[1]], cards[p[2]]];
+                if (isValidSet(reordered)) {
+                    return { type: 'grupo', cards: reordered };
+                }
+            }
+        } else if (isValidSet(cards)) { // Para 4 cartas, la validación simple suele bastar
+             return { type: 'grupo', cards: cards };
+        }
+    }
+
+    // Intenta validar como si fuera una escalera (Run)
+    if (suits.size === 1) {
+        const sortedRun = sortCardsForRun([...cards]);
+        if (isValidRun(sortedRun)) {
+            return { type: 'escalera', cards: sortedRun };
+        }
+    }
+    
+    return false;
+}
+
+// ▼▼▼ FUNCIÓN validateMeld ESTRICTA Y ORIGINAL (PARA HUMANOS) ▼▼▼
 function validateMeld(cards) {
     if (isValidSet(cards)) {
         return 'grupo';
@@ -1133,7 +1167,7 @@ function findAndValidateAllMelds(cards) {
 
 // ▼▼▼ REEMPLAZA ESTAS DOS FUNCIONES EN SERVER.JS ▼▼▼
 
-// ▼▼▼ FUNCIÓN findOptimalMelds ORIGINAL Y ESTRICTA ▼▼▼
+// ▼▼▼ FUNCIÓN findOptimalMelds INTELIGENTE (PARA BOTS) ▼▼▼
 function findOptimalMelds(hand) {
   let availableCards = [...hand];
   let foundMelds = [];
@@ -1147,12 +1181,14 @@ function findOptimalMelds(hand) {
     for (let size = Math.min(7, availableCards.length); size >= 3; size--) {
       for (const combo of getCombinations(availableCards, size)) {
         
-        const type = validateMeld(combo); // Ahora usa la función estricta
+        // ¡CAMBIO CLAVE! El bot ahora usa la validación inteligente.
+        const validationResult = validateMeldAndCorrect(combo); 
         
-        if (type) {
-          const points = calculateMeldPoints(combo, type);
-          const score = combo.length * 100 + points;
-          allPossibleMelds.push({ cards: combo, type, points, score });
+        if (validationResult) {
+          const { type, cards: orderedCards } = validationResult;
+          const points = calculateMeldPoints(orderedCards, type);
+          const score = orderedCards.length * 100 + points;
+          allPossibleMelds.push({ cards: orderedCards, type, points, score });
         }
       }
     }
