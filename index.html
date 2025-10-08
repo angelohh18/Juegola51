@@ -453,6 +453,16 @@
         <div class="content">
         <h2 style="color:#ff4444;">❌ Eliminación por falta</h2>
         <div id="elimination-message" style="text-align: left; line-height: 1.5;">Jugador X ha sido eliminado por la falta Y y pagará la multa adicional de Z.</div>
+        <div id="fault-details-container" style="display: none; width: 100%; margin-top: 15px;">
+            <div id="invalid-combo-container">
+                <h4 class="fault-subtitle">Combinación Inválida Presentada:</h4>
+                <div id="invalid-combo-display" class="meld-group fault-display"></div>
+            </div>
+            <div id="correct-combo-container" style="margin-top: 10px; display: none;">
+                <h4 class="fault-subtitle">Forma Correcta Sugerida:</h4>
+                <div id="correct-combo-display" class="meld-group fault-display"></div>
+            </div>
+        </div>
         <button onclick="closeEliminationOverlay()">Aceptar</button>
         </div>
     </div>

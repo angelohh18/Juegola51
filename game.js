@@ -1332,17 +1332,17 @@ function showRoomsOverview() {
         }
     });
 
+    // Reemplaza el listener socket.on('playerEliminated',...)
     socket.on('playerEliminated', (data) => {
         console.log('Jugador eliminado:', data);
-        showEliminationMessage(data.playerName, data.reason);
+        showEliminationMessage(data.playerName, data.faultData); // Pasamos el objeto faultData
 
-        // Actualiza el estado local del jugador
         const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.playerId);
         if (playerViewIndex !== -1) {
             const p = players[playerViewIndex];
             if (p) {
                 p.active = false;
-                p.hand = []; // <<-- CORRECCIÓN 1: Limpia los datos de la mano
+                p.hand = [];
             }
             const infoBotEl = document.getElementById(`info-player${playerViewIndex}`);
             if (infoBotEl) {
@@ -1351,9 +1351,7 @@ function showRoomsOverview() {
                     counterEl.textContent = '❌ Eliminado';
                 }
             }
-
-            // <<-- CORRECCIÓN 2: Si el eliminado es el jugador humano, limpia la vista de su mano
-            if (playerViewIndex === 0) { // El jugador humano siempre es el índice 0 en su vista
+            if (playerViewIndex === 0) {
                 const humanHandEl = document.getElementById('human-hand');
                 if (humanHandEl) {
                     humanHandEl.innerHTML = '';
@@ -2810,26 +2808,69 @@ function updatePlayersView(seats, inGame = false) {
     function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
     function updateTurnIndicator() { for (let i = 0; i < 4; i++) { const e = document.getElementById(`info-player${i}`); if(e) e.classList.remove('current-turn-glow'); } const e = document.getElementById(`info-player${currentPlayer}`); if(e) e.classList.add('current-turn-glow'); }
     function updatePointsIndicator() { } function updateDebugInfo() { } let hidePlayerActionToasts = true; function showPlayerToast(msg, duration=3000) { if (hidePlayerActionToasts) return; showToast(msg, duration); } function showOverlay(id) { document.getElementById(id).style.display = 'flex'; } function hideOverlay(id) { document.getElementById(id).style.display = 'none'; }
-    function showEliminationMessage(playerName, faultReason) {
+    // Pega esta función completa en tu game.js
+    function createCardDisplayHTML(cards) {
+        if (!cards || cards.length === 0) return '';
+        return cards.map(card => `
+            <div class="card" style="position: relative; display: inline-block;">
+                <img src="${getCardImageUrl(card)}" alt="${card.value}" style="width: 100%; height: 100%; display: block;">
+            </div>
+        `).join('');
+    }
+
+    // Reemplaza la función showEliminationMessage entera
+    function showEliminationMessage(playerName, faultData) {
         const el = document.getElementById('elimination-message');
-        if (el) {
-            const penalty = currentGameSettings?.settings?.penalty || 0;
-            const tableCurrency = currentGameSettings?.settings?.betCurrency || 'USD';
+        const faultDetailsContainer = document.getElementById('fault-details-container');
+        const invalidComboContainer = document.getElementById('invalid-combo-container');
+        const correctComboContainer = document.getElementById('correct-combo-container');
+        const invalidDisplay = document.getElementById('invalid-combo-display');
+        const correctDisplay = document.getElementById('correct-combo-display');
 
-            let penaltyText = `${penalty.toLocaleString('es-CO')} ${tableCurrency}`;
+        if (!el || !faultDetailsContainer) return;
 
-            // Calculamos y añadimos la equivalencia si las monedas son diferentes
-            if (currentUser.currency && tableCurrency !== currentUser.currency) {
-                const convertedPenalty = convertCurrency(penalty, tableCurrency, currentUser.currency, clientExchangeRates);
-                const symbol = currentUser.currency === 'EUR' ? '€' : currentUser.currency;
-                penaltyText += ` <span style="font-size: 0.9rem; color: #aaa;">(Aprox. ${convertedPenalty.toFixed(2)} ${symbol})</span>`;
-            }
+        // 1. Mostrar el mensaje de texto principal
+        const penalty = currentGameSettings?.settings?.penalty || 0;
+        const tableCurrency = currentGameSettings?.settings?.betCurrency || 'USD';
+        let penaltyText = `${penalty.toLocaleString('es-CO')} ${tableCurrency}`;
 
-            el.innerHTML = `Jugador <strong>${playerName}</strong> ha sido eliminado y pagará la multa adicional de <strong>${penaltyText}</strong> por la siguiente falta:
-                          <div style="background: rgba(255,0,0,0.1); border: 1px solid #ff4444; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 1.1em; color: #ffdddd; text-align: center;">
-                              ${faultReason}
-                          </div>`;
+        if (currentUser.currency && tableCurrency !== currentUser.currency) {
+            const convertedPenalty = convertCurrency(penalty, tableCurrency, currentUser.currency, clientExchangeRates);
+            const symbol = currentUser.currency === 'EUR' ? '€' : currentUser.currency;
+            penaltyText += ` <span style="font-size: 0.9rem; color: #aaa;">(Aprox. ${convertedPenalty.toFixed(2)} ${symbol})</span>`;
         }
+
+        el.innerHTML = `Jugador <strong>${playerName}</strong> ha sido eliminado y pagará la multa adicional de <strong>${penaltyText}</strong> por la siguiente falta:
+            <div style="background: rgba(255,0,0,0.1); border: 1px solid #ff4444; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 1.1em; color: #ffdddd; text-align: center;">
+                ${faultData.reason}
+            </div>`;
+
+        // 2. Lógica para mostrar las cartas
+        faultDetailsContainer.style.display = 'none';
+        invalidComboContainer.style.display = 'none';
+        correctComboContainer.style.display = 'none';
+
+        if (faultData.invalidCards) {
+            let invalidHTML = '';
+            if (faultData.contextCards) { // Para descarte ilegal
+                invalidHTML += createCardDisplayHTML(faultData.contextCards);
+                invalidHTML += '<div class="fault-separator">+</div>';
+                invalidHTML += createCardDisplayHTML(faultData.invalidCards);
+                invalidComboContainer.querySelector('h4').textContent = 'Intento de Descarte Ilegal:';
+            } else { // Para bajada inválida
+                invalidHTML = createCardDisplayHTML(faultData.invalidCards);
+                invalidComboContainer.querySelector('h4').textContent = 'Combinación Inválida Presentada:';
+            }
+            invalidDisplay.innerHTML = invalidHTML;
+            invalidComboContainer.style.display = 'block';
+            faultDetailsContainer.style.display = 'block';
+        }
+
+        if (faultData.correctCards) {
+            correctDisplay.innerHTML = createCardDisplayHTML(faultData.correctCards);
+            correctComboContainer.style.display = 'block';
+        }
+
         showOverlay('elimination-overlay');
     }
     // ▼▼▼ REEMPLAZA LA FUNCIÓN ENTERA CON ESTA VERSIÓN ▼▼▼

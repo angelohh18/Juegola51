@@ -647,6 +647,51 @@ function validateMeld(cards) {
     
     return false; // Si ninguna validación pasa, la jugada es inválida.
 }
+
+// Pega esta función completa en tu server.js
+function analyzeAndSuggestCorrection(cards) {
+    if (!cards || cards.length < 3) return { suggestion: null, explanation: null };
+
+    const originalOrder = cards.map(c => c.value).join('-');
+    const suits = new Set(cards.map(c => c.suit));
+    const values = new Set(cards.map(c => c.value));
+
+    // Intenta corregir como si fuera una escalera
+    if (suits.size === 1) {
+        const sortedCards = sortCardsForRun(cards); // Reutilizamos tu función para ordenar escaleras
+        if (isValidRun(sortedCards)) {
+            const correctOrder = sortedCards.map(c => c.value).join('-');
+            if (originalOrder !== correctOrder) {
+                return {
+                    suggestion: sortedCards,
+                    explanation: `El orden de la escalera era incorrecto. La secuencia correcta es ${correctOrder}.`
+                };
+            }
+        }
+    }
+
+    // Intenta corregir como si fuera un grupo
+    if (values.size === 1) {
+        // La falta más común en grupos es el orden de colores.
+        // Buscamos una permutación que sí sea válida.
+        // (Esta es una lógica simplificada para el ejemplo más común)
+        if (cards.length === 3) {
+            const perms = [ [0,1,2], [0,2,1], [1,0,2], [1,2,0], [2,0,1], [2,1,0] ];
+            for (const p of perms) {
+                const reordered = [cards[p[0]], cards[p[1]], cards[p[2]]];
+                if (isValidSet(reordered)) {
+                     return {
+                        suggestion: reordered,
+                        explanation: `El orden de los colores no era válido. Los colores deben alternarse (rojo/negro).`
+                    };
+                }
+            }
+        }
+    }
+    
+    return { suggestion: null, explanation: 'No se encontró una corrección simple.' };
+}
+
 function isValidSet(cards) {
     if (!cards || (cards.length !== 3 && cards.length !== 4)) {
         return false;
@@ -937,34 +982,29 @@ async function checkVictoryCondition(room, roomId, io) {
   return false;
 }
 
-async function handlePlayerElimination(room, faultingPlayerId, faultReason, io) {
+async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
     if (!room) return;
     const roomId = room.roomId;
-
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
 
-    // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
+    // Estandarizamos el objeto de la falta
+    const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
+
     if (room.isPractice) {
         console.log(`[Práctica] Falta cometida por ${playerSeat.playerName}.`);
-        // Busca al jugador humano para enviarle solo a él la notificación.
         const humanPlayer = room.seats.find(s => s && !s.isBot);
-
         if (humanPlayer) {
-            // 1. Notifica al humano para que vea el modal de la falta cometida.
             io.to(humanPlayer.playerId).emit('playerEliminated', {
                 playerId: faultingPlayerId,
                 playerName: playerSeat.playerName,
-                reason: faultReason,
+                faultData: finalFaultData // Enviamos el objeto completo
             });
-            // 2. Envía la señal para que, después de cerrar el modal de falta, aparezca el de reinicio.
             io.to(humanPlayer.playerId).emit('practiceGameFaultEnd');
         }
-        // 3. Detiene la ejecución para no aplicar lógica de mesas reales.
-        return; 
+        return;
     }
-    // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
+
     if (playerSeat && playerSeat.active) {
-        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
         const penalty = room.settings.penalty || 0;
         const playerInfo = users[playerSeat.userId];
         if (penalty > 0 && playerInfo) {
@@ -972,43 +1012,27 @@ async function handlePlayerElimination(room, faultingPlayerId, faultReason, io) 
             playerInfo.credits -= penaltyInPlayerCurrency;
             room.pot = (room.pot || 0) + penalty;
             console.log(`Jugador ${playerSeat.playerName} paga multa de ${penalty}. Nuevo bote: ${room.pot}`);
-
             io.to(faultingPlayerId).emit('userStateUpdated', playerInfo);
             io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
         }
-        // ▲▲▲ FIN DEL BLOQUE AÑADIDO ▲▲▲
-        // --- INICIO: LÓGICA PARA GESTIONAR CARTAS DEL JUGADOR ELIMINADO ---
-
-        // 1. Recoger las cartas del jugador (mano y bajadas del turno).
+        
         const playerHand = room.playerHands[faultingPlayerId] || [];
         const turnMeldCards = room.turnMelds.flatMap(meld => meld.cards);
         const cardsToDiscard = [...playerHand, ...turnMeldCards];
-
         if (cardsToDiscard.length > 0) {
-            // 2. Preservar la carta superior actual del descarte.
             const topCard = room.discardPile.pop();
-
-            // 3. Añadir las cartas del jugador al fondo del descarte y barajarlas.
             shuffle(cardsToDiscard);
             room.discardPile.unshift(...cardsToDiscard);
-
-            // 4. Devolver la carta superior a su sitio.
-            if (topCard) {
-                room.discardPile.push(topCard);
-            }
+            if (topCard) room.discardPile.push(topCard);
         }
-
-        // 5. Limpiar la mano del jugador y las bajadas temporales del turno.
         room.playerHands[faultingPlayerId] = [];
-        resetTurnState(room); // Esta función resetea turnMelds, turnPoints, etc.
-
-        // --- FIN DE LA LÓGICA AÑADIDA ---
+        resetTurnState(room);
 
         playerSeat.active = false;
         io.to(roomId).emit('playerEliminated', {
             playerId: faultingPlayerId,
             playerName: playerSeat.playerName,
-            reason: faultReason,
+            faultData: finalFaultData // Enviamos el objeto completo
         });
     }
 
@@ -2122,9 +2146,15 @@ io.on('connection', (socket) => {
 
         const meldType = validateMeld(cards);
         if (!meldType) {
-            const reason = 'Intento de bajar una combinación de cartas inválida.';
-            console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
-            return handlePlayerElimination(room, socket.id, reason, io);
+            // ESTE ES EL BLOQUE A REEMPLAZAR
+            const analysis = analyzeAndSuggestCorrection(cards);
+            const faultDetails = {
+                reason: 'Intento de bajar una combinación de cartas inválida.',
+                invalidCards: cards,
+                correctCards: analysis.suggestion,
+                explanation: analysis.explanation
+            };
+            return handlePlayerElimination(room, socket.id, faultDetails, io);
         }
 
         const meldPoints = calculateMeldPoints(cards, meldType);
@@ -2227,10 +2257,16 @@ socket.on('accionDescartar', async (data) => {
         if (allCurrentMelds.length > 0) {
             for (const meld of allCurrentMelds) {
                 if (canBeAddedToServerMeld(card, meld)) {
-                    // Si la carta se puede añadir, es una falta grave.
-                    const reason = `Descarte ilegal. La carta ${card.value}${getSuitIcon(card.suit)} podía ser añadida a un juego ya bajado en la mesa.`;
-                    console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
-                    return handlePlayerElimination(room, socket.id, reason, io);
+                    // ESTE ES EL BLOQUE A REEMPLAZAR
+                    const faultDetails = {
+                        reason: `Descarte ilegal. La carta se podía añadir a un juego en mesa.`,
+                        invalidCards: [card],
+                        contextCards: meld.cards,
+                        explanation: meld.type === 'escalera' 
+                            ? 'Esta carta no se puede descartar porque pertenece a la misma secuencia y palo que el juego en mesa.'
+                            : 'Esta carta no se puede descartar porque completa un grupo válido en mesa.'
+                    };
+                    return handlePlayerElimination(room, socket.id, faultDetails, io);
                 }
             }
         }
