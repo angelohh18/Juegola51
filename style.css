@@ -448,7 +448,8 @@ html {
 #rules-modal .modal-content,
 #create-room-modal .modal-content,
 #avatar-crop-modal .modal-content,
-#insufficient-credits-modal .modal-content {
+#insufficient-credits-modal .modal-content,
+#pwa-install-modal .modal-content {
     background: #211e18;
     border: 2px solid #c5a56a;
     border-radius: 20px;
