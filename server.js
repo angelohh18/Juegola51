@@ -632,54 +632,15 @@ function sortCardsForRun(cards) {
   });
 }
 
-// PEGA ESTA FUNCIÓN ORIGINAL COMPLETA
+// ▼▼▼ FUNCIÓN validateMeld ESTRICTA Y ORIGINAL ▼▼▼
 function validateMeld(cards) {
     if (isValidSet(cards)) {
-        return { type: 'grupo', cards: cards };
+        return 'grupo';
     }
     if (isValidRun(cards)) {
-        return { type: 'escalera', cards: cards };
+        return 'escalera';
     }
     return false;
-}
-
-// FUNCIÓN INTELIGENTE PARA BOTS
-function validateMeldAndCorrect(cards) {
-    if (!cards || cards.length < 3) return false;
-
-    // Intenta validar como si fuera un grupo (Set)
-    const suits = new Set(cards.map(c => c.suit));
-    const values = new Set(cards.map(c => c.value));
-
-    if (values.size === 1 && suits.size === cards.length && (cards.length === 3 || cards.length === 4)) {
-        // Tiene el potencial de ser un grupo válido, ahora busquemos un orden de color correcto.
-        const perms = [ [0,1,2], [0,2,1], [1,0,2], [1,2,0], [2,0,1], [2,1,0] ]; // Permutaciones para 3 cartas
-        const perms4 = [ /* Se pueden añadir permutaciones para 4 si es necesario, pero es costoso */ ];
-
-        if (cards.length === 3) {
-            for (const p of perms) {
-                const reordered = [cards[p[0]], cards[p[1]], cards[p[2]]];
-                if (isValidSet(reordered)) {
-                    // ¡Éxito! Encontramos un orden válido.
-                    return { type: 'grupo', cards: reordered };
-                }
-            }
-        } else if (cards.length === 4) {
-             // Para 4 cartas, una validación simple es suficiente por ahora.
-             if (isValidSet(cards)) return { type: 'grupo', cards: cards };
-        }
-    }
-
-    // Intenta validar como si fuera una escalera (Run)
-    if (suits.size === 1) {
-        const sortedRun = sortCardsForRun([...cards]); // Usamos una copia para no modificar la original
-        if (isValidRun(sortedRun)) {
-            // ¡Éxito! La escalera es válida después de ordenarla.
-            return { type: 'escalera', cards: sortedRun };
-        }
-    }
-    
-    return false; // Si ninguna lógica tuvo éxito, la jugada es inválida.
 }
 
 // Pega esta función completa en tu server.js
@@ -1139,10 +1100,10 @@ function findAndValidateAllMelds(cards) {
         // Buscamos desde la combinación más grande posible hacia abajo
         for (let size = Math.min(7, remainingCards.length); size >= 3; size--) {
             for (const combo of getCombinations(remainingCards, size)) {
-                const validationResult = validateMeldAndCorrect(combo);
-                if (validationResult) {
-                    bestCombo = validationResult.cards;
-                    bestType = validationResult.type;
+                const type = validateMeld(combo);
+                if (type) {
+                    bestCombo = combo;
+                    bestType = type;
                     break; // Encontramos una combinación válida, la procesamos
                 }
             }
@@ -1172,7 +1133,7 @@ function findAndValidateAllMelds(cards) {
 
 // ▼▼▼ REEMPLAZA ESTAS DOS FUNCIONES EN SERVER.JS ▼▼▼
 
-// REEMPLAZA LA FUNCIÓN findOptimalMelds COMPLETA
+// ▼▼▼ FUNCIÓN findOptimalMelds ORIGINAL Y ESTRICTA ▼▼▼
 function findOptimalMelds(hand) {
   let availableCards = [...hand];
   let foundMelds = [];
@@ -1183,31 +1144,26 @@ function findOptimalMelds(hand) {
     let bestMeld = null;
     const allPossibleMelds = [];
     
-    // Limita la búsqueda a combinaciones de hasta 7 cartas por rendimiento
     for (let size = Math.min(7, availableCards.length); size >= 3; size--) {
       for (const combo of getCombinations(availableCards, size)) {
         
-        // La nueva validación nos devuelve el tipo y las cartas ya ordenadas
-        const validationResult = validateMeldAndCorrect(combo); 
+        const type = validateMeld(combo); // Ahora usa la función estricta
         
-        if (validationResult) {
-          const { type, cards: orderedCards } = validationResult;
-          const points = calculateMeldPoints(orderedCards, type);
-          const score = orderedCards.length * 100 + points; // Puntuación para decidir la "mejor" jugada
-          allPossibleMelds.push({ cards: orderedCards, type, points, score });
+        if (type) {
+          const points = calculateMeldPoints(combo, type);
+          const score = combo.length * 100 + points;
+          allPossibleMelds.push({ cards: combo, type, points, score });
         }
       }
     }
     
     if (allPossibleMelds.length > 0) {
-      // Ordenamos para encontrar la mejor combinación posible y la seleccionamos
       bestMeld = allPossibleMelds.sort((a, b) => b.score - a.score)[0];
       foundMelds.push(bestMeld);
       
-      // Eliminamos las cartas usadas para la siguiente búsqueda
       const bestMeldCardIds = new Set(bestMeld.cards.map(c => c.id));
       availableCards = availableCards.filter(card => !bestMeldCardIds.has(card.id));
-      changed = true; // Volvemos a buscar con las cartas restantes
+      changed = true;
     }
   }
   return foundMelds;
@@ -2176,9 +2132,8 @@ io.on('connection', (socket) => {
         }
 
         // Notificar a todos para animar la nueva combinación
-        const validationResult = validateMeld(cards);
-        if (!validationResult) {
-            // ESTE ES EL BLOQUE A REEMPLAZAR
+        const meldType = validateMeld(cards);
+        if (!meldType) {
             const analysis = analyzeAndSuggestCorrection(cards);
             const faultDetails = {
                 reason: 'Intento de bajar una combinación de cartas inválida.',
@@ -2189,18 +2144,16 @@ io.on('connection', (socket) => {
             return handlePlayerElimination(room, socket.id, faultDetails, io);
         }
 
-        const { type: meldType, cards: orderedCards } = validationResult;
-
         io.to(roomId).emit('animateNewMeld', {
             melderId: socket.id,
-            cards: orderedCards
+            cards: cards
         });
 
-        const meldPoints = calculateMeldPoints(orderedCards, meldType);
+        const meldPoints = calculateMeldPoints(cards, meldType);
 
         // Añadimos la combinación y los puntos al estado temporal del turno
         room.turnMelds.push({
-            cards: orderedCards,
+            cards: cards,
             type: meldType,
             points: meldPoints,
             melderId: socket.id
