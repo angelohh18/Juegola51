@@ -125,8 +125,14 @@ function showFunctionsModal() {
 function hideFunctionsModal() {
     hideOverlay('functions-modal');
 }
-// Función para mostrar el modal solo la primera vez
+// ▼▼▼ FUNCIÓN showFunctionsModalOnce CON SEGURIDAD ▼▼▼
 function showFunctionsModalOnce() {
+    // LÍNEA DE SEGURIDAD: Si el usuario no ha iniciado sesión, esta función no hace nada.
+    if (!document.body.classList.contains('is-logged-in')) {
+        return;
+    }
+
+    // El resto de la lógica se mantiene igual
     if (localStorage.getItem('la51_functions_modal_shown') !== 'true') {
         showFunctionsModal();
         localStorage.setItem('la51_functions_modal_shown', 'true');
