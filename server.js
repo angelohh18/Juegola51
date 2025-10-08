@@ -1238,7 +1238,7 @@ async function botPlay(room, botPlayerId, io) {
                 // Si no puede robar, debe pasar el turno (esto es un caso raro)
                 // Aquí podrías implementar la lógica para terminar el juego si no hay más movimientos.
                 // Por ahora, simplemente avanzaremos el turno.
-                return advanceTurnAfterAction(room, botPlayerId, null, io);
+                return await advanceTurnAfterAction(room, botPlayerId, null, io);
             }
         }
         cardDrawn = room.deck.shift();
@@ -1285,18 +1285,42 @@ async function botPlay(room, botPlayerId, io) {
     const meldsToPlay = findOptimalMelds(botHand);
     if (meldsToPlay.length > 0) {
         const totalPoints = meldsToPlay.reduce((sum, meld) => sum + meld.points, 0);
-        if (botSeat.doneFirstMeld || totalPoints >= 51) {
-            for (const meld of meldsToPlay) {
-                io.to(room.roomId).emit('animateNewMeld', { melderId: botPlayerId, cards: meld.cards });
-                room.melds.push({ cards: meld.cards, type: meld.type, points: meld.points, melderId: botPlayerId });
-                const meldedCardIds = new Set(meld.cards.map(c => c.id));
-                botHand = botHand.filter(card => !meldedCardIds.has(card.id));
-                room.playerHands[botPlayerId] = botHand;
+        const canMeld = botSeat.doneFirstMeld || totalPoints >= 51;
+
+        if (canMeld) {
+            let shouldProceedWithMeld = true;
+
+            // VALIDACIÓN DE REGLA: Si robó del descarte, está OBLIGADO a usar la carta.
+            if (drewFromDiscardPile) {
+                const discardCardId = cardDrawn.id;
+                const isCardUsed = meldsToPlay.some(meld => meld.cards.some(card => card.id === discardCardId));
+
+                if (!isCardUsed) {
+                    console.log(`[Bot Logic Fault] ${botSeat.playerName} robó del descarte pero su plan de bajada no incluyó la carta. Saltando fase de bajada.`);
+                    shouldProceedWithMeld = false; // No se le permite bajar para no romper las reglas.
+                }
             }
-            botSeat.doneFirstMeld = true;
-            io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
-            if (await checkVictoryCondition(room, room.roomId, io)) return;
-            await pause(1500);
+
+            if (shouldProceedWithMeld) {
+                // El bot cumple las reglas, procede a bajar las combinaciones.
+                const allMeldedCardIds = new Set();
+
+                for (const meld of meldsToPlay) {
+                    io.to(room.roomId).emit('animateNewMeld', { melderId: botPlayerId, cards: meld.cards });
+                    room.melds.push({ cards: meld.cards, type: meld.type, points: meld.points, melderId: botPlayerId });
+                    meld.cards.forEach(c => allMeldedCardIds.add(c.id));
+                }
+
+                if (allMeldedCardIds.size > 0) {
+                    botHand = botHand.filter(card => !allMeldedCardIds.has(card.id));
+                    room.playerHands[botPlayerId] = botHand;
+                }
+
+                botSeat.doneFirstMeld = true;
+                io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
+                if (await checkVictoryCondition(room, room.roomId, io)) return;
+                await pause(1500);
+            }
         }
     }
 
@@ -1323,18 +1347,18 @@ async function botPlay(room, botPlayerId, io) {
             if (cardIndex !== -1) {
                 const [discardedCard] = botHand.splice(cardIndex, 1);
                 room.discardPile.push(discardedCard);
-                advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+                await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
             }
         } else { // Fallback por si algo falla
             const [discardedCard] = botHand.splice(0, 1);
             room.discardPile.push(discardedCard);
-            advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+            await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
         }
     }
 }
 
-function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    if (checkVictoryCondition(room, room.roomId, io)) return;
+async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
+    if (await checkVictoryCondition(room, room.roomId, io)) return;
 
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
