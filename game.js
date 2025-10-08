@@ -117,6 +117,22 @@ function hideOverlay(id) {
     const overlay = document.getElementById(id);
     if (overlay) overlay.style.display = 'none';
 }
+
+// ▼▼▼ NUEVAS FUNCIONES DE AYUDA PARA EL MODAL DE FUNCIONES ▼▼▼
+function showFunctionsModal() {
+    showOverlay('functions-modal');
+}
+function hideFunctionsModal() {
+    hideOverlay('functions-modal');
+}
+// Función para mostrar el modal solo la primera vez
+function showFunctionsModalOnce() {
+    if (localStorage.getItem('la51_functions_modal_shown') !== 'true') {
+        showFunctionsModal();
+        localStorage.setItem('la51_functions_modal_shown', 'true');
+    }
+}
+// ▲▲▲ FIN DE LAS NUEVAS FUNCIONES ▲▲▲
 // ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
 
 const socket = io(window.location.origin, { autoConnect: false });
@@ -1706,6 +1722,18 @@ function showRoomsOverview() {
             };
         }
 
+        // ▼▼▼ AÑADIR EVENT LISTENERS PARA EL MODAL DE FUNCIONES ▼▼▼
+        const btnShowFunctions = document.getElementById('btn-show-functions');
+        const btnCloseFunctions = document.getElementById('btn-close-functions-modal');
+
+        if (btnShowFunctions) {
+            btnShowFunctions.onclick = showFunctionsModal;
+        }
+        if (btnCloseFunctions) {
+            btnCloseFunctions.onclick = hideFunctionsModal;
+        }
+        // ▲▲▲ FIN DEL CÓDIGO AÑADIDO ▲▲▲
+
         // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ DENTRO ▼▼▼
         const btnAcceptVictory = document.getElementById('btn-accept-practice-victory');
         if (btnAcceptVictory) {
@@ -1752,6 +1780,9 @@ socket.on('gameStarted', (initialState) => {
         document.getElementById('game-container').style.display = 'block';
         setupChat();
         setupInGameLeaveButton();
+        
+        // ▼▼▼ AÑADIR ESTA LÍNEA PARA MOSTRAR EL MODAL EN PRÁCTICA ▼▼▼
+        showFunctionsModalOnce();
     }
 
     // El resto del código es el que ya tenías y es correcto para AMBOS tipos de partida.
@@ -2024,6 +2055,10 @@ socket.on('gameStarted', (initialState) => {
     
     function handleSitDown() {
         hideOverlay('ready-overlay');
+        
+        // ▼▼▼ AÑADIR ESTA LÍNEA PARA MOSTRAR EL MODAL EN MESAS REALES ▼▼▼
+        showFunctionsModalOnce();
+        
         renderGameControls();
     }
     

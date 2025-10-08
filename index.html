@@ -421,6 +421,7 @@
                   
                   <button onclick="attemptMeld()" id="meld-btn">⬇️ Bajar Combinación</button>
                   <button onclick="attemptDiscard()" id="discard-btn">🗑️ Descartar</button>
+                  <button id="btn-show-functions" title="Guía de Funciones">ℹ️</button>
               </div>
         </div>
         </main>
@@ -510,6 +511,49 @@
 
 
     <div id="drag-clone-container"></div>
+</div>
+
+<div id="functions-modal" role="dialog" aria-modal="true" aria-labelledby="functions-modal-title">
+    <div class="modal-content">
+        <h3 id="functions-modal-title">Guía Rápida de Funciones</h3>
+
+        <h4>1. Cómo Robar una Carta</h4>
+        <p>
+            Para robar, simplemente haz <strong>clic (o tap en móvil)</strong> en una de las dos zonas:
+        </p>
+        <ul>
+            <li><strong>El Mazo:</strong> La pila de cartas boca abajo. Robarás una carta sin que los demás la vean.</li>
+            <li><strong>El Descarte:</strong> La pila de cartas boca arriba. Robarás la última carta descartada.</li>
+        </ul>
+
+        <h4>2. Seleccionar y Organizar Cartas</h4>
+        <ul>
+            <li><strong>Seleccionar:</strong> Haz clic/tap en una carta para seleccionarla (aparecerá un borde dorado). Vuelve a hacer clic para deseleccionarla. Puedes seleccionar varias cartas.</li>
+            <li><strong>Organizar:</strong> Puedes <strong>arrastrar y soltar</strong> una carta (o un grupo de cartas seleccionadas) sobre otra carta en tu mano para reorganizarlas a tu gusto.</li>
+        </ul>
+
+        <h4>3. Cómo Descartar una Carta</h4>
+        <p>Para finalizar tu turno, debes descartar una carta. Hay 3 formas de hacerlo:</p>
+        <ol>
+            <li>Selecciona una carta y luego presiona el botón <strong>"🗑️ Descartar"</strong>.</li>
+            <li>Selecciona una carta y luego haz clic/tap directamente en la zona de <strong>Descarte</strong>.</li>
+            <li><strong>Arrastra</strong> la carta que quieras desde tu mano y suéltala sobre la zona de <strong>Descarte</strong>.</li>
+        </ol>
+
+        <h4>4. Cómo Bajar una Combinación</h4>
+        <div class="example penalty" style="text-align: center; font-style: normal;">
+            <strong>¡MUY IMPORTANTE!</strong><br>
+            Tu combinación debe estar <strong>perfectamente ordenada</strong> antes de bajarla. Si no lo está, se considerará una falta y serás eliminado.
+        </div>
+        <p>Hay 3 formas de bajar una combinación válida:</p>
+        <ol>
+            <li>Selecciona todas las cartas de tu combinación y presiona el botón <strong>"⬇️ Bajar Combinación"</strong>.</li>
+            <li>Selecciona todas las cartas y haz clic/tap en la <strong>zona central de la mesa</strong> (el tapete rojo).</li>
+            <li>Selecciona todas las cartas, <strong>arrástralas</strong> hasta la zona central de la mesa y suéltalas.</li>
+        </ol>
+
+        <button id="btn-close-functions-modal" class="secondary">Entendido</button>
+    </div>
 </div>
 
 <div id="simple-funds-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10005; align-items: center; justify-content: center;">

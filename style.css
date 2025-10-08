@@ -449,7 +449,8 @@ html {
 #create-room-modal .modal-content,
 #avatar-crop-modal .modal-content,
 #insufficient-credits-modal .modal-content,
-#pwa-install-modal .modal-content {
+#pwa-install-modal .modal-content,
+#functions-modal .modal-content {
     background: #211e18;
     border: 2px solid #c5a56a;
     border-radius: 20px;
@@ -635,7 +636,8 @@ html {
     padding: 20px;
 }
 #rules-modal .modal-content,
-#pwa-install-modal .modal-content {
+#pwa-install-modal .modal-content,
+#functions-modal .modal-content {
     width: 90vw; /* Usa ancho de viewport */
     max-width: 550px; /* Ancho máximo reducido */
     max-height: 85vh; /* Alto máximo para evitar desbordamiento vertical */
@@ -649,7 +651,8 @@ html {
 #rules-modal .modal-content::-webkit-scrollbar-thumb { background: #c5a56a; border-radius: 10px; }
 
 #rules-modal .modal-content h3,
-#pwa-install-modal .modal-content h3 {
+#pwa-install-modal .modal-content h3,
+#functions-modal .modal-content h3 {
     font-size: clamp(1.4rem, 4vw, 1.8rem); /* Tipografía fluida */
     color: #c5a56a;
     border-bottom: 1px solid #c5a56a;
@@ -657,7 +660,8 @@ html {
     margin-bottom: 20px;
 }
 #rules-modal .modal-content h4,
-#pwa-install-modal .modal-content .pwa-subtitle {
+#pwa-install-modal .modal-content .pwa-subtitle,
+#functions-modal .modal-content h4 {
     font-size: clamp(1rem, 3vw, 1.2rem); /* Tipografía fluida */
     color: #c5a56a;
     margin-top: 20px;
@@ -665,21 +669,27 @@ html {
 }
 
 #rules-modal .modal-content ul,
-#pwa-install-modal .modal-content ol {
+#pwa-install-modal .modal-content ol,
+#functions-modal .modal-content ul,
+#functions-modal .modal-content ol {
     padding-left: 20px;
     list-style: disc;
 }
-#rules-modal .modal-content li {
+#rules-modal .modal-content li,
+#functions-modal .modal-content li {
     margin-bottom: 8px;
 }
-#rules-modal .modal-content strong {
+#rules-modal .modal-content strong,
+#functions-modal .modal-content strong {
     color: #c5a56a;
 }
-#rules-modal .modal-content .penalty {
+#rules-modal .modal-content .penalty,
+#functions-modal .modal-content .penalty {
     color: #e87272;
     font-weight: bold;
 }
-#rules-modal .modal-content .example {
+#rules-modal .modal-content .example,
+#functions-modal .modal-content .example {
     background: #3a3a2a; /* <-- LÍNEA MODIFICADA */
     border-left: 3px solid #c5a56a;
     padding: 10px;
@@ -2043,3 +2053,21 @@ body.game-active {
   border: 1px solid #c5a56a44;
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
 }
+
+/* ▼▼▼ ESTILOS PARA EL BOTÓN DE GUÍA DE FUNCIONES ▼▼▼ */
+#btn-show-functions {
+    position: absolute;
+    bottom: -5px; /* Lo posiciona debajo del área de acciones */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    line-height: 1;
+    padding: 0;
+    font-family: 'Georgia', serif;
+    font-weight: bold;
+    text-align: center;
+}
+/* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
