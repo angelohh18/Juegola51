@@ -558,7 +558,8 @@ html {
 
 /* Modal Login */
 #login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal,
-#pwa-install-modal {
+#pwa-install-modal,
+#functions-modal {
     display: none;
     position: fixed;
     inset: 0;
