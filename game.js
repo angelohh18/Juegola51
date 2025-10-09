@@ -2648,6 +2648,58 @@ function updatePlayersView(seats, inGame = false) {
         }
     }
     
+    // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA (DROP) ▼▼▼
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const targetElement = e.currentTarget; // Puede ser una carta o el contenedor de la mano
+        targetElement.classList.remove('drag-over', 'drop-zone');
+
+        try {
+            const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
+            const player = players[0];
+            if (!player) return;
+
+            let targetIndex;
+
+            // CASO 1: Se suelta sobre OTRA CARTA
+            if (targetElement.classList.contains('card')) {
+                const rect = targetElement.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
+                const originalIndex = parseInt(targetElement.dataset.index);
+
+                targetIndex = (e.clientX > midpoint) ? originalIndex + 1 : originalIndex;
+            } 
+            // CASO 2: Se suelta en un espacio vacío del CONTENEDOR de la mano
+            else if (targetElement.id === 'human-hand') {
+                const firstCard = targetElement.firstElementChild;
+                const lastCard = targetElement.lastElementChild;
+                targetIndex = player.hand.length; // Por defecto, va al final
+
+                if (firstCard && lastCard) {
+                    const firstCardRect = firstCard.getBoundingClientRect();
+                    const lastCardRect = lastCard.getBoundingClientRect();
+
+                    if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                        targetIndex = 0; // Se suelta al principio
+                    } else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                        targetIndex = player.hand.length; // Se suelta al final
+                    }
+                }
+            }
+
+            if (targetIndex !== undefined) {
+                reorderHand(droppedIndices, targetIndex);
+            }
+
+        } catch (error) {
+            console.error("Error al procesar el drop:", error);
+            renderHands(); // Restaura la mano si algo falla
+        }
+    };
+    // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
+    
     function renderHands() {
         const human = document.getElementById('human-hand');
         human.innerHTML = '';
@@ -2914,34 +2966,8 @@ function updatePlayersView(seats, inGame = false) {
         });
         d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
-        // ▼▼▼ DROP CON LÓGICA DE PRECISIÓN (MITAD IZQUIERDA/DERECHA) ▼▼▼
-        d.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation(); 
-            d.classList.remove('drag-over');
-            try {
-                const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
-                
-                // --- INICIO DE LA NUEVA LÓGICA DE PRECISIÓN ---
-                const rect = d.getBoundingClientRect(); // Obtenemos la posición y tamaño de la carta de destino.
-                const midpoint = rect.left + rect.width / 2; // Calculamos su punto medio horizontal.
-                
-                let targetIndex = idx; // Por defecto, la carta se inserta ANTES (mitad izquierda).
-                
-                // Si el ratón está en la mitad DERECHA de la carta, el objetivo es insertarla DESPUÉS.
-                if (e.clientX > midpoint) {
-                    targetIndex = idx + 1;
-                }
-                // --- FIN DE LA NUEVA LÓGICA ---
-                
-                reorderHand(droppedIndices, targetIndex);
-
-            } catch (error) {
-                console.error("Error al soltar la carta (drop):", error);
-                renderHands();
-            }
-        });
-        // ▲▲▲ FIN DEL BLOQUE DE DROP CON PRECISIÓN ▲▲▲
+        // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA ▼▼▼
+        d.addEventListener('drop', handleDrop);
 
         fragment.appendChild(d);
     });
@@ -2953,38 +2979,7 @@ function updatePlayersView(seats, inGame = false) {
         e.preventDefault(); // Crucial para permitir el 'drop'.
     });
 
-    human.addEventListener('drop', (e) => {
-        e.preventDefault();
-        try {
-            const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
-            const player = players[0];
-            if (!player) return;
-
-            const firstCard = human.firstElementChild;
-            const lastCard = human.lastElementChild;
-            let targetIndex = player.hand.length; // Por defecto, va al final.
-
-            if (firstCard && lastCard) {
-                const firstCardRect = firstCard.getBoundingClientRect();
-                const lastCardRect = lastCard.getBoundingClientRect();
-                
-                // Si se suelta a la izquierda del centro de la primera carta, va al inicio.
-                if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
-                    targetIndex = 0;
-                } 
-                // Si se suelta a la derecha del centro de la última carta, va al final.
-                else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
-                    targetIndex = player.hand.length;
-                }
-            }
-            
-            reorderHand(droppedIndices, targetIndex);
-
-        } catch (error) {
-            console.error("Error al soltar sobre el contenedor de la mano:", error);
-            renderHands();
-        }
-    });
+    human.addEventListener('drop', handleDrop);
     // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
     renderDiscard();
