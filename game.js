@@ -2785,17 +2785,37 @@ function updatePlayersView(seats, inGame = false) {
         });
         d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
+        // ▼▼▼ BLOQUE CORREGIDO PARA MANEJO DE ÚLTIMA CARTA ▼▼▼
         d.addEventListener('drop', (e) => {
             e.preventDefault();
             d.classList.remove('drag-over');
             try {
                 const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
-                reorderHand(droppedIndices, idx);
+                
+                // --- INICIO DE LA CORRECCIÓN ---
+                let targetIndex = idx;
+                const isLastCard = (idx === humanPlayer.hand.length - 1);
+
+                // Si se suelta sobre la última carta de la mano,
+                // ajustamos el índice para que la carta se coloque DESPUÉS de ella.
+                if (isLastCard) {
+                    // Verificamos que no estemos arrastrando la misma carta sobre sí misma
+                    // para evitar un bucle de reordenamiento infinito.
+                    const isDraggingSelfToLast = droppedIndices.length === 1 && droppedIndices[0] === idx;
+                    if (!isDraggingSelfToLast) {
+                        targetIndex = idx + 1;
+                    }
+                }
+                
+                reorderHand(droppedIndices, targetIndex);
+                // --- FIN DE LA CORRECCIÓN ---
+
             } catch (error) {
                 console.error("Error al soltar la carta (drop):", error);
-                renderHands();
+                renderHands(); // Reset en caso de error
             }
         });
+        // ▲▲▲ FIN DEL BLOQUE CORREGIDO ▲▲▲
 
         fragment.appendChild(d);
     });
