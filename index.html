@@ -55,6 +55,8 @@
         </div>
         <div class="username" id="user-name">Invitado</div>
         <div class="credits" id="user-credits">Créditos 0</div>
+        
+        <button class="button orange" id="btn-change-password">Cambiar Contraseña</button>
         <button class="button orange" id="btn-rules">Reglas del Juego</button>
         <button class="button orange" id="btn-reload-credits">Recargar/Retirar Créditos</button>
       </div>
@@ -247,6 +249,62 @@
   </div>
 </div>
 
+<!-- ▼▼▼ NUEVO MODAL: OLVIDÉ MI CONTRASEÑA ▼▼▼ -->
+<div id="forgot-password-modal" role="dialog" aria-modal="true" aria-labelledby="forgot-password-title" style="display: none;">
+  <div class="modal-content">
+    <span class="close-modal-btn">&times;</span>
+    <h3 id="forgot-password-title">Recuperar Contraseña</h3>
+    <p style="text-align: center; line-height: 1.6;">
+        Para restablecer tu contraseña, por favor, ponte en contacto con uno de nuestros administradores a través de WhatsApp.
+    </p>
+
+    <div style="text-align: left; line-height: 1.5; border-top: 1px solid #555; padding-top: 15px; margin-top: 15px;">
+        <h4 style="color: #c5a56a; margin-bottom: 5px; text-align: center; font-size: 1.1em;">ADMINISTRADOR PRINCIPAL</h4>
+        <p style="text-align: center; margin-bottom: 15px;">
+            <strong><a id="whatsapp-forgot-primary" href="https://wa.me/34665530984" target="_blank" rel="noopener noreferrer">+34 665 530 984</a></strong>
+            <br>
+            <small style="font-size: 0.8em; color: #aaa;">
+                Horario: 8:00 a 22:00 Madrid (GMT+2) <br>
+                o de 8:00 a 16:00 Bogotá (GMT-5).
+            </small>
+        </p>
+    </div>
+
+    <div style="text-align: left; line-height: 1.5; border-top: 1px solid #555; padding-top: 15px; margin-top: 15px;">
+        <h4 style="color: #c5a56a; margin-bottom: 5px; text-align: center; font-size: 1.1em;">ADMIN SECUNDARIO</h4>
+        <p style="text-align: center; margin-bottom: 0;">
+            <strong><a id="whatsapp-forgot-secondary" href="https://wa.me/573004280833" target="_blank" rel="noopener noreferrer">+57 300 428 0833</a></strong>
+        </p>
+    </div>
+    <button id="btn-close-forgot-modal" class="secondary">Volver</button>
+  </div>
+</div>
+<!-- ▲▲▲ FIN DEL MODAL ▲▲▲ -->
+
+<!-- ▼▼▼ NUEVO MODAL: CAMBIAR CONTRASEÑA ▼▼▼ -->
+<div id="change-password-modal" role="dialog" aria-modal="true" aria-labelledby="change-password-title" style="display: none;">
+  <div class="modal-content">
+    <span class="close-modal-btn">&times;</span>
+    <h3 id="change-password-title">Cambiar mi Contraseña</h3>
+
+    <label for="current-password">Contraseña Actual:</label>
+    <input type="password" id="current-password" required />
+
+    <label for="new-password">Nueva Contraseña:</label>
+    <input type="password" id="new-password" required />
+
+    <label for="confirm-new-password">Confirmar Nueva Contraseña:</label>
+    <input type="password" id="confirm-new-password" required />
+
+    <div class="error" id="change-password-error"></div>
+    <div class="success" id="change-password-success"></div>
+
+    <button id="btn-confirm-change-password">Guardar Cambios</button>
+    <button id="btn-cancel-change-password" class="secondary">Cancelar</button>
+  </div>
+</div>
+<!-- ▲▲▲ FIN DEL MODAL ▲▲▲ -->
+
 <div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
   <div class="modal-content">
     <h2 class="panel-title">
@@ -264,6 +322,8 @@
     <label for="login-password">Contraseña:</label>
     <input type="password" id="login-password" aria-required="true" />
     <div class="error" id="login-error"></div>
+    
+    <a href="#" id="btn-forgot-password" style="display: block; text-align: right; font-size: 0.9em; color: var(--casino-gold); margin-top: 10px;">¿Olvidaste tu contraseña?</a>
     <button id="btn-login">Iniciar Sesión</button>
     <button id="btn-register" class="secondary">Registrarse</button>
   </div>

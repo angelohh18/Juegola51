@@ -112,8 +112,12 @@
             <div id="user-edit-form-container" style="display: none; background: var(--casino-dark-panel); padding: 15px; border-radius: 5px;">
                 <h3 id="form-username-title" style="margin-top: 0; color: var(--casino-gold);"></h3>
 
-                <h4>Créditos y Moneda</h4>
-                <input type="number" id="edit-credits-input" style="width: 120px; padding: 5px;" placeholder="Monto créditos">
+                <h4>Gestión de Créditos</h4>
+                <div style="margin-bottom: 10px;">
+                    <strong>Saldo Actual:</strong>
+                    <span id="current-credits-display" style="font-size: 1.1em; color: var(--casino-gold); font-weight: bold;"></span>
+                </div>
+                <input type="number" id="edit-credits-input" style="width: 120px; padding: 5px;" placeholder="Nuevo Saldo Total">
                 <select id="edit-currency-select" style="padding: 5px;">
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
@@ -327,6 +331,11 @@
             if (selectedUser) {
                 // Rellenar el formulario con los datos del usuario
                 document.getElementById('form-username-title').textContent = `Gestionando a: ${selectedUser.username}`;
+                
+                // ▼▼▼ ACTUALIZA EL SALDO ACTUAL ▼▼▼
+                document.getElementById('current-credits-display').textContent = `${selectedUser.credits.toLocaleString('es-ES')} ${selectedUser.currency}`;
+                // ▲▲▲ FIN ▲▲▲
+                
                 document.getElementById('edit-credits-input').value = selectedUser.credits;
                 document.getElementById('edit-currency-select').value = selectedUser.currency;
                 document.getElementById('edit-password-input').value = ''; // Limpiar campo de contraseña

@@ -445,6 +445,8 @@ html {
 #login-modal .modal-content,
 #register-modal .modal-content,
 #credit-modal .modal-content,
+#forgot-password-modal .modal-content,
+#change-password-modal .modal-content,
 #rules-modal .modal-content,
 #create-room-modal .modal-content,
 #avatar-crop-modal .modal-content,
@@ -581,6 +583,11 @@ html {
 #rules-modal { z-index: 10005; }
 #avatar-crop-modal { z-index: 10006; }
 #credit-modal { z-index: 10001; }
+
+/* ▼▼▼ NUEVOS MODALES ▼▼▼ */
+#forgot-password-modal { z-index: 10007; }
+#change-password-modal { z-index: 10008; }
+/* ▲▲▲ FIN NUEVOS MODALES ▲▲▲ */
 
 /* --- INICIO: Estilos para el modal de información PWA --- */
 
@@ -2193,5 +2200,18 @@ body.game-active {
     color: #fff;
     transform: scale(1.2);
 }
+
+/* ▼▼▼ ESTILOS PARA MODAL DE CAMBIAR CONTRASEÑA ▼▼▼ */
+#change-password-modal .error,
+#change-password-modal .success {
+    display: none;
+    margin-top: 10px;
+    color: #c5a56a;
+    font-weight: 900;
+}
+#change-password-modal .success {
+    color: #6bff6b; /* Verde para éxito */
+}
+/* ▲▲▲ FIN ESTILOS MODAL CAMBIAR CONTRASEÑA ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

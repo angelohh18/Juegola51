@@ -1748,6 +1748,41 @@ io.on('connection', (socket) => {
     });
     // ▲▲▲ FIN DEL LISTENER ▲▲▲
 
+    // ▼▼▼ INICIO DEL NUEVO LISTENER PARA CAMBIO DE CONTRASEÑA DE USUARIO ▼▼▼
+    socket.on('user:changePassword', async ({ username, currentPassword, newPassword }) => {
+        try {
+            if (!username || !currentPassword || !newPassword) {
+                return socket.emit('user:changePasswordResponse', { success: false, message: 'Datos incompletos.' });
+            }
+
+            // 1. Obtener el hash actual del usuario desde la BD
+            const result = await pool.query('SELECT password_hash FROM users WHERE username = $1', [username.toLowerCase()]);
+            if (result.rows.length === 0) {
+                return socket.emit('user:changePasswordResponse', { success: false, message: 'Error: Usuario no encontrado.' });
+            }
+            const currentHash = result.rows[0].password_hash;
+
+            // 2. Comparar la contraseña actual proporcionada con el hash
+            const isMatch = await bcrypt.compare(currentPassword, currentHash);
+            if (!isMatch) {
+                return socket.emit('user:changePasswordResponse', { success: false, message: 'La contraseña actual es incorrecta.' });
+            }
+
+            // 3. Si coincide, hashear y actualizar la nueva contraseña
+            const saltRounds = 10;
+            const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+            await pool.query('UPDATE users SET password_hash = $1 WHERE username = $2', [newPasswordHash, username.toLowerCase()]);
+
+            console.log(`✅ Contraseña cambiada exitosamente por el usuario ${username}.`);
+            socket.emit('user:changePasswordResponse', { success: true, message: '¡Contraseña actualizada con éxito!' });
+
+        } catch (error) {
+            console.error(`❌ Error al cambiar la contraseña para ${username}:`, error);
+            socket.emit('user:changePasswordResponse', { success: false, message: 'Error interno del servidor. Inténtalo más tarde.' });
+        }
+    });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
+
     // Escucha la orden del admin para eliminar un usuario
     socket.on('admin:deleteUser', async ({ userId }) => {
         const username = userId.replace(/^user_/, ''); // Extraemos el username del id

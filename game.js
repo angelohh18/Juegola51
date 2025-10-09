@@ -527,6 +527,24 @@ function showPwaInstallModal() {
         creditModal.style.display = 'flex';
     });
     btnCloseCreditModal.addEventListener('click', () => { creditModal.style.display = 'none'; });
+    
+    // ▼▼▼ LISTENERS PARA MODAL "OLVIDÉ MI CONTRASEÑA" ▼▼▼
+    const btnForgotPassword = document.getElementById('btn-forgot-password');
+    const forgotPasswordModal = document.getElementById('forgot-password-modal');
+    const btnCloseForgotModal = document.getElementById('btn-close-forgot-modal');
+
+    if (btnForgotPassword && forgotPasswordModal && btnCloseForgotModal) {
+        btnForgotPassword.addEventListener('click', (e) => {
+            e.preventDefault();
+            forgotPasswordModal.style.display = 'flex';
+        });
+
+        btnCloseForgotModal.addEventListener('click', () => {
+            forgotPasswordModal.style.display = 'none';
+        });
+    }
+    // ▲▲▲ FIN LISTENERS "OLVIDÉ MI CONTRASEÑA" ▲▲▲
+    
     btnRules.addEventListener('click', () => { rulesModal.style.display = 'flex'; });
     btnCloseRulesModal.addEventListener('click', () => { rulesModal.style.display = 'none'; });
 
@@ -1170,6 +1188,91 @@ function showRoomsOverview() {
         body.classList.remove('is-logged-in');
         lobbyOverlay.style.display = 'none';
         showLoginModal();
+        
+        // ▼▼▼ INICIO DEL BLOQUE DE CÓDIGO PARA CAMBIAR CONTRASEÑA ▼▼▼
+        const btnChangePassword = document.getElementById('btn-change-password');
+        const changePasswordModal = document.getElementById('change-password-modal');
+
+        if (btnChangePassword && changePasswordModal) {
+            const currentPassInput = document.getElementById('current-password');
+            const newPassInput = document.getElementById('new-password');
+            const confirmNewPassInput = document.getElementById('confirm-new-password');
+            const errorDiv = document.getElementById('change-password-error');
+            const successDiv = document.getElementById('change-password-success');
+            const btnConfirm = document.getElementById('btn-confirm-change-password');
+            const btnCancel = document.getElementById('btn-cancel-change-password');
+
+            // Función para abrir el modal y resetearlo
+            const openChangePasswordModal = () => {
+                currentPassInput.value = '';
+                newPassInput.value = '';
+                confirmNewPassInput.value = '';
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+                btnConfirm.disabled = false;
+                changePasswordModal.style.display = 'flex';
+            };
+
+            // Función para cerrar el modal
+            const closeChangePasswordModal = () => {
+                changePasswordModal.style.display = 'none';
+            };
+
+            // Función para enviar los datos al servidor
+            const submitPasswordChange = () => {
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+
+                const currentPassword = currentPassInput.value;
+                const newPassword = newPassInput.value;
+                const confirmNewPassword = confirmNewPassInput.value;
+
+                if (!currentPassword || !newPassword) {
+                    errorDiv.textContent = 'Todos los campos son obligatorios.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                if (newPassword.length < 4) {
+                    errorDiv.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                if (newPassword !== confirmNewPassword) {
+                    errorDiv.textContent = 'Las nuevas contraseñas no coinciden.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                btnConfirm.disabled = true;
+                btnConfirm.textContent = 'Guardando...';
+
+                // Usamos la variable global 'currentUser' para obtener el nombre de usuario
+                const username = currentUser.username;
+
+                socket.emit('user:changePassword', { username, currentPassword, newPassword });
+            };
+
+            // Asignar eventos a los botones
+            btnChangePassword.addEventListener('click', openChangePasswordModal);
+            btnCancel.addEventListener('click', closeChangePasswordModal);
+            btnConfirm.addEventListener('click', submitPasswordChange);
+
+            // Listener para la respuesta del servidor
+            socket.on('user:changePasswordResponse', (response) => {
+                btnConfirm.disabled = false;
+                btnConfirm.textContent = 'Guardar Cambios';
+
+                if (response.success) {
+                    successDiv.textContent = response.message;
+                    successDiv.style.display = 'block';
+                    setTimeout(closeChangePasswordModal, 2500); // Cierra el modal tras el éxito
+                } else {
+                    errorDiv.textContent = response.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+        }
+        // ▲▲▲ FIN DEL BLOQUE DE CÓDIGO ▲▲▲
     })();
 })();
 // --- FIN: SCRIPT DEL LOBBY ---
