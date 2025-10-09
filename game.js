@@ -1190,6 +1190,7 @@ function showRoomsOverview() {
         showLoginModal();
         
         // ▼▼▼ INICIO DEL BLOQUE DE CÓDIGO PARA CAMBIAR CONTRASEÑA ▼▼▼
+        console.log('TEST: JavaScript actualizado - Modal cambiar contraseña');
         const btnChangePassword = document.getElementById('btn-change-password');
         const changePasswordModal = document.getElementById('change-password-modal');
 

@@ -2220,6 +2220,11 @@ body.game-active {
 #change-password-modal .success {
     color: #6bff6b; /* Verde para éxito */
 }
+
+/* TEST VISIBLE: Si ves este estilo, CSS está actualizado */
+body {
+    border: 5px solid red !important;
+}
 /* ▲▲▲ FIN ESTILOS MODAL CAMBIAR CONTRASEÑA ▲▲▲ */
 
 /* ▼▼▼ ESTILOS PARA BOTONES SECUNDARIOS DE NUEVOS MODALES ▼▼▼ */
