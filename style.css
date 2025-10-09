@@ -655,6 +655,7 @@ html {
 #rules-modal .modal-content,
 #forgot-password-modal .modal-content,
 #pwa-install-modal .modal-content,
+#change-password-modal .modal-content,
 #functions-modal .modal-content,
 #bot-info-modal .modal-content {
     width: 90vw; /* Usa ancho de viewport */
@@ -887,28 +888,28 @@ html {
         padding: 10px;
     }
     .user-panel .panel-title {
-        font-size: 1.8rem; /* Reducido */
+        font-size: 1.6rem;      /* Reducido de 1.8rem */
+        transform: scale(0.85);   /* Reducido de 0.9 */
         margin-bottom: 8px;
-        transform: scale(0.9); /* Encogido */
     }
     .user-panel .avatar-container, .user-panel .avatar {
-        width: 85px; /* Reducido */
-        height: 85px; /* Reducido */
+        width: 80px;            /* Reducido de 85px */
+        height: 80px;           /* Reducido de 85px */
         margin-bottom: 8px;
     }
     .user-panel .username {
-        font-size: 1.0rem; /* Reducido */
+        font-size: 0.9rem;       /* Reducido de 1.0rem */
         margin-bottom: 8px;
     }
     .user-panel .credits {
         margin-bottom: 10px;
-        padding: 8px; /* Reducido */
-        font-size: 0.85rem; /* Reducido */
+        padding: 7px;           /* Reducido de 8px */
+        font-size: 0.8rem;      /* Reducido de 0.85rem */
     }
     .button {
-        padding: 8px 0; /* Reducido */
-        margin-bottom: 8px;
-        font-size: 0.8rem; /* Reducido */
+        padding: 7px 0;         /* Reducido de 8px */
+        margin-bottom: 6px;     /* Reducido de 8px */
+        font-size: 0.75rem;     /* Reducido de 0.8rem */
         border-radius: 10px;
     }
 }
@@ -934,28 +935,32 @@ html {
         min-width: 200px; /* Reducir ancho mínimo */
         flex-basis: 220px;
     }
+    .user-panel .panel-title {
+        font-size: 1.5rem;      /* Nuevo ajuste aún más pequeño */
+        transform: scale(0.8);    /* Nuevo ajuste aún más pequeño */
+    }
     .user-panel .avatar-container, .user-panel .avatar {
-        width: 80px; /* Reducido */
-        height: 80px; /* Reducido */
+        width: 70px;            /* Reducido de 80px */
+        height: 70px;           /* Reducido de 80px */
     }
     .user-panel .avatar-label {
-        width: 28px; /* Reducido */
-        height: 28px; /* Reducido */
-        font-size: 16px; /* Reducido */
+        width: 24px;            /* Reducido de 28px */
+        height: 24px;           /* Reducido de 28px */
+        font-size: 14px;        /* Reducido de 16px */
     }
     .user-panel .username {
-        font-size: 0.9rem; /* Reducido */
+        font-size: 0.85rem;      /* Reducido de 0.9rem */
     }
     .user-panel .credits {
-        padding: 7px; /* Reducido */
-        font-size: 0.85rem; /* Reducido */
-        margin-bottom: 10px; /* Reducido */
+        padding: 6px;           /* Reducido de 7px */
+        font-size: 0.8rem;      /* Reducido de 0.85rem */
+        margin-bottom: 8px;     /* Reducido de 10px */
     }
     .button {
-        padding: 7px 0; /* Reducido */
-        font-size: 0.8rem; /* Reducido */
+        padding: 6px 0;         /* Reducido de 7px */
+        font-size: 0.7rem;      /* Reducido de 0.8rem */
         border-radius: 8px;
-        margin-bottom: 6px;
+        margin-bottom: 5px;     /* Reducido de 6px */
     }
     .table-item {
         padding: 12px;
