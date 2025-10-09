@@ -2630,7 +2630,7 @@ function updatePlayersView(seats, inGame = false) {
         // --- Lógica de Touch (Móvil) ---
 
         // Esta es la función clave del archivo original que faltaba
-        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN (MITAD IZQUIERDA/DERECHA) ▼▼▼
+        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN Y EXTREMOS ▼▼▼
         const handleTouchDrag = (initialTouch, dragData) => {
             const cloneContainer = document.getElementById('drag-clone-container');
             cloneContainer.innerHTML = '';
@@ -2675,15 +2675,14 @@ function updatePlayersView(seats, inGame = false) {
                 let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
 
                 if (lastTarget && lastTarget !== currentTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand');
+                    lastTarget.classList.remove('drag-over', 'drop-zone'); // Se elimina 'drop-zone-hand'
                 }
                 if (currentTarget && currentTarget !== lastTarget) {
                     let className = 'drop-zone';
                     if (currentTarget.classList.contains('card')) {
                         className = 'drag-over';
-                    } else if (currentTarget.id === 'human-hand') {
-                        className = 'drop-zone-hand';
                     }
+                    // Ya no se necesita la clase 'drop-zone-hand'
                     currentTarget.classList.add(className);
                 }
                 lastTarget = currentTarget;
@@ -2695,7 +2694,7 @@ function updatePlayersView(seats, inGame = false) {
                 cloneContainer.innerHTML = '';
                 
                 if (lastTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand');
+                    lastTarget.classList.remove('drag-over', 'drop-zone');
                 }
                 
                 document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
@@ -2704,30 +2703,44 @@ function updatePlayersView(seats, inGame = false) {
                     const droppedIndices = JSON.parse(dragData);
                     if (!lastTarget) return;
 
-                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA PRECISIÓN TÁCTIL ▼▼▼
                     if (lastTarget.classList.contains('card')) {
-                        const finalTouch = e.changedTouches[0]; // Obtenemos el punto exacto donde se levantó el dedo.
+                        const finalTouch = e.changedTouches[0];
                         const rect = lastTarget.getBoundingClientRect();
                         const midpoint = rect.left + rect.width / 2;
                         
                         let originalIndex = parseInt(lastTarget.dataset.index);
-                        let targetIndex = originalIndex; // Por defecto, se inserta ANTES.
+                        let targetIndex = originalIndex;
 
-                        // Si el dedo se levantó en la mitad DERECHA, el objetivo es DESPUÉS.
                         if (finalTouch.clientX > midpoint) {
                             targetIndex = originalIndex + 1;
                         }
                         reorderHand(droppedIndices, targetIndex);
 
                     } 
-                    // ▼▼▼ FIN DEL BLOQUE MODIFICADO ▼▼▼
-                    
+                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA MÓVIL ▼▼▼
                     else if (lastTarget.id === 'human-hand') {
                         const player = players[0];
-                        if (player) {
-                            reorderHand(droppedIndices, player.hand.length);
+                        if (!player) return;
+
+                        const finalTouch = e.changedTouches[0];
+                        const firstCard = lastTarget.firstElementChild;
+                        const lastCard = lastTarget.lastElementChild;
+                        let targetIndex = player.hand.length;
+
+                        if (firstCard && lastCard) {
+                            const firstCardRect = firstCard.getBoundingClientRect();
+                            const lastCardRect = lastCard.getBoundingClientRect();
+
+                            if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                                targetIndex = 0;
+                            } else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                                targetIndex = player.hand.length;
+                            }
                         }
-                    } else if (lastTarget.id === 'discard') {
+                        reorderHand(droppedIndices, targetIndex);
+                    } 
+                    // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
+                    else if (lastTarget.id === 'discard') {
                         if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
                         if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
                     } else if (lastTarget.classList.contains('center-area')) {
@@ -2829,35 +2842,44 @@ function updatePlayersView(seats, inGame = false) {
     
     human.appendChild(fragment);
 
-    // ▼▼▼ INICIO DEL CÓDIGO A AÑADIR ▼▼▼
-    // Hacemos que todo el contenedor de la mano sea un área para soltar.
+    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
     human.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Esto es crucial para permitir el 'drop'.
-        human.classList.add('drop-zone-hand'); // Clase para feedback visual.
-    });
-
-    human.addEventListener('dragleave', () => {
-        human.classList.remove('drop-zone-hand'); // Limpia el feedback visual.
+        e.preventDefault(); // Crucial para permitir el 'drop'.
     });
 
     human.addEventListener('drop', (e) => {
         e.preventDefault();
-        human.classList.remove('drop-zone-hand');
         try {
-            // Obtenemos las cartas que se están arrastrando.
             const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
             const player = players[0];
-            if (player) {
-                // Al soltar en el contenedor, le decimos a la función de reordenar
-                // que mueva las cartas a la última posición (player.hand.length).
-                reorderHand(droppedIndices, player.hand.length);
+            if (!player) return;
+
+            const firstCard = human.firstElementChild;
+            const lastCard = human.lastElementChild;
+            let targetIndex = player.hand.length; // Por defecto, va al final.
+
+            if (firstCard && lastCard) {
+                const firstCardRect = firstCard.getBoundingClientRect();
+                const lastCardRect = lastCard.getBoundingClientRect();
+                
+                // Si se suelta a la izquierda del centro de la primera carta, va al inicio.
+                if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                    targetIndex = 0;
+                } 
+                // Si se suelta a la derecha del centro de la última carta, va al final.
+                else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                    targetIndex = player.hand.length;
+                }
             }
+            
+            reorderHand(droppedIndices, targetIndex);
+
         } catch (error) {
             console.error("Error al soltar sobre el contenedor de la mano:", error);
-            renderHands(); // Reseteamos la mano en caso de un error.
+            renderHands();
         }
     });
-    // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
+    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
     renderDiscard();
     renderMelds();

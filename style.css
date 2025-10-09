@@ -2194,10 +2194,4 @@ body.game-active {
     transform: scale(1.2);
 }
 
-/* Estilo para el área de la mano cuando se arrastra una carta sobre ella */
-.hand.human.drop-zone-hand {
-    background: rgba(0, 255, 0, 0.1); /* Un sutil brillo verde para indicar que se puede soltar */
-    box-shadow: inset 0 0 15px rgba(0, 255, 0, 0.4);
-}
-
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
