@@ -2630,6 +2630,7 @@ function updatePlayersView(seats, inGame = false) {
         // --- Lógica de Touch (Móvil) ---
 
         // Esta es la función clave del archivo original que faltaba
+        // ▼▼▼ FUNCIÓN ACTUALIZADA CON SOPORTE MÓVIL PARA SOLTAR EN CONTENEDOR ▼▼▼
         const handleTouchDrag = (initialTouch, dragData) => {
             const cloneContainer = document.getElementById('drag-clone-container');
             cloneContainer.innerHTML = ''; // Limpiar clones anteriores
@@ -2660,7 +2661,9 @@ function updatePlayersView(seats, inGame = false) {
             updatePosition(initialTouch);
 
             let lastTarget = null;
-            const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
+            // ▼▼▼ LÍNEA MODIFICADA ▼▼▼
+            // Añadimos 'document.getElementById('human-hand')' a la lista de objetivos válidos.
+            const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
 
             const onTouchMove = (e) => {
                 e.preventDefault();
@@ -2673,9 +2676,18 @@ function updatePlayersView(seats, inGame = false) {
                 
                 let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
 
-                if (lastTarget && lastTarget !== currentTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
+                if (lastTarget && lastTarget !== currentTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand'); // Limpiamos todas las clases
+                }
                 if (currentTarget && currentTarget !== lastTarget) {
-                    const className = currentTarget.classList.contains('card') ? 'drag-over' : 'drop-zone';
+                    // ▼▼▼ BLOQUE MODIFICADO ▼▼▼
+                    // Asignamos la clase correcta dependiendo del objetivo.
+                    let className = 'drop-zone'; // Clase por defecto
+                    if (currentTarget.classList.contains('card')) {
+                        className = 'drag-over';
+                    } else if (currentTarget.id === 'human-hand') {
+                        className = 'drop-zone-hand';
+                    }
                     currentTarget.classList.add(className);
                 }
                 lastTarget = currentTarget;
@@ -2686,7 +2698,9 @@ function updatePlayersView(seats, inGame = false) {
                 document.removeEventListener('touchend', onTouchEnd);
                 cloneContainer.innerHTML = '';
                 
-                if (lastTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
+                if (lastTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand');
+                }
                 
                 document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
 
@@ -2694,8 +2708,15 @@ function updatePlayersView(seats, inGame = false) {
                     const droppedIndices = JSON.parse(dragData);
                     if (!lastTarget) return;
 
+                    // ▼▼▼ BLOQUE MODIFICADO ▼▼▼
+                    // Añadimos la lógica para cuando el objetivo es el contenedor de la mano.
                     if (lastTarget.classList.contains('card')) {
                         reorderHand(droppedIndices, parseInt(lastTarget.dataset.index));
+                    } else if (lastTarget.id === 'human-hand') {
+                        const player = players[0];
+                        if (player) {
+                            reorderHand(droppedIndices, player.hand.length);
+                        }
                     } else if (lastTarget.id === 'discard') {
                         if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
                         if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
