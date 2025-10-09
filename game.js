@@ -2569,7 +2569,9 @@ function updatePlayersView(seats, inGame = false) {
         if (selectedCards.has(card.id)) {
             d.classList.add('selected');
         }
-        d.setAttribute('draggable', true);
+        // ▼▼▼ DESACTIVADO: Drag & drop nativo (ahora usamos sistema personalizado) ▼▼▼
+        // d.setAttribute('draggable', true);
+        // ▲▲▲ FIN DESACTIVADO ▲▲▲
         d.dataset.index = idx;
         d.dataset.cardId = card.id;
         d.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
@@ -2767,6 +2769,138 @@ function updatePlayersView(seats, inGame = false) {
             document.addEventListener('touchend', onTouchEnd);
         };
 
+        // ▼▼▼ NUEVA FUNCIÓN: DRAG & DROP PERSONALIZADO PARA RATÓN ▼▼▼
+        const handleMouseDrag = (initialMouseEvent, dragData) => {
+            const cloneContainer = document.getElementById('drag-clone-container');
+            cloneContainer.innerHTML = '';
+
+            const indices = JSON.parse(dragData);
+            const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
+
+            const dragImage = document.createElement('div');
+            dragImage.className = 'drag-clone-visual';
+            dragImage.style.display = 'flex';
+
+            selectedElements.forEach((el, i) => {
+                if (!el) return;
+                const clone = el.cloneNode(true);
+                clone.classList.remove('selected', 'dragging');
+                clone.style.transform = '';
+                if (i > 0) clone.style.marginLeft = `-${clone.offsetWidth / 2}px`;
+                dragImage.appendChild(clone);
+            });
+
+            cloneContainer.appendChild(dragImage);
+            const offsetX = dragImage.offsetWidth / 2;
+            const offsetY = dragImage.offsetHeight / 2;
+
+            const updatePosition = (mouseEvent) => {
+                cloneContainer.style.transform = `translate(${mouseEvent.clientX - offsetX}px, ${mouseEvent.clientY - offsetY}px)`;
+            };
+            updatePosition(initialMouseEvent);
+
+            let lastTarget = null;
+            const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
+
+            const onMouseMove = (e) => {
+                e.preventDefault();
+                updatePosition(e); // Usa el evento de ratón directamente
+
+                cloneContainer.style.display = 'none';
+                const elementUnder = document.elementFromPoint(e.clientX, e.clientY);
+                cloneContainer.style.display = 'block';
+
+                let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
+
+                if (lastTarget && lastTarget !== currentTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone');
+                }
+                if (currentTarget && currentTarget !== lastTarget) {
+                    let className = 'drop-zone';
+                    if (currentTarget.classList.contains('card')) {
+                        className = 'drag-over';
+                    }
+                    currentTarget.classList.add(className);
+                }
+                lastTarget = currentTarget;
+            };
+
+            const onMouseUp = (e) => {
+                // Limpia los listeners de ratón
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                cloneContainer.innerHTML = '';
+
+                if (lastTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone');
+                }
+
+                document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
+
+                try {
+                    const droppedIndices = JSON.parse(dragData);
+                    if (!lastTarget) return;
+
+                    if (lastTarget.classList.contains('card')) {
+                        const rect = lastTarget.getBoundingClientRect();
+                        const midpoint = rect.left + rect.width / 2;
+
+                        let originalIndex = parseInt(lastTarget.dataset.index);
+                        let targetIndex = originalIndex;
+
+                        if (e.clientX > midpoint) {
+                            targetIndex = originalIndex + 1;
+                        }
+                        reorderHand(droppedIndices, targetIndex);
+
+                    } else if (lastTarget.id === 'human-hand') {
+                        const player = players[0];
+                        if (!player) return;
+
+                        const firstCard = lastTarget.firstElementChild;
+                        const lastCard = lastTarget.lastElementChild;
+                        let targetIndex = player.hand.length;
+
+                        if (firstCard && lastCard) {
+                            const firstCardRect = firstCard.getBoundingClientRect();
+                            const lastCardRect = lastCard.getBoundingClientRect();
+
+                            if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                                targetIndex = 0;
+                            } else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                                targetIndex = player.hand.length;
+                            }
+                        }
+                        reorderHand(droppedIndices, targetIndex);
+                    } else if (lastTarget.id === 'discard') {
+                        if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+                        if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
+                    } else if (lastTarget.classList.contains('center-area')) {
+                         if (droppedIndices.length >= 3) {
+                             const p = players[0];
+                             const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
+                             if (cardIds.length === droppedIndices.length) {
+                                 socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
+                             }
+                         } else {
+                             showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
+                         }
+                    } else if (lastTarget.classList.contains('meld-group')) {
+                        if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
+                        else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+                    }
+                } catch(err) {
+                    console.error("Error en mouse up:", err);
+                    renderHands();
+                }
+            };
+
+            // Añade los listeners al documento
+            document.addEventListener('mousemove', onMouseMove, { passive: false });
+            document.addEventListener('mouseup', onMouseUp);
+        };
+        // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
+
 
         // --- Asignación de Eventos (Como en el original) ---
 
@@ -2781,8 +2915,21 @@ function updatePlayersView(seats, inGame = false) {
             updateActionButtons();
         });
 
-        d.addEventListener('dragstart', startDrag);
-        d.addEventListener('dragend', endDrag);
+        // ▼▼▼ DESACTIVADO: Listeners nativos de drag & drop ▼▼▼
+        // d.addEventListener('dragstart', startDrag);
+        // d.addEventListener('dragend', endDrag);
+        // ▲▲▲ FIN DESACTIVADO ▲▲▲
+
+        // ▼▼▼ NUEVO: Listener mousedown para drag & drop personalizado ▼▼▼
+        d.addEventListener('mousedown', (e) => {
+            // Previene comportamientos extraños del navegador como seleccionar texto
+            e.preventDefault(); 
+
+            // Inicia la lógica de arrastre manual
+            const dragData = startDrag(e);
+            handleMouseDrag(e, dragData);
+        });
+        // ▲▲▲ FIN DEL LISTENER MOUSEDOWN ▲▲▲
 
         d.addEventListener('touchstart', (e) => {
             // Iniciar un temporizador para el "toque largo"
