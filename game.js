@@ -2858,6 +2858,8 @@ function updatePlayersView(seats, inGame = false) {
             }
         };
         g.addEventListener('click', handleMeldGroupClick);
+        // ▼▼▼ LÍNEA AÑADIDA PARA COMPATIBILIDAD MÓVIL ▼▼▼
+        g.addEventListener('touchend', handleMeldGroupClick);
             }
             
         for (let c of meld.cards) {
