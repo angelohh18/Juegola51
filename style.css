@@ -883,33 +883,80 @@ html {
     }
 }
 
+/* ▼▼▼ MEDIA QUERIES COMPLETAS PARA PANEL DE USUARIO ▼▼▼ */
+
+/* Tablets grandes y laptops pequeñas */
+@media (max-width: 1200px) and (orientation: landscape) {
+    .user-panel {
+        padding: 15px;
+        min-width: 160px;
+    }
+    .user-panel .panel-title {
+        font-size: 1.8rem;
+        transform: scale(0.9);
+        margin-bottom: 10px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 10px;
+    }
+    .user-panel .avatar-label {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+    .user-panel .username {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+    .user-panel .credits {
+        padding: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    .button {
+        padding: 8px 0;
+        margin-bottom: 7px;
+        font-size: 0.8rem;
+        border-radius: 12px;
+    }
+}
+
+/* Tablets medianas */
 @media (max-width: 992px) and (orientation: landscape) {
     .user-panel {
         padding: 10px;
+        min-width: 140px;
     }
     .user-panel .panel-title {
-        font-size: 1.6rem;      /* Reducido de 1.8rem */
-        transform: scale(0.85);   /* Reducido de 0.9 */
+        font-size: 1.4rem;
+        transform: scale(0.8);
         margin-bottom: 8px;
     }
     .user-panel .avatar-container, .user-panel .avatar {
-        width: 80px;            /* Reducido de 85px */
-        height: 80px;           /* Reducido de 85px */
+        width: 70px;
+        height: 70px;
         margin-bottom: 8px;
     }
+    .user-panel .avatar-label {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
     .user-panel .username {
-        font-size: 0.9rem;       /* Reducido de 1.0rem */
+        font-size: 0.85rem;
         margin-bottom: 8px;
     }
     .user-panel .credits {
+        padding: 6px;
+        font-size: 0.75rem;
         margin-bottom: 10px;
-        padding: 7px;           /* Reducido de 8px */
-        font-size: 0.8rem;      /* Reducido de 0.85rem */
     }
     .button {
-        padding: 7px 0;         /* Reducido de 8px */
-        margin-bottom: 6px;     /* Reducido de 8px */
-        font-size: 0.75rem;     /* Reducido de 0.8rem */
+        padding: 6px 0;
+        margin-bottom: 5px;
+        font-size: 0.7rem;
         border-radius: 10px;
     }
 }
@@ -2306,5 +2353,125 @@ body.game-active {
     background: #58141f;
 }
 /* ▲▲▲ FIN ESTILOS BOTONES SECUNDARIOS ▲▲▲ */
+
+/* ▼▼▼ MEDIA QUERIES ADICIONALES PARA PANEL DE USUARIO ▼▼▼ */
+
+/* Móviles grandes */
+@media (max-width: 900px) and (orientation: landscape) {
+    .user-panel {
+        padding: 8px;
+        min-width: 130px;
+    }
+    .user-panel .panel-title {
+        font-size: 1.2rem;
+        transform: scale(0.75);
+        margin-bottom: 6px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 6px;
+    }
+    .user-panel .avatar-label {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
+    .user-panel .username {
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+    }
+    .user-panel .credits {
+        padding: 5px;
+        font-size: 0.7rem;
+        margin-bottom: 8px;
+    }
+    .button {
+        padding: 5px 0;
+        margin-bottom: 4px;
+        font-size: 0.65rem;
+        border-radius: 8px;
+    }
+}
+
+/* Móviles pequeños */
+@media (max-width: 600px) and (orientation: landscape) {
+    .user-panel {
+        padding: 4px;
+        min-width: 100px;
+        flex-basis: 100px;
+    }
+    .user-panel .panel-title {
+        font-size: 0.9rem;
+        transform: scale(0.6);
+        margin-bottom: 3px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 3px;
+    }
+    .user-panel .avatar-label {
+        width: 16px;
+        height: 16px;
+        font-size: 8px;
+    }
+    .user-panel .username {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+    }
+    .user-panel .credits {
+        padding: 3px;
+        font-size: 0.6rem;
+        margin-bottom: 4px;
+    }
+    .button {
+        padding: 3px 0;
+        margin-bottom: 2px;
+        font-size: 0.55rem;
+        border-radius: 4px;
+    }
+}
+
+/* Móviles muy pequeños */
+@media (max-width: 480px) and (orientation: landscape) {
+    .user-panel {
+        padding: 3px;
+        min-width: 80px;
+        flex-basis: 80px;
+    }
+    .user-panel .panel-title {
+        font-size: 0.8rem;
+        transform: scale(0.5);
+        margin-bottom: 2px;
+    }
+    .user-panel .avatar-container, .user-panel .avatar {
+        width: 35px;
+        height: 35px;
+        margin-bottom: 2px;
+    }
+    .user-panel .avatar-label {
+        width: 14px;
+        height: 14px;
+        font-size: 7px;
+    }
+    .user-panel .username {
+        font-size: 0.65rem;
+        margin-bottom: 2px;
+    }
+    .user-panel .credits {
+        padding: 2px;
+        font-size: 0.55rem;
+        margin-bottom: 3px;
+    }
+    .button {
+        padding: 2px 0;
+        margin-bottom: 1px;
+        font-size: 0.5rem;
+        border-radius: 3px;
+    }
+}
+
+/* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
