@@ -2785,22 +2785,20 @@ function updatePlayersView(seats, inGame = false) {
         });
         d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
-        // ▼▼▼ BLOQUE CORREGIDO PARA MANEJO DE ÚLTIMA CARTA ▼▼▼
+        // ▼▼▼ BLOQUE FINAL CORREGIDO - PREVIENE DOBLE PROCESAMIENTO ▼▼▼
         d.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation(); // <-- ESTA LÍNEA DETIENE EL DOBLE PROCESAMIENTO Y SOLUCIONA EL ERROR
             d.classList.remove('drag-over');
             try {
                 const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
                 
-                // --- INICIO DE LA CORRECCIÓN ---
                 let targetIndex = idx;
                 const isLastCard = (idx === humanPlayer.hand.length - 1);
 
-                // Si se suelta sobre la última carta de la mano,
-                // ajustamos el índice para que la carta se coloque DESPUÉS de ella.
+                // Si se suelta sobre la última carta, ajustamos el índice 
+                // para que la carta arrastrada se coloque DESPUÉS de ella.
                 if (isLastCard) {
-                    // Verificamos que no estemos arrastrando la misma carta sobre sí misma
-                    // para evitar un bucle de reordenamiento infinito.
                     const isDraggingSelfToLast = droppedIndices.length === 1 && droppedIndices[0] === idx;
                     if (!isDraggingSelfToLast) {
                         targetIndex = idx + 1;
@@ -2808,7 +2806,6 @@ function updatePlayersView(seats, inGame = false) {
                 }
                 
                 reorderHand(droppedIndices, targetIndex);
-                // --- FIN DE LA CORRECCIÓN ---
 
             } catch (error) {
                 console.error("Error al soltar la carta (drop):", error);
