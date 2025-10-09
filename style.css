@@ -568,7 +568,9 @@ html {
 #login-modal, #register-modal, #credit-modal, #rules-modal, #create-room-modal, #avatar-crop-modal, #insufficient-credits-modal,
 #pwa-install-modal,
 #functions-modal,
-#bot-info-modal {
+#bot-info-modal,
+#forgot-password-modal,
+#change-password-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -651,6 +653,7 @@ html {
     padding: 20px;
 }
 #rules-modal .modal-content,
+#forgot-password-modal .modal-content,
 #pwa-install-modal .modal-content,
 #functions-modal .modal-content,
 #bot-info-modal .modal-content {
@@ -2213,5 +2216,19 @@ body.game-active {
     color: #6bff6b; /* Verde para éxito */
 }
 /* ▲▲▲ FIN ESTILOS MODAL CAMBIAR CONTRASEÑA ▲▲▲ */
+
+/* ▼▼▼ ESTILOS PARA BOTONES SECUNDARIOS DE NUEVOS MODALES ▼▼▼ */
+/* Estilo para los botones secundarios en los nuevos modales */
+#forgot-password-modal .secondary,
+#pwa-install-modal #btn-close-pwa-modal {
+    background: #6D2932;
+    color: #e0d3b6;
+}
+
+#forgot-password-modal .secondary:hover,
+#pwa-install-modal #btn-close-pwa-modal:hover {
+    background: #58141f;
+}
+/* ▲▲▲ FIN ESTILOS BOTONES SECUNDARIOS ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
