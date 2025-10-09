@@ -2221,10 +2221,76 @@ body.game-active {
     color: #6bff6b; /* Verde para éxito */
 }
 
-/* TEST VISIBLE: Si ves este estilo, CSS está actualizado */
-body {
-    border: 5px solid red !important;
+/* Estilos específicos para que se vean como el modal de reglas */
+#change-password-modal .modal-content h3,
+#forgot-password-modal .modal-content h3 {
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
+    color: #c5a56a;
+    border-bottom: 1px solid #c5a56a;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    text-align: center;
 }
+
+#change-password-modal .modal-content label,
+#forgot-password-modal .modal-content label {
+    display: block;
+    margin-bottom: 8px;
+    color: #c5a56a;
+    font-weight: 600;
+}
+
+#change-password-modal .modal-content input,
+#forgot-password-modal .modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 2px solid #c5a56a;
+    border-radius: 8px;
+    background: #2a2a2a;
+    color: #fff;
+    font-size: 1rem;
+}
+
+#change-password-modal .modal-content input:focus,
+#forgot-password-modal .modal-content input:focus {
+    outline: none;
+    border-color: #9d7b40;
+    box-shadow: 0 0 5px rgba(197, 165, 106, 0.3);
+}
+
+#change-password-modal .modal-content button,
+#forgot-password-modal .modal-content button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 15px;
+    border: none;
+    background: linear-gradient(135deg, #c5a56a, #9d7b40);
+    color: #211e18;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#change-password-modal .modal-content button:hover,
+#forgot-password-modal .modal-content button:hover {
+    background: #9d7b40;
+    transform: translateY(-2px);
+}
+
+#change-password-modal .modal-content button.secondary,
+#forgot-password-modal .modal-content button.secondary {
+    background: #6D2932;
+    color: #c5a56a;
+}
+
+#change-password-modal .modal-content button.secondary:hover,
+#forgot-password-modal .modal-content button.secondary:hover {
+    background: #58141f;
+}
+
 /* ▲▲▲ FIN ESTILOS MODAL CAMBIAR CONTRASEÑA ▲▲▲ */
 
 /* ▼▼▼ ESTILOS PARA BOTONES SECUNDARIOS DE NUEVOS MODALES ▼▼▼ */
