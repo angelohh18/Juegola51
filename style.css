@@ -2472,6 +2472,18 @@ body.game-active {
     }
 }
 
+/* TEST RENDER UPDATE: Media queries completas */
+body::after {
+    content: "RENDER UPDATED";
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: red;
+    color: white;
+    padding: 5px;
+    z-index: 9999;
+    font-size: 12px;
+}
 /* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
