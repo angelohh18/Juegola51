@@ -174,6 +174,25 @@ async function deleteUserFromDB(username) {
   }
 }
 
+// ▼▼▼ FUNCIÓN PARA ACTUALIZAR LA CONTRASEÑA DE UN USUARIO ▼▼▼
+// Función para actualizar la contraseña de un usuario
+async function updateUserPassword(username, newPassword) {
+  try {
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE LOWER(username) = $2',
+      [passwordHash, username.toLowerCase()]
+    );
+    console.log(`✅ Contraseña actualizada para el usuario ${username}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error actualizando la contraseña para ${username}:`, error);
+    return false;
+  }
+}
+// ▲▲▲ FIN DE LA FUNCIÓN ▲▲▲
+
 // ▼▼▼ FUNCIÓN PARA OBTENER DATOS COMPLETOS DE TODOS LOS USUARIOS ▼▼▼
 // Función para obtener TODOS los datos de TODOS los usuarios
 async function getFullUsersFromDB() {
@@ -361,8 +380,8 @@ const LOBBY_CHAT_HISTORY_LIMIT = 50; // Guardaremos los últimos 50 mensajes
 // ▼▼▼ AÑADE ESTAS LÍNEAS ▼▼▼
 let users = {}; // Reemplazará a userCredits para guardar más datos
 let exchangeRates = {
-    'EUR': { 'USD': 1.0, 'COP': 4500 },
-    'USD': { 'EUR': 1.0, 'COP': 4500 },
+    'EUR': { 'USD': 1.05, 'COP': 4500 },
+    'USD': { 'EUR': 1 / 1.05, 'COP': 4500 },
     'COP': { 'EUR': 1 / 4500, 'USD': 1 / 4500 }
 };
 // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
@@ -1714,6 +1733,21 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ▼▼▼ LISTENER PARA ACTUALIZAR CONTRASEÑA ▼▼▼
+    // Escucha la orden del admin para actualizar la contraseña
+    socket.on('admin:updatePassword', async ({ username, newPassword }) => {
+        if (username && newPassword && newPassword.length >= 4) {
+             console.log(`[Admin] Petición para actualizar contraseña de ${username}`);
+             await updateUserPassword(username, newPassword);
+             // Opcional: puedes enviar una confirmación de vuelta
+             socket.emit('admin:passwordUpdated', { success: true, username });
+        } else {
+             console.log(`[Admin] Petición de cambio de contraseña inválida para ${username}`);
+             socket.emit('admin:passwordUpdated', { success: false, username, message: 'La contraseña debe tener al menos 4 caracteres.' });
+        }
+    });
+    // ▲▲▲ FIN DEL LISTENER ▲▲▲
+
     // Escucha la orden del admin para eliminar un usuario
     socket.on('admin:deleteUser', async ({ userId }) => {
         const username = userId.replace(/^user_/, ''); // Extraemos el username del id
@@ -1819,9 +1853,12 @@ io.on('connection', (socket) => {
         // Actualizamos nuestro objeto en memoria
         exchangeRates.EUR.COP = newRates.EUR_COP || 4500;
         exchangeRates.USD.COP = newRates.USD_COP || 4500;
+        exchangeRates.EUR.USD = newRates.EUR_USD || 1.05; // <-- NUEVA LÍNEA
+
         // Recalculamos las inversas
         exchangeRates.COP.EUR = 1 / exchangeRates.EUR.COP;
         exchangeRates.COP.USD = 1 / exchangeRates.USD.COP;
+        exchangeRates.USD.EUR = 1 / exchangeRates.EUR.USD; // <-- NUEVA LÍNEA
 
         // Notificamos a TODOS los clientes (jugadores y admins) de las nuevas tasas
         io.emit('exchangeRatesUpdate', exchangeRates);

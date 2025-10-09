@@ -94,16 +94,44 @@
             <label for="rate-usd-cop">1 USD equivale a COP:</label>
             <input type="number" id="rate-usd-cop" step="0.01">
             <br><br>
+            <label for="rate-eur-usd">1 EUR equivale a USD:</label>
+            <input type="number" id="rate-eur-usd" step="0.01">
+            <br><br>
             <button id="btn-save-rates">Guardar Tasas</button>
         </div>
     </div>
 
+        <!-- ▼▼▼ PANEL REDISEÑADO DE GESTIÓN DE USUARIOS ▼▼▼ -->
         <div class="panel">
-            <h2>Lista de Usuarios Registrados</h2>
-            <div id="user-list">
-                <p>Cargando datos...</p>
+            <h2>Gestionar Usuarios Registrados</h2>
+
+            <select id="user-edit-dropdown" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                <option value="">Selecciona un usuario para gestionar...</option>
+            </select>
+
+            <div id="user-edit-form-container" style="display: none; background: var(--casino-dark-panel); padding: 15px; border-radius: 5px;">
+                <h3 id="form-username-title" style="margin-top: 0; color: var(--casino-gold);"></h3>
+
+                <h4>Créditos y Moneda</h4>
+                <input type="number" id="edit-credits-input" style="width: 120px; padding: 5px;" placeholder="Monto créditos">
+                <select id="edit-currency-select" style="padding: 5px;">
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="COP">COP</option>
+                </select>
+                <button id="btn-save-credits" style="padding: 5px 10px; margin-left: 10px;">Guardar Créditos</button>
+                <hr style="border-color: var(--casino-gold); margin: 15px 0;">
+
+                <h4>Reiniciar Contraseña</h4>
+                <input type="text" id="edit-password-input" style="padding: 5px;" placeholder="Nueva contraseña (mín. 4 cars.)">
+                <button id="btn-update-password" style="padding: 5px 10px; margin-left: 10px;">Actualizar Contraseña</button>
+                <hr style="border-color: var(--casino-gold); margin: 15px 0;">
+
+                <h4 style="color: #c0392b;">Zona de Peligro</h4>
+                <button id="btn-delete-user" style="padding: 5px 10px; background-color: #c0392b; color: white; border: none;">Eliminar Usuario Permanentemente</button>
             </div>
         </div>
+        <!-- ▲▲▲ FIN DEL PANEL REDISEÑADO ▲▲▲ -->
 
         <!-- ▼▼▼ NUEVO PANEL: DATOS COMPLETOS DE CLIENTES ▼▼▼ -->
         <div class="panel">
@@ -121,12 +149,12 @@
         const socket = io(window.location.origin);
         let fullCommissionLog = [];
 
-        const userListContainer = document.getElementById('user-list');
         const commissionDisplay = document.getElementById('commission-display');
         
         // ... (código existente)
         const eurCopInput = document.getElementById('rate-eur-cop');
         const usdCopInput = document.getElementById('rate-usd-cop');
+        const eurUsdInput = document.getElementById('rate-eur-usd'); // <-- NUEVA LÍNEA
         const btnSaveRates = document.getElementById('btn-save-rates');
 
         socket.on('admin:commissionData', (log) => {
@@ -228,7 +256,10 @@
 
         // AÑADE este listener para recibir y mostrar las tasas actuales
         socket.on('admin:exchangeRates', (rates) => {
-            if (rates.EUR) eurCopInput.value = rates.EUR.COP;
+            if (rates.EUR) {
+                eurCopInput.value = rates.EUR.COP;
+                eurUsdInput.value = rates.EUR.USD; // <-- NUEVA LÍNEA
+            }
             if (rates.USD) usdCopInput.value = rates.USD.COP;
         });
 
@@ -236,7 +267,8 @@
         btnSaveRates.addEventListener('click', () => {
             const newRates = {
                 EUR_COP: parseFloat(eurCopInput.value),
-                USD_COP: parseFloat(usdCopInput.value)
+                USD_COP: parseFloat(usdCopInput.value),
+                EUR_USD: parseFloat(eurUsdInput.value) // <-- NUEVA LÍNEA
             };
             socket.emit('admin:updateRates', newRates);
             alert('Tasas de cambio enviadas al servidor.');
@@ -250,100 +282,127 @@
         });
 
         // La función que renderiza la tabla ahora también asignará los eventos a los botones
-        function renderUserTable(users) {
-            userListContainer.innerHTML = ''; // Limpiamos
+        // ▼▼▼ INICIO DEL NUEVO BLOQUE DE CÓDIGO PARA GESTIÓN DE USUARIOS ▼▼▼
 
-            if (!users || users.length === 0) {
-                userListContainer.innerHTML = '<p>No se han encontrado usuarios (ningún jugador ha iniciado sesión todavía).</p>';
+        let allUsersData = []; // Guardaremos la lista de usuarios aquí
+        const userEditDropdown = document.getElementById('user-edit-dropdown');
+        const userEditFormContainer = document.getElementById('user-edit-form-container');
+
+        // 1. Listener que recibe la lista de usuarios y puebla el desplegable
+        socket.on('admin:userList', (users) => {
+            console.log('Usuarios para gestión recibidos:', users);
+            allUsersData = users; // Guardamos los datos
+
+            // Guardamos la selección actual para no perderla al recargar
+            const currentSelection = userEditDropdown.value;
+            userEditDropdown.innerHTML = '<option value="">Selecciona un usuario para gestionar...</option>'; // Limpiamos
+
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username; // Usamos el username como valor único
+                option.textContent = user.username;
+                userEditDropdown.appendChild(option);
+            });
+
+            // Restauramos la selección si aún existe
+            if (currentSelection) {
+                userEditDropdown.value = currentSelection;
+            }
+
+            // Disparamos el evento 'change' manualmente si hay una selección para recargar el formulario
+            if (userEditDropdown.value) {
+                userEditDropdown.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // 2. Listener para cuando se selecciona un usuario en el desplegable
+        userEditDropdown.addEventListener('change', () => {
+            const selectedUsername = userEditDropdown.value;
+            if (!selectedUsername) {
+                userEditFormContainer.style.display = 'none'; // Ocultar formulario si no hay selección
                 return;
             }
 
-            const table = document.createElement('table');
-            table.style.width = '100%';
-            table.style.borderCollapse = 'collapse';
-            table.innerHTML = `
-                <thead style="text-align: left;">
-                    <tr>
-                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Usuario</th>
-                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Créditos Actuales</th>
-                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);" colspan="2">Nuevos Créditos y Moneda</th>
-                        <th style="padding: 8px; border-bottom: 1px solid var(--casino-gold);">Acciones</th>
-                    </tr>
-                </thead>
-            `;
+            const selectedUser = allUsersData.find(u => u.username === selectedUsername);
+            if (selectedUser) {
+                // Rellenar el formulario con los datos del usuario
+                document.getElementById('form-username-title').textContent = `Gestionando a: ${selectedUser.username}`;
+                document.getElementById('edit-credits-input').value = selectedUser.credits;
+                document.getElementById('edit-currency-select').value = selectedUser.currency;
+                document.getElementById('edit-password-input').value = ''; // Limpiar campo de contraseña
 
-            const tbody = document.createElement('tbody');
-            users.forEach(user => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="padding: 8px;">${user.username}</td>
-                    <td style="padding: 8px; font-weight: bold;">
-                        ${user.credits.toLocaleString('es-ES')} ${user.currency}
-                    </td>
-                    <td style="padding: 8px;">
-                        <input type="number" value="${user.credits}" style="width: 100px; padding: 5px;" placeholder="Nuevo monto" />
-                    </td>
-                    <td style="padding: 8px;">
-                        <select style="padding: 5px;">
-                            <option value="EUR" ${user.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-                            <option value="USD" ${user.currency === 'USD' ? 'selected' : ''}>USD</option>
-                            <option value="COP" ${user.currency === 'COP' ? 'selected' : ''}>COP</option>
-                        </select>
-                    </td>
-                    <td style="padding: 8px;">
-                        <button data-userid="${user.id}" class="save-btn" style="padding: 5px 10px;">Guardar</button>
-                        <button data-userid="${user.id}" data-username="${user.username}" class="delete-btn" style="padding: 5px 10px; background-color: #c0392b; color: white; border: none; margin-left: 5px;">Eliminar</button>
-                    </td>
-                `;
-
-                const saveButton = tr.querySelector('.save-btn');
-                const creditInput = tr.querySelector('input[type="number"]');
-                const currencySelect = tr.querySelector('select');
-                
-                const deleteButton = tr.querySelector('.delete-btn');
-                
-                deleteButton.addEventListener('click', () => {
-                    const userId = deleteButton.dataset.userid;
-                    const username = deleteButton.dataset.username;
-
-                    if (confirm(`¿Estás seguro de que quieres eliminar permanentemente al usuario "${username}"? Esta acción no se puede deshacer.`)) {
-                        deleteButton.textContent = 'Eliminando...';
-                        deleteButton.disabled = true;
-                        socket.emit('admin:deleteUser', { userId });
-                    }
-                });
-
-                saveButton.addEventListener('click', () => {
-                    const newCredits = creditInput.value;
-                    const newCurrency = currencySelect.value;
-                    const userId = saveButton.dataset.userid;
-
-                    if (newCredits !== '' && !isNaN(newCredits)) {
-                        saveButton.textContent = 'Guardando...';
-                        saveButton.disabled = true;
-
-                        socket.emit('admin:updateCredits', { 
-                            userId: userId, 
-                            newCredits: parseFloat(newCredits),
-                            newCurrency: newCurrency
-                        });
-                    } else {
-                        alert('Por favor, introduce un valor numérico válido para los créditos.');
-                    }
-                });
-
-                tbody.appendChild(tr);
-            });
-
-            table.appendChild(tbody);
-            userListContainer.appendChild(table);
-        }
-
-        // El listener principal ahora solo llama a la función de renderizado
-        socket.on('admin:userList', (users) => {
-            console.log('Usuarios recibidos:', users);
-            renderUserTable(users);
+                // Mostramos el formulario
+                userEditFormContainer.style.display = 'block';
+            }
         });
+
+        // 3. Listeners para los botones de acción dentro del formulario
+        userEditFormContainer.addEventListener('click', (e) => {
+            const selectedUsername = userEditDropdown.value;
+            if (!selectedUsername) return;
+
+            const selectedUser = allUsersData.find(u => u.username === selectedUsername);
+            if (!selectedUser) return;
+
+            // Acción: Guardar Créditos
+            if (e.target.id === 'btn-save-credits') {
+                const newCredits = document.getElementById('edit-credits-input').value;
+                const newCurrency = document.getElementById('edit-currency-select').value;
+
+                if (newCredits !== '' && !isNaN(newCredits)) {
+                    e.target.textContent = 'Guardando...';
+                    e.target.disabled = true;
+
+                    socket.emit('admin:updateCredits', { 
+                        userId: selectedUser.id, // El id es 'user_username'
+                        newCredits: parseFloat(newCredits),
+                        newCurrency: newCurrency
+                    });
+
+                    // Re-habilitamos el botón después de un momento
+                    setTimeout(() => {
+                        e.target.textContent = 'Guardar Créditos';
+                        e.target.disabled = false;
+                    }, 1500);
+                } else {
+                    alert('Por favor, introduce un valor numérico válido para los créditos.');
+                }
+            }
+
+            // Acción: Actualizar Contraseña
+            if (e.target.id === 'btn-update-password') {
+                const newPassword = document.getElementById('edit-password-input').value;
+                if (!newPassword || newPassword.length < 4) {
+                    alert('La contraseña debe tener al menos 4 caracteres.');
+                    return;
+                }
+                if (confirm(`¿Seguro que quieres establecer una NUEVA contraseña para "${selectedUsername}"?`)) {
+                    e.target.textContent = 'Actualizando...';
+                    e.target.disabled = true;
+                    socket.emit('admin:updatePassword', { username: selectedUsername, newPassword });
+
+                     setTimeout(() => {
+                        document.getElementById('edit-password-input').value = '';
+                        e.target.textContent = 'Actualizar Contraseña';
+                        e.target.disabled = false;
+                        alert(`Contraseña para ${selectedUsername} actualizada.`);
+                    }, 1500);
+                }
+            }
+
+            // Acción: Eliminar Usuario
+            if (e.target.id === 'btn-delete-user') {
+                if (confirm(`¿Estás seguro de que quieres eliminar PERMANENTEMENTE al usuario "${selectedUsername}"? Esta acción no se puede deshacer.`)) {
+                    e.target.textContent = 'Eliminando...';
+                    e.target.disabled = true;
+                    socket.emit('admin:deleteUser', { userId: selectedUser.id });
+                    // El formulario se ocultará automáticamente cuando la lista de usuarios se actualice
+                    userEditFormContainer.style.display = 'none';
+                }
+            }
+        });
+
+        // ▲▲▲ FIN DEL NUEVO BLOQUE DE CÓDIGO ▲▲▲
 
         document.addEventListener('DOMContentLoaded', () => {
             // Listeners para los filtros de periodo
