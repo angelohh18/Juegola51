@@ -2630,10 +2630,10 @@ function updatePlayersView(seats, inGame = false) {
         // --- Lógica de Touch (Móvil) ---
 
         // Esta es la función clave del archivo original que faltaba
-        // ▼▼▼ FUNCIÓN ACTUALIZADA CON SOPORTE MÓVIL PARA SOLTAR EN CONTENEDOR ▼▼▼
+        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN (MITAD IZQUIERDA/DERECHA) ▼▼▼
         const handleTouchDrag = (initialTouch, dragData) => {
             const cloneContainer = document.getElementById('drag-clone-container');
-            cloneContainer.innerHTML = ''; // Limpiar clones anteriores
+            cloneContainer.innerHTML = '';
 
             const indices = JSON.parse(dragData);
             const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
@@ -2661,8 +2661,6 @@ function updatePlayersView(seats, inGame = false) {
             updatePosition(initialTouch);
 
             let lastTarget = null;
-            // ▼▼▼ LÍNEA MODIFICADA ▼▼▼
-            // Añadimos 'document.getElementById('human-hand')' a la lista de objetivos válidos.
             const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
 
             const onTouchMove = (e) => {
@@ -2677,12 +2675,10 @@ function updatePlayersView(seats, inGame = false) {
                 let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
 
                 if (lastTarget && lastTarget !== currentTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand'); // Limpiamos todas las clases
+                    lastTarget.classList.remove('drag-over', 'drop-zone', 'drop-zone-hand');
                 }
                 if (currentTarget && currentTarget !== lastTarget) {
-                    // ▼▼▼ BLOQUE MODIFICADO ▼▼▼
-                    // Asignamos la clase correcta dependiendo del objetivo.
-                    let className = 'drop-zone'; // Clase por defecto
+                    let className = 'drop-zone';
                     if (currentTarget.classList.contains('card')) {
                         className = 'drag-over';
                     } else if (currentTarget.id === 'human-hand') {
@@ -2708,11 +2704,25 @@ function updatePlayersView(seats, inGame = false) {
                     const droppedIndices = JSON.parse(dragData);
                     if (!lastTarget) return;
 
-                    // ▼▼▼ BLOQUE MODIFICADO ▼▼▼
-                    // Añadimos la lógica para cuando el objetivo es el contenedor de la mano.
+                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA PRECISIÓN TÁCTIL ▼▼▼
                     if (lastTarget.classList.contains('card')) {
-                        reorderHand(droppedIndices, parseInt(lastTarget.dataset.index));
-                    } else if (lastTarget.id === 'human-hand') {
+                        const finalTouch = e.changedTouches[0]; // Obtenemos el punto exacto donde se levantó el dedo.
+                        const rect = lastTarget.getBoundingClientRect();
+                        const midpoint = rect.left + rect.width / 2;
+                        
+                        let originalIndex = parseInt(lastTarget.dataset.index);
+                        let targetIndex = originalIndex; // Por defecto, se inserta ANTES.
+
+                        // Si el dedo se levantó en la mitad DERECHA, el objetivo es DESPUÉS.
+                        if (finalTouch.clientX > midpoint) {
+                            targetIndex = originalIndex + 1;
+                        }
+                        reorderHand(droppedIndices, targetIndex);
+
+                    } 
+                    // ▼▼▼ FIN DEL BLOQUE MODIFICADO ▼▼▼
+                    
+                    else if (lastTarget.id === 'human-hand') {
                         const player = players[0];
                         if (player) {
                             reorderHand(droppedIndices, player.hand.length);
@@ -2736,7 +2746,7 @@ function updatePlayersView(seats, inGame = false) {
                     }
                 } catch(err) {
                     console.error("Error en touch end:", err);
-                    renderHands(); // Reset en caso de error
+                    renderHands();
                 }
             };
             
@@ -2785,34 +2795,34 @@ function updatePlayersView(seats, inGame = false) {
         });
         d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
-        // ▼▼▼ BLOQUE FINAL CORREGIDO - PREVIENE DOBLE PROCESAMIENTO ▼▼▼
+        // ▼▼▼ DROP CON LÓGICA DE PRECISIÓN (MITAD IZQUIERDA/DERECHA) ▼▼▼
         d.addEventListener('drop', (e) => {
             e.preventDefault();
-            e.stopPropagation(); // <-- ESTA LÍNEA DETIENE EL DOBLE PROCESAMIENTO Y SOLUCIONA EL ERROR
+            e.stopPropagation(); 
             d.classList.remove('drag-over');
             try {
                 const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
                 
-                let targetIndex = idx;
-                const isLastCard = (idx === humanPlayer.hand.length - 1);
-
-                // Si se suelta sobre la última carta, ajustamos el índice 
-                // para que la carta arrastrada se coloque DESPUÉS de ella.
-                if (isLastCard) {
-                    const isDraggingSelfToLast = droppedIndices.length === 1 && droppedIndices[0] === idx;
-                    if (!isDraggingSelfToLast) {
-                        targetIndex = idx + 1;
-                    }
+                // --- INICIO DE LA NUEVA LÓGICA DE PRECISIÓN ---
+                const rect = d.getBoundingClientRect(); // Obtenemos la posición y tamaño de la carta de destino.
+                const midpoint = rect.left + rect.width / 2; // Calculamos su punto medio horizontal.
+                
+                let targetIndex = idx; // Por defecto, la carta se inserta ANTES (mitad izquierda).
+                
+                // Si el ratón está en la mitad DERECHA de la carta, el objetivo es insertarla DESPUÉS.
+                if (e.clientX > midpoint) {
+                    targetIndex = idx + 1;
                 }
+                // --- FIN DE LA NUEVA LÓGICA ---
                 
                 reorderHand(droppedIndices, targetIndex);
 
             } catch (error) {
                 console.error("Error al soltar la carta (drop):", error);
-                renderHands(); // Reset en caso de error
+                renderHands();
             }
         });
-        // ▲▲▲ FIN DEL BLOQUE CORREGIDO ▲▲▲
+        // ▲▲▲ FIN DEL BLOQUE DE DROP CON PRECISIÓN ▲▲▲
 
         fragment.appendChild(d);
     });
