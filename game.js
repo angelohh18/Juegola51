@@ -2780,6 +2780,37 @@ function updatePlayersView(seats, inGame = false) {
     });
     
     human.appendChild(fragment);
+
+    // ▼▼▼ INICIO DEL CÓDIGO A AÑADIR ▼▼▼
+    // Hacemos que todo el contenedor de la mano sea un área para soltar.
+    human.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Esto es crucial para permitir el 'drop'.
+        human.classList.add('drop-zone-hand'); // Clase para feedback visual.
+    });
+
+    human.addEventListener('dragleave', () => {
+        human.classList.remove('drop-zone-hand'); // Limpia el feedback visual.
+    });
+
+    human.addEventListener('drop', (e) => {
+        e.preventDefault();
+        human.classList.remove('drop-zone-hand');
+        try {
+            // Obtenemos las cartas que se están arrastrando.
+            const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
+            const player = players[0];
+            if (player) {
+                // Al soltar en el contenedor, le decimos a la función de reordenar
+                // que mueva las cartas a la última posición (player.hand.length).
+                reorderHand(droppedIndices, player.hand.length);
+            }
+        } catch (error) {
+            console.error("Error al soltar sobre el contenedor de la mano:", error);
+            renderHands(); // Reseteamos la mano en caso de un error.
+        }
+    });
+    // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
+
     renderDiscard();
     renderMelds();
     updateActionButtons();
