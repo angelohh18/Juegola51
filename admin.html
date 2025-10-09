@@ -104,6 +104,16 @@
                 <p>Cargando datos...</p>
             </div>
         </div>
+
+        <!-- ▼▼▼ NUEVO PANEL: DATOS COMPLETOS DE CLIENTES ▼▼▼ -->
+        <div class="panel">
+            <h2>Datos Completos de Clientes Registrados</h2>
+            <select id="user-details-dropdown" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                <option value="">Selecciona un usuario para ver sus detalles...</option>
+            </select>
+            <pre id="user-details-display" style="background: var(--casino-dark-panel); padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word;"></pre>
+        </div>
+        <!-- ▲▲▲ FIN DEL NUEVO PANEL ▲▲▲ -->
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -235,7 +245,8 @@
         socket.on('connect', () => {
             console.log('Conectado al servidor como Admin');
             socket.emit('admin:requestUserList');
-            socket.emit('admin:requestRates'); // <-- AÑADE ESTA LÍNEA
+            socket.emit('admin:requestRates');
+            socket.emit('admin:requestFullUserList'); // <-- SOLICITA LISTA COMPLETA DE USUARIOS
         });
 
         // La función que renderiza la tabla ahora también asignará los eventos a los botones
@@ -351,6 +362,50 @@
                     socket.emit('admin:resetCommissions');
                 }
             });
+
+            // ▼▼▼ NUEVO: PANEL DE DATOS COMPLETOS DE USUARIOS ▼▼▼
+            const userDropdown = document.getElementById('user-details-dropdown');
+            const userDisplay = document.getElementById('user-details-display');
+            let fullUserList = []; // Para guardar la lista completa
+
+            // 1. Escuchamos la lista completa de usuarios enviada por el servidor
+            socket.on('admin:fullUserList', (users) => {
+                fullUserList = users; // Guardamos la lista
+                userDropdown.innerHTML = '<option value="">Selecciona un usuario para ver sus detalles...</option>'; // Limpiamos y añadimos opción por defecto
+
+                users.forEach((user, index) => {
+                    const option = document.createElement('option');
+                    option.value = index; // Usamos el índice del array como valor
+                    option.textContent = user.username;
+                    userDropdown.appendChild(option);
+                });
+            });
+
+            // 2. Añadimos un listener para cuando se cambie la selección en el dropdown
+            userDropdown.addEventListener('change', () => {
+                const selectedIndex = userDropdown.value;
+                if (selectedIndex === '') {
+                    userDisplay.textContent = ''; // Limpiamos el display si no hay nadie seleccionado
+                    return;
+                }
+
+                const selectedUser = fullUserList[selectedIndex];
+                if (selectedUser) {
+                    // Formateamos los datos para que se vean bien
+                    const userDataFormatted = {
+                        ID: selectedUser.id,
+                        Usuario: selectedUser.username,
+                        Creditos: `${selectedUser.credits} ${selectedUser.currency}`,
+                        Pais: selectedUser.country,
+                        WhatsApp: selectedUser.whatsapp,
+                        AvatarURL: selectedUser.avatar_url,
+                        FechaRegistro: new Date(selectedUser.created_at).toLocaleString('es-ES')
+                    };
+                    // Usamos JSON.stringify para mostrarlo de forma ordenada en la etiqueta <pre>
+                    userDisplay.textContent = JSON.stringify(userDataFormatted, null, 2);
+                }
+            });
+            // ▲▲▲ FIN DEL CÓDIGO DE DATOS COMPLETOS ▲▲▲
         });
     </script>
 </body>

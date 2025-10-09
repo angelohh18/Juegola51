@@ -174,6 +174,22 @@ async function deleteUserFromDB(username) {
   }
 }
 
+// ▼▼▼ FUNCIÓN PARA OBTENER DATOS COMPLETOS DE TODOS LOS USUARIOS ▼▼▼
+// Función para obtener TODOS los datos de TODOS los usuarios
+async function getFullUsersFromDB() {
+  try {
+    const result = await pool.query('SELECT id, username, credits, currency, avatar_url, country, whatsapp, created_at FROM users ORDER BY username ASC');
+    return result.rows.map(row => ({
+      ...row,
+      credits: parseFloat(row.credits) // Aseguramos que los créditos sean numéricos
+    }));
+  } catch (error) {
+    console.error('Error obteniendo la lista completa de usuarios de la BD:', error);
+    return [];
+  }
+}
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
+
 // Función para guardar comisión
 async function saveCommission(amount, currency = 'COP') {
   try {
@@ -1660,6 +1676,13 @@ io.on('connection', (socket) => {
             io.to('admin-room').emit('admin:userList', []);
         }
     });
+
+    // ▼▼▼ LISTENER PARA OBTENER LISTA COMPLETA DE USUARIOS CON TODOS LOS CAMPOS ▼▼▼
+    socket.on('admin:requestFullUserList', async () => {
+        const fullUsers = await getFullUsersFromDB();
+        socket.emit('admin:fullUserList', fullUsers);
+    });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
     // Escucha la orden del admin para actualizar los créditos de un usuario
     socket.on('admin:updateCredits', async ({ userId, newCredits, newCurrency }) => {
