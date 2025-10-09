@@ -1663,7 +1663,7 @@ app.use(express.static(path.join(__dirname)));
 
 // 4. Ruta "catch-all" (debe ir AL FINAL de todas las rutas)
 // Para cualquier otra petición GET, sirve la aplicación principal (index.html)
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
