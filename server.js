@@ -1525,18 +1525,17 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // ▼▼▼ LÓGICA FINAL Y LIMPIA ▼▼▼
+    // ▼▼▼ LÓGICA CORREGIDA PARA EL FLUJO DE TURNOS ▼▼▼
     if (playerSeat.haIniciadoSuTurno === true) {
-        // Ya inició su primer turno, ahora activamos el temporizador.
+        // Ya completó su primer turno, ahora activamos el temporizador.
         console.log(`[Timer] Segundo turno (o posterior) para ${playerSeat.playerName}. Iniciando Fase 1.`);
         // La lógica del temporizador se ejecuta aquí abajo.
     } else {
-        // Es el primer turno. Marcamos la bandera y salimos.
-        playerSeat.haIniciadoSuTurno = true;
+        // Es el primer turno. NO marcamos la bandera aquí, se marcará al final del turno.
         console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
         return; 
     }
-    // ▲▲▲ FIN DE LA LÓGICA FINAL ▲▲▲
+    // ▲▲▲ FIN DE LA LÓGICA CORREGIDA ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
@@ -1571,8 +1570,21 @@ function startTurnTimer(room, playerId, io) {
             room.drewFromDiscard = null; // Se asume que robó del mazo
             room.lastDrawnCard = cardDrawn; // Guardamos la carta para la fase 2
 
-            io.to(room.roomId).emit('playerDrewCard', { playerId, source: 'deck', playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
-            io.to(playerId).emit('cardDrawn', { card: cardDrawn, newDeckSize: room.deck.length, newDiscardPile: room.discardPile });
+            // ▼▼▼ SINCRONIZAR CONTADOR DE CARTAS ▼▼▼
+            const updatedHandCounts = getSanitizedRoomForClient(room).playerHandCounts;
+            io.to(room.roomId).emit('playerDrewCard', { 
+                playerId, 
+                source: 'deck', 
+                playerHandCounts: updatedHandCounts 
+            });
+            io.to(playerId).emit('cardDrawn', { 
+                card: cardDrawn, 
+                newDeckSize: room.deck.length, 
+                newDiscardPile: room.discardPile,
+                playerHandCounts: updatedHandCounts
+            });
+            io.to(room.roomId).emit('handCountsUpdate', { playerHandCounts: updatedHandCounts });
+            // ▲▲▲ FIN DE LA SINCRONIZACIÓN ▲▲▲
             
             // Iniciar Fase 2 inmediatamente
             startPhase2Timer(room, playerId, io);
@@ -1699,7 +1711,14 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // La línea del error ha sido eliminada. La función ahora empieza aquí.
+    // ▼▼▼ MARCAR QUE EL JUGADOR COMPLETÓ SU TURNO ▼▼▼
+    const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
+    if (finishedPlayerSeat && finishedPlayerSeat.haIniciadoSuTurno === false) {
+        finishedPlayerSeat.haIniciadoSuTurno = true;
+        console.log(`[Turno Completado] ${finishedPlayerSeat.playerName} completó su primer turno.`);
+    }
+    // ▲▲▲ FIN DE LA MARCA DE TURNO COMPLETADO ▲▲▲
+    
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
     const currentPlayerIndex = seatedPlayers.findIndex(p => p.playerId === discardingPlayerId);
