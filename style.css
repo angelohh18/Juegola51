@@ -2456,68 +2456,51 @@ body.game-active {
 
 /* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
-/* ▼▼▼ NUEVA ANIMACIÓN DEL TEMPORIZADOR CON BORDE GIRATORIO ▼▼▼ */
+/* ▼▼▼ ANIMACIÓN PULSANTE ORIGINAL DEL TEMPORIZADOR ▼▼▼ */
 
-/* Estilo para el número del temporizador */
-.turn-timer {
-    position: absolute;
-    top: -5px;
-    left: -5px;
-    width: 18px;
-    height: 18px;
-    background-color: var(--casino-dark-panel);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.6rem;
-    font-weight: bold;
-    color: white;
-    border: 1px solid white;
-    z-index: 10;
-    visibility: hidden; /* Oculto por defecto, se activa con JS */
-}
-.turn-timer:not(:empty) {
-    visibility: visible; /* Se muestra si tiene contenido */
+@keyframes pulsing-glow {
+  0% {
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 5px rgba(197, 165, 106, 0.4);
+    border-color: var(--casino-gold);
+  }
+  50% {
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 20px rgba(173, 255, 47, 0.8);
+    border-color: #adff2f;
+  }
+  100% {
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 5px rgba(197, 165, 106, 0.4);
+    border-color: var(--casino-gold);
+  }
 }
 
-/* Estilos para la animación del borde usando un pseudo-elemento */
-.info-bot::before {
-    content: '';
-    position: absolute;
-    inset: -2px; /* Se expande ligeramente fuera del contenedor */
-    border-radius: inherit;
-    padding: 2px; /* Grosor del borde */
-    background: conic-gradient(from var(--angle), var(--color1), var(--color2), var(--color1));
-    -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    animation: rotate 4s linear infinite;
-    opacity: 0; /* Oculto por defecto */
-    transition: opacity 0.3s;
-    pointer-events: none; /* Evita que interfiera con clics */
+.info-bot.current-turn-glow {
+  animation: pulsing-glow 1.8s infinite ease-in-out;
 }
 
-@keyframes rotate {
-    to { --angle: 360deg; }
+/* Estilos para el contador numérico */
+.timer-countdown {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  background-color: var(--casino-dark-panel);
+  color: white;
+  font-weight: bold;
+  font-size: 0.6rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid white;
+  box-shadow: 0 0 4px rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-@property --angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
+.timer-countdown:empty {
+  display: none;
 }
 
-/* Clases para controlar el color y la visibilidad de la animación */
-.info-bot.timer-active::before {
-    opacity: 1;
-}
-.info-bot.timer-green { --color1: #6bff6b; --color2: #adff2f; }
-.info-bot.timer-yellow { --color1: #fffb00; --color2: #ffd700; }
-.info-bot.timer-red { --color1: #ff4444; --color2: #ff8c00; }
-
-/* ▲▲▲ FIN DE LA NUEVA ANIMACIÓN DEL TEMPORIZADOR ▲▲▲ */
+/* ▲▲▲ FIN DE LA ANIMACIÓN PULSANTE ORIGINAL ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

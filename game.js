@@ -1351,13 +1351,11 @@ function showRoomsOverview() {
     socket.on('turnChanged', (data) => {
         console.log('Server broadcast: El turno ha cambiado.', data);
 
-        // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
-        // Limpieza instantánea de todos los temporizadores visuales al cambiar de turno.
-        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
-        document.querySelectorAll('.info-bot').forEach(el => {
-            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
+        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL CAMBIAR TURNO ▼▼▼
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
         });
-        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
     
         // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
         isWaitingForNextTurn = false;
@@ -1568,34 +1566,19 @@ function showRoomsOverview() {
 
     // ▼▼▼ LISTENERS DEL TEMPORIZADOR DE TURNOS ▼▼▼
     socket.on('timerUpdate', ({ playerId, timeLeft, totalDuration }) => {
-        // 1. Ocultar todos los temporizadores primero
-        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
-        document.querySelectorAll('.info-bot').forEach(el => {
-            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
-        });
+        // Limpiar todos los contadores primero
+        document.querySelectorAll('.timer-countdown').forEach(el => el.textContent = '');
 
-        if (timeLeft <= 0) return; // Si se acabó el tiempo, no mostrar nada
+        if (timeLeft <= 0) return;
 
-        // 2. Encontrar el jugador correcto y mostrar su temporizador
+        // Encontrar y actualizar solo el contador del jugador correcto
         const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === playerId);
         if (playerViewIndex !== -1) {
             const playerInfoEl = document.getElementById(`info-player${playerViewIndex}`);
             if (playerInfoEl) {
-                const timerEl = playerInfoEl.querySelector('.turn-timer');
-                if (timerEl) {
-                    timerEl.textContent = timeLeft;
-                    timerEl.style.visibility = 'visible';
-                }
-                
-                // 3. Aplicar la clase de color correcta para la animación del borde
-                const percentage = (timeLeft / totalDuration) * 100;
-                playerInfoEl.classList.add('timer-active');
-                if (percentage > 50) {
-                    playerInfoEl.classList.add('timer-green');
-                } else if (percentage > 20) {
-                    playerInfoEl.classList.add('timer-yellow');
-                } else {
-                    playerInfoEl.classList.add('timer-red');
+                const countdownEl = playerInfoEl.querySelector('.timer-countdown');
+                if (countdownEl) {
+                    countdownEl.textContent = timeLeft;
                 }
             }
         }
@@ -2122,9 +2105,8 @@ socket.on('gameStarted', (initialState) => {
         console.log('CLIENTE: Reseteando estado del juego para nueva partida.');
 
         // ▼▼▼ LIMPIEZA DE TEMPORIZADORES VISUALES ▼▼▼
-        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
-        document.querySelectorAll('.info-bot').forEach(el => {
-            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
         });
         // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
 
@@ -3220,8 +3202,12 @@ function updatePlayersView(seats, inGame = false) {
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }
     function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
     function updateTurnIndicator() { 
-        // Esta función se deja vacía intencionadamente para desactivar el sistema de brillo antiguo.
-        // La nueva animación del temporizador se encargará ahora de indicar el turno.
+        for (let i = 0; i < 4; i++) { 
+            const e = document.getElementById(`info-player${i}`); 
+            if(e) e.classList.remove('current-turn-glow'); 
+        } 
+        const e = document.getElementById(`info-player${currentPlayer}`); 
+        if(e) e.classList.add('current-turn-glow'); 
     }
     function updatePointsIndicator() { } function updateDebugInfo() { } let hidePlayerActionToasts = true; function showPlayerToast(msg, duration=3000) { if (hidePlayerActionToasts) return; showToast(msg, duration); } function showOverlay(id) { document.getElementById(id).style.display = 'flex'; } function hideOverlay(id) { document.getElementById(id).style.display = 'none'; }
     // Pega esta función completa en tu game.js
