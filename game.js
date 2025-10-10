@@ -3439,7 +3439,7 @@ function updatePlayersView(seats, inGame = false) {
                     meldsContainer.removeChild(placeholder);
                 }
                 isAnimatingLocalMeld = false; // Desactivamos la bandera
-                renderHands(); // Forzamos el redibujado final y limpio
+                // renderHands(); // <<-- LÍNEA ELIMINADA. AHORA EL REDIBUJADO DEPENDE DEL SERVIDOR.
             });
         }
 
