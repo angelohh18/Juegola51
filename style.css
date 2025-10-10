@@ -2474,4 +2474,69 @@ body.game-active {
 
 /* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
+/* ▼▼▼ ESTILOS DEL TEMPORIZADOR DE TURNOS ▼▼▼ */
+
+/* 2.1. Estilo para el número del temporizador */
+.turn-timer {
+    position: absolute;
+    top: -12px; /* Mitad fuera */
+    left: -12px; /* Mitad fuera */
+    width: 24px;
+    height: 24px;
+    background-color: var(--casino-dark-panel);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    border: 2px solid white;
+    z-index: 10;
+    visibility: hidden; /* Oculto por defecto */
+}
+
+/* 2.2. Estilos para la animación del borde */
+.info-bot {
+    position: relative; /* Necesario para el pseudo-elemento */
+    overflow: hidden; /* Evita que el gradiente se salga del borde redondeado */
+}
+
+.info-bot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit; /* Hereda el borde redondeado del padre */
+    padding: 2px; /* Grosor del borde */
+    background: conic-gradient(from var(--angle), var(--color1), var(--color2), var(--color1));
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: rotate 4s linear infinite;
+    opacity: 0; /* Oculto por defecto */
+    transition: opacity 0.3s;
+}
+
+@keyframes rotate {
+    to { --angle: 360deg; }
+}
+
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+/* Clases para controlar el color y la visibilidad */
+.info-bot.timer-active::before {
+    opacity: 1;
+}
+.info-bot.timer-green { --color1: #6bff6b; --color2: #adff2f; }
+.info-bot.timer-yellow { --color1: #fffb00; --color2: #ffd700; }
+.info-bot.timer-red { --color1: #ff4444; --color2: #ff8c00; }
+
+/* ▲▲▲ FIN ESTILOS DEL TEMPORIZADOR ▲▲▲ */
+
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

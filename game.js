@@ -1558,6 +1558,50 @@ function showRoomsOverview() {
         }
     });
 
+    // ▼▼▼ LISTENERS DEL TEMPORIZADOR DE TURNOS ▼▼▼
+    socket.on('timerUpdate', ({ playerId, timeLeft, totalDuration }) => {
+        // 1. Ocultar todos los temporizadores primero
+        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
+        document.querySelectorAll('.info-bot').forEach(el => {
+            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
+        });
+
+        if (timeLeft <= 0) return; // Si se acabó el tiempo, no mostrar nada
+
+        // 2. Encontrar el jugador correcto y mostrar su temporizador
+        const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === playerId);
+        if (playerViewIndex !== -1) {
+            const playerInfoEl = document.getElementById(`info-player${playerViewIndex}`);
+            if (playerInfoEl) {
+                const timerEl = playerInfoEl.querySelector('.turn-timer');
+                if (timerEl) {
+                    timerEl.textContent = timeLeft;
+                    timerEl.style.visibility = 'visible';
+                }
+                
+                // 3. Aplicar la clase de color correcta para la animación del borde
+                const percentage = (timeLeft / totalDuration) * 100;
+                playerInfoEl.classList.add('timer-active');
+                if (percentage > 50) {
+                    playerInfoEl.classList.add('timer-green');
+                } else if (percentage > 20) {
+                    playerInfoEl.classList.add('timer-yellow');
+                } else {
+                    playerInfoEl.classList.add('timer-red');
+                }
+            }
+        }
+    });
+
+    socket.on('kickedForInactivity', ({ reason }) => {
+        showEliminationMessage(currentUser.username, { reason });
+        // Usamos un timeout para que el jugador pueda leer el mensaje antes de volver al lobby.
+        setTimeout(() => {
+            goBackToLobby();
+        }, 4000);
+    });
+    // ▲▲▲ FIN DE LOS LISTENERS DEL TEMPORIZADOR ▲▲▲
+
     // ▼▼▼ REEMPLAZA TU LISTENER socket.on('gameEnd', ...) CON ESTE ▼▼▼
     socket.on('gameEnd', (data) => {
         console.log('PARTIDA FINALIZADA.', data);
@@ -2069,6 +2113,13 @@ socket.on('gameStarted', (initialState) => {
     function resetClientGameState() {
         console.log('CLIENTE: Reseteando estado del juego para nueva partida.');
 
+        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES VISUALES ▼▼▼
+        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
+        document.querySelectorAll('.info-bot').forEach(el => {
+            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
+        });
+        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+
         gameStarted = false;
         players = [];
         orderedSeats = []; // <<-- ESTA ES LA LÍNEA QUE FALTABA Y SOLUCIONA TODO
@@ -2325,6 +2376,15 @@ function updatePlayersView(seats, inGame = false) {
         // Limpieza de botones de "Sentarse" residuales para evitar duplicados.
         const oldSitBtn = playerDetailsEl.querySelector('.sit-down-btn');
         if (oldSitBtn) oldSitBtn.remove();
+
+        // ▼▼▼ AÑADE ELEMENTO DEL TEMPORIZADOR ▼▼▼
+        const timerEl = document.createElement('div');
+        timerEl.className = 'turn-timer';
+        // Limpiar temporizador viejo si existe
+        const oldTimer = playerInfoEl.querySelector('.turn-timer');
+        if(oldTimer) oldTimer.remove();
+        playerInfoEl.appendChild(timerEl);
+        // ▲▲▲ FIN DE LA ADICIÓN ▲▲▲
         
         if (seat) {
             // --- LÓGICA PARA UN ASIENTO OCUPADO ---

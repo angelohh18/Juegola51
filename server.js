@@ -371,6 +371,7 @@ function generateRoomId() {
 
 let rooms = {}; // Estado de las mesas se mantiene en memoria
 let connectedUsers = {}; // Objeto para rastrear usuarios activos
+let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
@@ -593,6 +594,14 @@ function resetTurnState(room) {
 function resetRoomForNewGame(room) {
     if (!room) return;
 
+    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+        delete turnTimers[room.roomId];
+    }
+    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+
     room.state = 'playing';
     room.melds = [];
     room.deck = [];
@@ -609,6 +618,8 @@ function resetRoomForNewGame(room) {
         if (seat) {
             seat.active = true;
             seat.doneFirstMeld = false;
+            seat.turnCount = 0; // <-- RESETEA CONTADOR DE TURNOS
+            seat.inactivityStrikes = 0; // <-- RESETEA STRIKES
             delete seat.status; // <-- AÑADE ESTA LÍNEA
         }
     });
@@ -884,6 +895,13 @@ function canBeAddedToServerMeld(card, meld) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN endGameAndCalculateScores ENTERA CON ESTA VERSIÓN ▼▼▼
 async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
+    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+        delete turnTimers[room.roomId];
+    }
+    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     // ▼▼▼ REEMPLAZA EL BLOQUE DE 'isPractice' ENTERO CON ESTE ▼▼▼
@@ -1055,7 +1073,7 @@ async function checkVictoryCondition(room, roomId, io) {
   return false;
 }
 
-async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
+async function handlePlayerElimination(room, faultingPlayerId, faultData, io, forceLeave = false) { // <-- AÑADE forceLeave
     if (!room) return;
     const roomId = room.roomId;
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
@@ -1151,6 +1169,14 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
             newMelds: room.melds
         });
     }
+    
+    // ▼▼▼ AL FINAL DE LA FUNCIÓN, AÑADE ESTO: ▼▼▼
+    if (forceLeave) {
+        io.to(faultingPlayerId).emit('kickedForInactivity', {
+            reason: typeof faultData === 'string' ? faultData : faultData.reason
+        });
+    }
+    // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
 }
 
 function getCombinations(arr, size) {
@@ -1483,6 +1509,190 @@ async function botPlay(room, botPlayerId, io) {
     }
 }
 
+// ▼▼▼ SISTEMA DE TEMPORIZADORES DE TURNO ▼▼▼
+const DRAW_TIME = 30000; // 30 segundos
+const DISCARD_TIME = 30000; // 30 segundos
+const MELD_TIME = 60000; // 1 minuto
+
+function startTurnTimer(room, playerId, io) {
+    // 1. Limpiar cualquier temporizador anterior para esta sala
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+    }
+
+    const playerSeat = room.seats.find(s => s && s.playerId === playerId);
+    if (!playerSeat) return;
+
+    // Incrementar el contador de turnos del jugador
+    playerSeat.turnCount = (playerSeat.turnCount || 0) + 1;
+
+    // Si es el primer turno del jugador, no hacemos nada.
+    if (playerSeat.turnCount === 1) {
+        console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
+        return;
+    }
+
+    // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
+    console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
+    let timeLeft = DRAW_TIME;
+    
+    const intervalId = setInterval(() => {
+        timeLeft -= 1000;
+        io.to(room.roomId).emit('timerUpdate', { playerId, timeLeft: timeLeft / 1000, totalDuration: DRAW_TIME / 1000 });
+    }, 1000);
+
+    const timerId = setTimeout(() => {
+        clearInterval(intervalId); // Detener el intervalo de actualización
+
+        // Si el jugador no ha robado...
+        if (!room.hasDrawn) {
+            console.log(`[Timer] Tiempo agotado para robar. Auto-robando del mazo para ${playerSeat.playerName}.`);
+            playerSeat.inactivityStrikes++;
+            
+            // ▼▼▼ VERIFICAR INACTIVIDAD ▼▼▼
+            if (playerSeat.inactivityStrikes >= 3) {
+                const reason = `Expulsado por inactividad durante 3 turnos consecutivos.`;
+                setTimeout(() => handlePlayerElimination(room, playerId, reason, io, true), 1000);
+                return;
+            }
+            // ▲▲▲ FIN VERIFICACIÓN ▲▲▲
+            
+            // Lógica de auto-robo (simplificada de tu función 'drawFromDeck')
+            if (room.deck.length === 0) { /* Manejo de mazo vacío */ }
+            const cardDrawn = room.deck.shift();
+            room.playerHands[playerId].push(cardDrawn);
+            room.hasDrawn = true;
+            room.drewFromDiscard = null; // Se asume que robó del mazo
+            room.lastDrawnCard = cardDrawn; // Guardamos la carta para la fase 2
+
+            io.to(room.roomId).emit('playerDrewCard', { playerId, source: 'deck', playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
+            io.to(playerId).emit('cardDrawn', { card: cardDrawn, newDeckSize: room.deck.length, newDiscardPile: room.discardPile });
+            
+            // Iniciar Fase 2 inmediatamente
+            startPhase2Timer(room, playerId, io);
+        }
+    }, DRAW_TIME);
+
+    turnTimers[room.roomId] = { timerId, intervalId, phase: 1 };
+}
+
+function startPhase2Timer(room, playerId, io) {
+    // Limpiar temporizador de fase 1
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+    }
+    
+    console.log(`[Timer] Iniciando Fase 2 (Descartar) para ${room.seats.find(s=>s.playerId===playerId).playerName}`);
+    let timeLeft = DISCARD_TIME;
+
+    const intervalId = setInterval(() => {
+        timeLeft -= 1000;
+        io.to(room.roomId).emit('timerUpdate', { playerId, timeLeft: timeLeft / 1000, totalDuration: DISCARD_TIME / 1000 });
+    }, 1000);
+
+    const timerId = setTimeout(async () => {
+        clearInterval(intervalId);
+        console.log(`[Timer] Tiempo agotado para descartar. Auto-descartando para ${room.seats.find(s=>s.playerId===playerId).playerName}.`);
+        
+        const playerSeat = room.seats.find(s => s && s.playerId === playerId);
+        playerSeat.inactivityStrikes++;
+
+        // ▼▼▼ VERIFICAR INACTIVIDAD ▼▼▼
+        if (playerSeat.inactivityStrikes >= 3) {
+            const reason = `Expulsado por inactividad durante 3 turnos consecutivos.`;
+            handlePlayerElimination(room, playerId, reason, io, true);
+            return;
+        }
+        // ▲▲▲ FIN VERIFICACIÓN ▲▲▲
+
+        // La carta a descartar es la última robada
+        const cardToDiscard = room.lastDrawnCard;
+        const playerHand = room.playerHands[playerId];
+        const cardIndex = playerHand.findIndex(c => c.id === cardToDiscard.id);
+        
+        if (cardIndex !== -1) {
+            playerHand.splice(cardIndex, 1);
+            room.discardPile.push(cardToDiscard);
+            
+            if (playerHand.length === 0) {
+                await endGameAndCalculateScores(room, playerSeat, io);
+            } else {
+                await advanceTurnAfterAction(room, playerId, cardToDiscard, io);
+            }
+        } else {
+            // Fallback: si no se encuentra la carta (raro), descarta la última de la mano.
+            const fallbackCard = playerHand.pop();
+            room.discardPile.push(fallbackCard);
+            await advanceTurnAfterAction(room, playerId, fallbackCard, io);
+        }
+    }, DISCARD_TIME);
+    
+    turnTimers[room.roomId] = { timerId, intervalId, phase: 2 };
+}
+
+function startPhase3Timer(room, playerId, io) {
+    if (turnTimers[room.roomId] && turnTimers[room.roomId].phase === 3) return; // Evitar reiniciar si ya está en fase 3
+
+    clearTimeout(turnTimers[room.roomId].timerId);
+    clearInterval(turnTimers[room.roomId].intervalId);
+
+    console.log(`[Timer] Iniciando Fase 3 (Bajar) para ${room.seats.find(s=>s.playerId===playerId).playerName}`);
+    let timeLeft = MELD_TIME;
+    
+    const intervalId = setInterval(() => {
+        timeLeft -= 1000;
+        io.to(room.roomId).emit('timerUpdate', { playerId, timeLeft: timeLeft / 1000, totalDuration: MELD_TIME / 1000 });
+    }, 1000);
+
+    const timerId = setTimeout(async () => {
+        clearInterval(intervalId);
+        console.log(`[Timer] Tiempo agotado para bajar/descartar.`);
+
+        const playerSeat = room.seats.find(s => s.playerId === playerId);
+        const playerHand = room.playerHands[playerId];
+
+        // Comprobar si es la primera bajada y si cumple los 51 puntos
+        if (!playerSeat.doneFirstMeld && room.turnMelds.length > 0) {
+            if (room.turnPoints < 51) {
+                const reason = `Tiempo agotado sin cumplir los 51 puntos en la primera bajada (solo bajó ${room.turnPoints}).`;
+                return handlePlayerElimination(room, playerId, reason, io);
+            }
+        }
+
+        // Si la jugada es válida o no era la primera, se descarta una carta al azar.
+        playerSeat.inactivityStrikes++;
+        
+        // ▼▼▼ VERIFICAR INACTIVIDAD ▼▼▼
+        if (playerSeat.inactivityStrikes >= 3) {
+            const reason = `Expulsado por inactividad durante 3 turnos consecutivos.`;
+            handlePlayerElimination(room, playerId, reason, io, true);
+            return;
+        }
+        // ▲▲▲ FIN VERIFICACIÓN ▲▲▲
+        
+        const randomIndex = Math.floor(Math.random() * playerHand.length);
+        const cardToDiscard = playerHand.splice(randomIndex, 1)[0];
+        room.discardPile.push(cardToDiscard);
+        
+        // Finalizar el turno
+        if (room.turnMelds.length > 0) {
+            room.melds.push(...room.turnMelds);
+            if (!playerSeat.doneFirstMeld) playerSeat.doneFirstMeld = true;
+        }
+
+        if (playerHand.length === 0) {
+            await endGameAndCalculateScores(room, playerSeat, io);
+        } else {
+            await advanceTurnAfterAction(room, playerId, cardToDiscard, io);
+        }
+    }, MELD_TIME);
+
+    turnTimers[room.roomId] = { timerId, intervalId, phase: 3 };
+}
+// ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
+
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
     if (await checkVictoryCondition(room, room.roomId, io)) return;
 
@@ -1509,6 +1719,10 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
         playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
         newMelds: room.melds
     });
+
+    // ▼▼▼ INICIA EL TEMPORIZADOR PARA EL NUEVO JUGADOR ▼▼▼
+    startTurnTimer(room, room.currentPlayerId, io);
+    // ▲▲▲ FIN DE LA INTEGRACIÓN ▲▲▲
 
     // Si el siguiente jugador es un bot, se vuelve a llamar a la función botPlay
     const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
@@ -1584,6 +1798,14 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                 return;
             } else if (activePlayers.length > 1) {
                 if (room.currentPlayerId === leavingPlayerId) {
+                    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
+                    if (turnTimers[room.roomId]) {
+                        clearTimeout(turnTimers[room.roomId].timerId);
+                        clearInterval(turnTimers[room.roomId].intervalId);
+                        delete turnTimers[room.roomId];
+                    }
+                    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+                    
                     resetTurnState(room);
                     let oldPlayerIndex = -1;
                     if (room.initialSeats) {
@@ -1979,7 +2201,9 @@ io.on('connection', (socket) => {
           avatar: settings.userAvatar, 
           active: true, 
           doneFirstMeld: false,
-          userId: userId // Se usa el ID generado por el servidor
+          userId: userId, // Se usa el ID generado por el servidor
+          turnCount: 0, // <-- AÑADE ESTA LÍNEA
+          inactivityStrikes: 0 // <-- AÑADE ESTA LÍNEA
         },
         null, null, null
       ],
@@ -2106,7 +2330,9 @@ io.on('connection', (socket) => {
         active: !isWaitingForNextGame,
         doneFirstMeld: false,
         status: isWaitingForNextGame ? 'waiting' : undefined,
-        userId: userId // Usamos el userId generado por el servidor
+        userId: userId, // Usamos el userId generado por el servidor
+        turnCount: 0, // <-- AÑADE ESTA LÍNEA
+        inactivityStrikes: 0 // <-- AÑADE ESTA LÍNEA
     };
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
@@ -2395,6 +2621,10 @@ io.on('connection', (socket) => {
       return handlePlayerElimination(room, socket.id, reason, io);
     }
     
+    // ▼▼▼ INTEGRACIÓN DEL TEMPORIZADOR ▼▼▼
+    startPhase3Timer(room, socket.id, io); // <-- AÑADE ESTA LÍNEA
+    // ▲▲▲ FIN DE LA INTEGRACIÓN ▲▲▲
+    
   });
 
 socket.on('accionDescartar', async (data) => {
@@ -2602,6 +2832,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     });
 
     room.hasDrawn = true;
+    room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
+    startPhase2Timer(room, socket.id, io); // <-- AÑADE ESTA LÍNEA
     
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
@@ -2645,6 +2877,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
       room.hasDrawn = true;
       room.drewFromDiscard = cardDrawn;
+      room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
+      startPhase2Timer(room, socket.id, io); // <-- AÑADE ESTA LÍNEA
       
       // Notificar a todos en la sala sobre el robo del descarte
       io.to(roomId).emit('playerDrewCard', {
