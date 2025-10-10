@@ -1525,27 +1525,31 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // ▼▼▼ INICIO DE LA SOLUCIÓN DEFINITIVA ▼▼▼
+    // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTE BLOQUE COMPLETO ▼▼▼
 
-    // 1. Comprobamos si el jugador ya ha iniciado su primer turno.
-    if (playerSeat.haIniciadoSuTurno === true) {
-        // Si la bandera ya es 'true', significa que este es su SEGUNDO (o posterior) turno.
-        // Por lo tanto, INICIAMOS EL TEMPORIZADOR.
-        console.log(`[Timer] Segundo turno (o posterior) para ${playerSeat.playerName}. Iniciando Fase 1.`);
-        // La lógica del temporizador (Fase 1) se ejecuta aquí abajo.
+    console.log(`--- [DEBUG TIMER] ---`);
+    console.log(`Función 'startTurnTimer' llamada para: ${playerSeat.playerName} (ID: ${playerId})`);
+    console.log(`Valor de 'haIniciadoSuTurno' ANTES de la comprobación: ${playerSeat.haIniciadoSuTurno}`);
 
-    } else {
-        // Si la bandera es 'false', significa que este es su PRIMER turno.
-        // Marcamos la bandera como 'true' para la próxima vez y detenemos la función.
+    // LÓGICA DE CONTROL DEFINITIVA:
+    if (playerSeat.haIniciadoSuTurno === false) {
+        // Si la bandera es 'false', es el primer turno del jugador.
+        // La marcamos como 'true' para la próxima vez y detenemos la función.
         playerSeat.haIniciadoSuTurno = true;
-        console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
-        return; // <-- Detenemos la función aquí. NO se inicia el temporizador.
+        console.log(`Valor de 'haIniciadoSuTurno' DESPUÉS de actualizarlo: true`);
+        console.log(`--> DECISIÓN: Es el primer turno. NO se inicia el temporizador.`);
+        console.log(`--------------------`);
+        return; // Detenemos la función aquí.
     }
 
-    // ▲▲▲ FIN DE LA SOLUCIÓN DEFINITIVA ▲▲▲
+    // Si el código llega hasta aquí, significa que la condición de arriba no se cumplió,
+    // por lo tanto, 'haIniciadoSuTurno' ya era 'true'.
+    console.log(`--> DECISIÓN: Es el segundo turno (o posterior). SE INICIA el temporizador de Fase 1.`);
+    console.log(`--------------------`);
+
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
-    // Este código solo se ejecutará si la condición de arriba no hizo 'return'.
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
     let timeLeft = DRAW_TIME;
     
@@ -2851,8 +2855,17 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
     
     // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
+    console.log(`--- [DEBUG FASE 2] ---`);
+    console.log(`Jugador '${socket.id}' ha robado del MAZO. Verificando si se inicia la Fase 2.`);
+    console.log(`Estado actual del temporizador: ${turnTimers[roomId] ? `Fase ${turnTimers[roomId].phase}` : 'Inactivo'}`);
+
     if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
+        console.log(`--> DECISIÓN: Sí, la Fase 1 estaba activa. Iniciando Fase 2.`);
+        console.log(`--------------------`);
         startPhase2Timer(room, socket.id, io);
+    } else {
+        console.log(`--> DECISIÓN: No, la Fase 1 NO estaba activa. No se inicia la Fase 2.`);
+        console.log(`--------------------`);
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
@@ -2901,8 +2914,17 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
       
       // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
+      console.log(`--- [DEBUG FASE 2] ---`);
+      console.log(`Jugador '${socket.id}' ha robado del DESCARTE. Verificando si se inicia la Fase 2.`);
+      console.log(`Estado actual del temporizador: ${turnTimers[roomId] ? `Fase ${turnTimers[roomId].phase}` : 'Inactivo'}`);
+
       if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
+          console.log(`--> DECISIÓN: Sí, la Fase 1 estaba activa. Iniciando Fase 2.`);
+          console.log(`--------------------`);
           startPhase2Timer(room, socket.id, io);
+      } else {
+          console.log(`--> DECISIÓN: No, la Fase 1 NO estaba activa. No se inicia la Fase 2.`);
+          console.log(`--------------------`);
       }
       // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
       
