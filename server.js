@@ -619,7 +619,7 @@ function resetRoomForNewGame(room) {
             seat.doneFirstMeld = false;
             seat.turnCount = 0; // <-- RESETEA CONTADOR DE TURNOS
             seat.inactivityStrikes = 0; // <-- RESETEA STRIKES
-            seat.hasCompletedFirstTurn = false; // <-- AÑADE ESTA LÍNEA
+            seat.haIniciadoSuTurno = false; // <-- ASEGÚRATE DE QUE ESTA LÍNEA EXISTA Y USE LA NUEVA BANDERA
             delete seat.status;
         }
     });
@@ -1525,14 +1525,27 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // ▼▼▼ REEMPLAZA LA CONDICIÓN 'if' ANTERIOR CON ESTA ▼▼▼
-    if (!playerSeat.hasCompletedFirstTurn) {
+    // ▼▼▼ INICIO DE LA SOLUCIÓN DEFINITIVA ▼▼▼
+
+    // 1. Comprobamos si el jugador ya ha iniciado su primer turno.
+    if (playerSeat.haIniciadoSuTurno === true) {
+        // Si la bandera ya es 'true', significa que este es su SEGUNDO (o posterior) turno.
+        // Por lo tanto, INICIAMOS EL TEMPORIZADOR.
+        console.log(`[Timer] Segundo turno (o posterior) para ${playerSeat.playerName}. Iniciando Fase 1.`);
+        // La lógica del temporizador (Fase 1) se ejecuta aquí abajo.
+
+    } else {
+        // Si la bandera es 'false', significa que este es su PRIMER turno.
+        // Marcamos la bandera como 'true' para la próxima vez y detenemos la función.
+        playerSeat.haIniciadoSuTurno = true;
         console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
-        return;
+        return; // <-- Detenemos la función aquí. NO se inicia el temporizador.
     }
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+
+    // ▲▲▲ FIN DE LA SOLUCIÓN DEFINITIVA ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
+    // Este código solo se ejecutará si la condición de arriba no hizo 'return'.
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
     let timeLeft = DRAW_TIME;
     
@@ -1693,13 +1706,7 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // ▼▼▼ REEMPLAZA EL BLOQUE ANTERIOR CON ESTO ▼▼▼
-    const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
-    if (finishedPlayerSeat) {
-        finishedPlayerSeat.hasCompletedFirstTurn = true; // <-- LÍNEA CLAVE
-        console.log(`[Turn Flag] El primer turno de ${finishedPlayerSeat.playerName} ha terminado.`);
-    }
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+    // ▼▼▼ ELIMINA EL BLOQUE QUE ESTABA AQUÍ ▼▼▼
 
     if (await checkVictoryCondition(room, room.roomId, io)) return;
 
@@ -1870,10 +1877,10 @@ function createAndStartPracticeGame(socket, username, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, hasCompletedFirstTurn: false },
-        { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false },
-        { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false },
-        { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false }
+        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
+        { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
+        { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
+        { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false }
       ],
       deck: [], discardPile: [], playerHands: {}, melds: [], turnMelds: [], turnPoints: 0, hasDrawn: false, drewFromDiscard: null, firstMeldCompletedByAnyone: false, rematchRequests: new Set()
     };
@@ -2211,7 +2218,7 @@ io.on('connection', (socket) => {
           userId: userId, // Se usa el ID generado por el servidor
           turnCount: 0, // <-- AÑADE ESTA LÍNEA
           inactivityStrikes: 0, // <-- AÑADE ESTA LÍNEA
-          hasCompletedFirstTurn: false // <-- AÑADE ESTA LÍNEA
+          haIniciadoSuTurno: false // <-- REEMPLAZA LA BANDERA ANTERIOR CON ESTA
         },
         null, null, null
       ],
@@ -2341,7 +2348,7 @@ io.on('connection', (socket) => {
         userId: userId, // Usamos el userId generado por el servidor
         turnCount: 0, // <-- AÑADE ESTA LÍNEA
         inactivityStrikes: 0, // <-- AÑADE ESTA LÍNEA
-        hasCompletedFirstTurn: false // <-- AÑADE ESTA LÍNEA
+        haIniciadoSuTurno: false // <-- REEMPLAZA LA BANDERA ANTERIOR CON ESTA
     };
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
@@ -2843,12 +2850,11 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     room.hasDrawn = true;
     room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
     
-    // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
-    const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-    if (playerSeat && playerSeat.hasCompletedFirstTurn) { // <-- LÍNEA MODIFICADA
+    // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
+    if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
         startPhase2Timer(room, socket.id, io);
     }
-    // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
@@ -2894,12 +2900,11 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       room.drewFromDiscard = cardDrawn;
       room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
       
-      // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
-      const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-      if (playerSeat && playerSeat.hasCompletedFirstTurn) { // <-- LÍNEA MODIFICADA
+      // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
+      if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
           startPhase2Timer(room, socket.id, io);
       }
-      // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
+      // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
       
       // Notificar a todos en la sala sobre el robo del descarte
       io.to(roomId).emit('playerDrewCard', {
