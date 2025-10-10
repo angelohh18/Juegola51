@@ -259,7 +259,7 @@ function showPwaInstallModal() {
 
         userList.forEach(user => {
             const li = document.createElement('li');
-            const statusClass = user.status === 'Jugando' ? 'status-playing' : 'status-lobby';
+            const statusClass = user.status.includes('Jugando') ? 'status-playing' : 'status-lobby';
             li.innerHTML = `
                 <span>${user.username}</span>
                 <span class="user-status ${statusClass}">${user.status}</span>

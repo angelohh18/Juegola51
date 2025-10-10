@@ -1667,6 +1667,13 @@ function createAndStartPracticeGame(socket, username, io) {
     socket.join(roomId);
     socket.currentRoomId = roomId; // Aseguramos que la sala actual se actualice
 
+    // ▼▼▼ AÑADE ESTE BLOQUE PARA ACTUALIZAR EL ESTADO ▼▼▼
+    if (connectedUsers[socket.id]) {
+        connectedUsers[socket.id].status = 'Jugando en Mesa de Practica';
+        broadcastUserListUpdate(io);
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
     const playerHandCounts = {};
     newRoom.seats.forEach(p => { 
         if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length; 
@@ -2008,7 +2015,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('requestPracticeGame', (username) => {
-    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTA LÍNEA ▼▼▼
+    // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
+    const existingRoomId = `practice-${socket.id}`;
+    if (rooms[existingRoomId]) {
+        console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        delete rooms[existingRoomId];
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
     createAndStartPracticeGame(socket, username, io);
   });
 
