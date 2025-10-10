@@ -1381,7 +1381,6 @@ async function botPlay(room, botPlayerId, io) {
                 botHand.splice(cardHandIndex, 1);
                 io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts, highlight: { cardId: cardToAdd.id, meldIndex: targetMeldIndex } });
                 cardWasAdded = true;
-                if (await checkVictoryCondition(room, room.roomId, io)) return;
                 await pause(1500);
             }
         }
@@ -1431,7 +1430,6 @@ async function botPlay(room, botPlayerId, io) {
 
                     botSeat.doneFirstMeld = true;
                     io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
-                    if (await checkVictoryCondition(room, room.roomId, io)) return;
                     await pause(1500);
                 }
                 // ▲▲▲ FIN DE LA VALIDACIÓN ▲▲▲
@@ -1465,7 +1463,17 @@ async function botPlay(room, botPlayerId, io) {
             if (cardIndex !== -1) {
                 const [discardedCard] = botHand.splice(cardIndex, 1);
                 room.discardPile.push(discardedCard);
-                await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+
+                // LÓGICA DE VICTORIA AÑADIDA (IGUAL A LA DE JUGADORES HUMANOS)
+                if (botHand.length === 0) {
+                    console.log(`¡VICTORIA DEL BOT! ${botSeat.playerName} ha descartado su última carta.`);
+                    // Llamamos a la función que termina el juego y calcula los puntos.
+                    await endGameAndCalculateScores(room, botSeat, io);
+                    return; // El turno del bot termina aquí.
+                } else {
+                    // Si no ha ganado, simplemente avanza el turno.
+                    await advanceTurnAfterAction(room, botPlayerId, discardedCard, io);
+                }
             }
         } else { // Fallback por si algo falla
             const [discardedCard] = botHand.splice(0, 1);
