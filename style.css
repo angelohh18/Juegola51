@@ -2497,6 +2497,7 @@ body.game-active {
   justify-content: center;
   line-height: 1;
   z-index: 10;
+  transition: background-color 0.5s ease, border-color 0.5s ease; /* <-- AÑADE ESTA LÍNEA */
 }
 
 .timer-countdown:empty {
@@ -2504,5 +2505,20 @@ body.game-active {
 }
 
 /* ▲▲▲ FIN DE LA ANIMACIÓN PULSANTE ORIGINAL ▲▲▲ */
+
+/* ▼▼▼ COLORES DINÁMICOS DEL TEMPORIZADOR ▼▼▼ */
+.timer-countdown.timer-green {
+    background-color: #28a745; /* Verde */
+    border-color: #90ee90;
+}
+.timer-countdown.timer-yellow {
+    background-color: #ffc107; /* Amarillo */
+    border-color: #ffe082;
+}
+.timer-countdown.timer-red {
+    background-color: #dc3545; /* Rojo */
+    border-color: #f8d7da;
+}
+/* ▲▲▲ FIN DE LOS COLORES DINÁMICOS ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

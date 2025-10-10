@@ -1803,7 +1803,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
             io.to(roomId).emit('playerEliminated', {
                 playerId: leavingPlayerId,
                 playerName: playerName,
-                reason: reason
+                faultData: { reason: reason } // <-- CORRECCIÓN AQUÍ
             });
 
             if (leavingPlayerSeat && leavingPlayerSeat.userId) {

@@ -1580,6 +1580,23 @@ function showRoomsOverview() {
                 const countdownEl = playerInfoEl.querySelector('.timer-countdown');
                 if (countdownEl) {
                     countdownEl.textContent = timeLeft;
+                    
+                    // ▼▼▼ INICIO DEL CÓDIGO A AÑADIR ▼▼▼
+                    // Limpia clases de color anteriores
+                    countdownEl.classList.remove('timer-green', 'timer-yellow', 'timer-red');
+
+                    // Calcula el porcentaje y aplica la clase nueva
+                    if (totalDuration > 0) {
+                        const percentage = (timeLeft / totalDuration) * 100;
+                        if (percentage <= 25) {
+                            countdownEl.classList.add('timer-red');
+                        } else if (percentage <= 50) {
+                            countdownEl.classList.add('timer-yellow');
+                        } else {
+                            countdownEl.classList.add('timer-green');
+                        }
+                    }
+                    // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
                 }
             }
         } else {
@@ -1600,6 +1617,24 @@ function showRoomsOverview() {
                             const countdownEl = playerInfoEl.querySelector('.timer-countdown');
                             if (countdownEl) {
                                 countdownEl.textContent = timeLeft;
+                                
+                                // ▼▼▼ COLORES DINÁMICOS EN FALLBACK ▼▼▼
+                                // Limpia clases de color anteriores
+                                countdownEl.classList.remove('timer-green', 'timer-yellow', 'timer-red');
+
+                                // Calcula el porcentaje y aplica la clase nueva
+                                if (totalDuration > 0) {
+                                    const percentage = (timeLeft / totalDuration) * 100;
+                                    if (percentage <= 25) {
+                                        countdownEl.classList.add('timer-red');
+                                    } else if (percentage <= 50) {
+                                        countdownEl.classList.add('timer-yellow');
+                                    } else {
+                                        countdownEl.classList.add('timer-green');
+                                    }
+                                }
+                                // ▲▲▲ FIN DE COLORES DINÁMICOS EN FALLBACK ▲▲▲
+                                
                                 break;
                             }
                         }
