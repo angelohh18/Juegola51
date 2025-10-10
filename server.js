@@ -1106,6 +1106,9 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
             console.log(`Jugador ${playerSeat.playerName} paga multa de ${penalty}. Nuevo bote: ${room.pot}`);
             io.to(faultingPlayerId).emit('userStateUpdated', playerInfo);
             io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+            
+            // Persistir el cambio de créditos en la base de datos
+            await updateUserCredits(playerSeat.userId, playerInfo.credits, playerInfo.currency);
         }
         
         const playerHand = room.playerHands[faultingPlayerId] || [];
@@ -1812,6 +1815,9 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                     room.pot = (room.pot || 0) + penalty;
                     io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
                     io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+                    
+                    // Persistir el cambio de créditos en la base de datos
+                    await updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency);
                 }
             }
 
@@ -2414,7 +2420,7 @@ io.on('connection', (socket) => {
   });
 
 
-  socket.on('startGame', (roomId) => {
+  socket.on('startGame', async (roomId) => {
     const room = rooms[roomId];
     if (room && room.hostId === socket.id) {
         console.log(`Iniciando juego en la mesa ${roomId}`);
@@ -2425,7 +2431,7 @@ io.on('connection', (socket) => {
         room.melds = [];
         room.pot = 0; // <<-- AÑADE ESTA LÍNEA para inicializar el bote
         
-        room.seats.forEach(seat => {
+        for (const seat of room.seats) {
             if (seat) {
                 seat.active = true;
                 seat.doneFirstMeld = false;
@@ -2444,9 +2450,12 @@ io.on('connection', (socket) => {
                     room.pot += roomBet;
 
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
+                    
+                    // Persistir el cambio de créditos en la base de datos
+                    await updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency);
                 }
             }
-        });
+        }
         
         const newDeck = buildDeck();
         shuffle(newDeck);
@@ -3033,7 +3042,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     }
   });
 
-  socket.on('startRematch', (roomId) => {
+  socket.on('startRematch', async (roomId) => {
     const room = rooms[roomId];
     if (!room || socket.id !== room.hostId) return;
 
@@ -3129,7 +3138,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         room.pot = 0; // Se resetea el bote
         const seatedPlayersForRematch = room.seats.filter(s => s !== null);
 
-        seatedPlayersForRematch.forEach(seat => {
+        for (const seat of seatedPlayersForRematch) {
             if (seat) {
                 const playerInfo = users[seat.userId]; // Usamos el objeto 'users'
                 if (playerInfo) {
@@ -3147,9 +3156,12 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
                     // 4. Notificar al jugador su estado completo (créditos y moneda)
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
+                    
+                    // 5. Persistir el cambio de créditos en la base de datos
+                    await updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency);
                 }
             }
-        });
+        }
 
         console.log(`[Rematch] Partida iniciada. Bote inicial: ${room.pot}.`);
         // Se notifica a todos en la sala del nuevo valor del bote

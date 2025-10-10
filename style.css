@@ -1236,6 +1236,7 @@ body.game-active {
     max-width: 70%;
 }
 .info-bot {
+    position: relative; /* <-- AÑADE ESTA LÍNEA */
     display: flex;
     flex-direction: row;
     align-items: center;
