@@ -1525,29 +1525,13 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTE BLOQUE COMPLETO ▼▼▼
-
-    console.log(`--- [DEBUG TIMER] ---`);
-    console.log(`Función 'startTurnTimer' llamada para: ${playerSeat.playerName} (ID: ${playerId})`);
-    console.log(`Valor de 'haIniciadoSuTurno' ANTES de la comprobación: ${playerSeat.haIniciadoSuTurno}`);
-
-    // LÓGICA DE CONTROL DEFINITIVA:
+    // ▼▼▼ LÓGICA FINAL Y LIMPIA ▼▼▼
     if (playerSeat.haIniciadoSuTurno === false) {
-        // Si la bandera es 'false', es el primer turno del jugador.
-        // La marcamos como 'true' para la próxima vez y detenemos la función.
+        // Es el primer turno. Marcamos la bandera y salimos.
         playerSeat.haIniciadoSuTurno = true;
-        console.log(`Valor de 'haIniciadoSuTurno' DESPUÉS de actualizarlo: true`);
-        console.log(`--> DECISIÓN: Es el primer turno. NO se inicia el temporizador.`);
-        console.log(`--------------------`);
-        return; // Detenemos la función aquí.
+        return; 
     }
-
-    // Si el código llega hasta aquí, significa que la condición de arriba no se cumplió,
-    // por lo tanto, 'haIniciadoSuTurno' ya era 'true'.
-    console.log(`--> DECISIÓN: Es el segundo turno (o posterior). SE INICIA el temporizador de Fase 1.`);
-    console.log(`--------------------`);
-
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+    // ▲▲▲ FIN DE LA LÓGICA FINAL ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
@@ -1710,10 +1694,7 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // ▼▼▼ ELIMINA EL BLOQUE QUE ESTABA AQUÍ ▼▼▼
-
-    if (await checkVictoryCondition(room, room.roomId, io)) return;
-
+    // La línea del error ha sido eliminada. La función ahora empieza aquí.
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
     const currentPlayerIndex = seatedPlayers.findIndex(p => p.playerId === discardingPlayerId);
@@ -2855,19 +2836,10 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
     
     // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
-    console.log(`--- [DEBUG FASE 2] ---`);
-    console.log(`Jugador '${socket.id}' ha robado del MAZO. Verificando si se inicia la Fase 2.`);
-    console.log(`Estado actual del temporizador: ${turnTimers[roomId] ? `Fase ${turnTimers[roomId].phase}` : 'Inactivo'}`);
-
+    // Reemplaza el bloque de debug en 'drawFromDeck' con esto:
     if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
-        console.log(`--> DECISIÓN: Sí, la Fase 1 estaba activa. Iniciando Fase 2.`);
-        console.log(`--------------------`);
         startPhase2Timer(room, socket.id, io);
-    } else {
-        console.log(`--> DECISIÓN: No, la Fase 1 NO estaba activa. No se inicia la Fase 2.`);
-        console.log(`--------------------`);
     }
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
@@ -2913,20 +2885,10 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       room.drewFromDiscard = cardDrawn;
       room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
       
-      // ▼▼▼ REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ▼▼▼
-      console.log(`--- [DEBUG FASE 2] ---`);
-      console.log(`Jugador '${socket.id}' ha robado del DESCARTE. Verificando si se inicia la Fase 2.`);
-      console.log(`Estado actual del temporizador: ${turnTimers[roomId] ? `Fase ${turnTimers[roomId].phase}` : 'Inactivo'}`);
-
+      // Reemplaza el bloque de debug en 'drawFromDiscard' con esto:
       if (turnTimers[roomId] && turnTimers[roomId].phase === 1) {
-          console.log(`--> DECISIÓN: Sí, la Fase 1 estaba activa. Iniciando Fase 2.`);
-          console.log(`--------------------`);
           startPhase2Timer(room, socket.id, io);
-      } else {
-          console.log(`--> DECISIÓN: No, la Fase 1 NO estaba activa. No se inicia la Fase 2.`);
-          console.log(`--------------------`);
       }
-      // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
       
       // Notificar a todos en la sala sobre el robo del descarte
       io.to(roomId).emit('playerDrewCard', {
