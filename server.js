@@ -1193,8 +1193,11 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
             io.to(faultingPlayerId).emit('userStateUpdated', playerInfo);
             io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
             
-            // Persistir el cambio de créditos en la base de datos
-            await updateUserCredits(playerSeat.userId, playerInfo.credits, playerInfo.currency);
+            // Persistir el cambio de créditos en la base de datos (en segundo plano)
+            updateUserCredits(playerSeat.userId, playerInfo.credits, playerInfo.currency)
+                .catch(err => {
+                    console.error(`[BG] Falla al actualizar créditos para ${playerSeat.userId} en segundo plano:`, err);
+                });
         }
         
         const playerHand = room.playerHands[faultingPlayerId] || [];
@@ -1902,8 +1905,15 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                     io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
                     io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
                     
-                    // Persistir el cambio de créditos en la base de datos
-                    await updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency);
+                    // <<-- INICIO DE LA CORRECCIÓN -->>
+                    // 1. Eliminamos 'await' para no bloquear el juego.
+                    //    La actualización se inicia en segundo plano.
+                    updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency)
+                        // 2. Añadimos .catch para registrar cualquier error sin detener el servidor.
+                        .catch(err => {
+                            console.error(`[BG] Falla al actualizar créditos para ${leavingPlayerSeat.userId} en segundo plano:`, err);
+                        });
+                    // <<-- FIN DE LA CORRECCIÓN -->>
                 }
             }
 
@@ -2540,8 +2550,11 @@ io.on('connection', (socket) => {
 
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
                     
-                    // Persistir el cambio de créditos en la base de datos
-                    await updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency);
+                    // Persistir el cambio de créditos en la base de datos (en segundo plano)
+                    updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency)
+                        .catch(err => {
+                            console.error(`[BG] Falla al actualizar créditos para ${seat.userId} en segundo plano:`, err);
+                        });
                 }
             }
         }
@@ -3246,8 +3259,11 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
                     // 4. Notificar al jugador su estado completo (créditos y moneda)
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
                     
-                    // 5. Persistir el cambio de créditos en la base de datos
-                    await updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency);
+                    // 5. Persistir el cambio de créditos en la base de datos (en segundo plano)
+                    updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency)
+                        .catch(err => {
+                            console.error(`[BG] Falla al actualizar créditos para ${seat.userId} en segundo plano:`, err);
+                        });
                 }
             }
         }
