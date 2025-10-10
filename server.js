@@ -1524,14 +1524,15 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // Incrementar el contador de turnos del jugador
-    playerSeat.turnCount = (playerSeat.turnCount || 0) + 1;
-
-    // Si es el primer turno del jugador, no hacemos nada.
-    if (playerSeat.turnCount === 1) {
+    // ▼▼▼ CAMBIOS AQUÍ ▼▼▼
+    // 1. ELIMINADA la línea de incremento del contador (ahora se hace en advanceTurnAfterAction)
+    
+    // 2. MODIFICADA la condición para verificar si es el primer turno
+    if ((playerSeat.turnCount || 0) < 1) { // <-- LÍNEA MODIFICADA
         console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
         return;
     }
+    // ▲▲▲ FIN DE LOS CAMBIOS ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
@@ -1694,6 +1695,15 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    // 1. Incrementar el contador del jugador que acaba de terminar su turno.
+    const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
+    if (finishedPlayerSeat) {
+        finishedPlayerSeat.turnCount = (finishedPlayerSeat.turnCount || 0) + 1;
+        console.log(`[Turn Count] El turno #${finishedPlayerSeat.turnCount} de ${finishedPlayerSeat.playerName} ha terminado.`);
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
     if (await checkVictoryCondition(room, room.roomId, io)) return;
 
     resetTurnState(room);
@@ -2836,7 +2846,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     
     // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
     const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-    if (playerSeat && playerSeat.turnCount > 1) {
+    if (playerSeat && (playerSeat.turnCount || 0) >= 1) { // <-- LÍNEA MODIFICADA
         startPhase2Timer(room, socket.id, io);
     }
     // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
@@ -2887,7 +2897,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       
       // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
       const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-      if (playerSeat && playerSeat.turnCount > 1) {
+      if (playerSeat && (playerSeat.turnCount || 0) >= 1) { // <-- LÍNEA MODIFICADA
           startPhase2Timer(room, socket.id, io);
       }
       // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
