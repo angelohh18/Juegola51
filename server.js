@@ -3087,6 +3087,10 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         room.turnMelds = [];
         room.turnPoints = 0;
         room.hasDrawn = false;
+        
+        // ▼▼▼ RESETEO COMPLETO DE TEMPORIZADORES Y TURNOS ▼▼▼
+        resetRoomForNewGame(room);
+        // ▲▲▲ FIN DEL RESETEO COMPLETO ▲▲▲
         room.drewFromDiscard = null;
         room.firstMeldCompletedByAnyone = false;
         room.rematchRequests.clear();
