@@ -33,6 +33,26 @@ const pool = new Pool({
 pool.query('SELECT NOW()', async (err, res) => { // <-- Añade async
   if (err) {
     console.error('❌ Error conectando a la base de datos:', err.stack);
+    console.log('🔄 Reintentando conexión en 5 segundos...');
+    setTimeout(() => {
+      pool.query('SELECT NOW()', async (retryErr, retryRes) => {
+        if (retryErr) {
+          console.error('❌ Error persistente conectando a la base de datos:', retryErr.message);
+          console.log('⚠️  Continuando sin base de datos...');
+          // Inicializar tasas de cambio por defecto
+          exchangeRates = {
+            'EUR': { 'USD': 1.05, 'COP': 4500 },
+            'USD': { 'EUR': 0.95, 'COP': 4200 },
+            'COP': { 'USD': 0.00024, 'EUR': 0.00022 }
+          };
+          console.log('✅ Servidor funcionando en modo sin base de datos');
+        } else {
+          console.log('✅ Conexión exitosa a la base de datos (reintento):', retryRes.rows[0]);
+          await initializeDatabase();
+          await loadExchangeRatesFromDB();
+        }
+      });
+    }, 5000);
   } else {
     console.log('✅ Conexión exitosa a la base de datos:', res.rows[0]);
     // Inicializar tablas después de conectar
@@ -3377,19 +3397,23 @@ setTimeout(() => {
 server.listen(PORT, async () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
   
-  // Verificar estructura de la tabla users
-  try {
-    const result = await pool.query(`
-      SELECT column_name, data_type, is_nullable 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' 
-      ORDER BY ordinal_position
-    `);
-    console.log('📋 Estructura de la tabla users:');
-    result.rows.forEach(row => {
-      console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
-    });
-  } catch (error) {
-    console.error('❌ Error verificando estructura de la tabla:', error);
+  // Verificar estructura de la tabla users (solo si hay conexión a BD)
+  if (process.env.DATABASE_URL) {
+    try {
+      const result = await pool.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        ORDER BY ordinal_position
+      `);
+      console.log('📋 Estructura de la tabla users:');
+      result.rows.forEach(row => {
+        console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
+      });
+    } catch (error) {
+      console.log('⚠️  Base de datos no disponible, saltando verificación de estructura');
+    }
+  } else {
+    console.log('⚠️  DATABASE_URL no configurada, funcionando sin base de datos');
   }
 });// Verificación de servidor - Tue Oct  7 13:42:08 WEST 2025
