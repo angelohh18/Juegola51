@@ -30,13 +30,14 @@ const pool = new Pool({
 });
 
 // Probar la conexión a la base de datos
-pool.query('SELECT NOW()', (err, res) => {
+pool.query('SELECT NOW()', async (err, res) => { // <-- Añade async
   if (err) {
     console.error('❌ Error conectando a la base de datos:', err.stack);
   } else {
     console.log('✅ Conexión exitosa a la base de datos:', res.rows[0]);
     // Inicializar tablas después de conectar
-    initializeDatabase();
+    await initializeDatabase(); // <-- Añade await
+    await loadExchangeRatesFromDB(); // <-- AÑADE ESTA LÍNEA
   }
 });
 
@@ -92,6 +93,18 @@ async function initializeDatabase() {
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO ▼▼▼
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS exchange_rates (
+        id SERIAL PRIMARY KEY,
+        from_currency VARCHAR(10) NOT NULL,
+        to_currency VARCHAR(10) NOT NULL,
+        rate DECIMAL(20, 10) NOT NULL,
+        UNIQUE(from_currency, to_currency)
+      )
+    `);
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     console.log('✅ Tablas de la base de datos REGENERADAS correctamente');
   } catch (error) {
@@ -191,6 +204,59 @@ async function updateUserPassword(username, newPassword) {
     return false;
   }
 }
+
+// ▼▼▼ AÑADE ESTAS DOS FUNCIONES COMPLETAS ▼▼▼
+
+async function loadExchangeRatesFromDB() {
+    try {
+        const result = await pool.query('SELECT from_currency, to_currency, rate FROM exchange_rates');
+        if (result.rows.length > 0) {
+            console.log('✅ Cargando tasas de cambio desde la base de datos...');
+            // Resetea el objeto en memoria
+            exchangeRates = {};
+            result.rows.forEach(row => {
+                if (!exchangeRates[row.from_currency]) {
+                    exchangeRates[row.from_currency] = {};
+                }
+                exchangeRates[row.from_currency][row.to_currency] = parseFloat(row.rate);
+            });
+        } else {
+            console.log('⚠️ No se encontraron tasas en la BD. Guardando valores por defecto.');
+            // Si la tabla está vacía, guarda las tasas iniciales que tienes en memoria.
+            await updateExchangeRatesInDB(exchangeRates);
+        }
+    } catch (error) {
+        console.error('❌ Error al cargar las tasas de cambio desde la BD:', error);
+    }
+}
+
+async function updateExchangeRatesInDB(ratesToSave) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // Usamos ON CONFLICT para actualizar si la tasa ya existe (UPSERT)
+        for (const fromCurrency in ratesToSave) {
+            for (const toCurrency in ratesToSave[fromCurrency]) {
+                const rate = ratesToSave[fromCurrency][toCurrency];
+                await client.query(
+                    `INSERT INTO exchange_rates (from_currency, to_currency, rate)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (from_currency, to_currency) DO UPDATE SET rate = EXCLUDED.rate`,
+                    [fromCurrency, toCurrency, rate]
+                );
+            }
+        }
+        await client.query('COMMIT');
+        console.log('✅ Tasas de cambio guardadas exitosamente en la base de datos.');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error guardando tasas de cambio en la BD:', error);
+    } finally {
+        client.release();
+    }
+}
+
+// ▲▲▲ FIN DE LAS DOS FUNCIONES A AÑADIR ▲▲▲
 // ▲▲▲ FIN DE LA FUNCIÓN ▲▲▲
 
 // ▼▼▼ FUNCIÓN PARA OBTENER DATOS COMPLETOS DE TODOS LOS USUARIOS ▼▼▼
@@ -2169,17 +2235,20 @@ io.on('connection', (socket) => {
         socket.emit('admin:exchangeRates', exchangeRates);
     });
 
-    socket.on('admin:updateRates', (newRates) => {
+    socket.on('admin:updateRates', async (newRates) => { // <-- Añade async
         console.log('[Admin] Actualizando tasas de cambio:', newRates);
         // Actualizamos nuestro objeto en memoria
         exchangeRates.EUR.COP = newRates.EUR_COP || 4500;
         exchangeRates.USD.COP = newRates.USD_COP || 4500;
-        exchangeRates.EUR.USD = newRates.EUR_USD || 1.05; // <-- NUEVA LÍNEA
+        exchangeRates.EUR.USD = newRates.EUR_USD || 1.05;
 
         // Recalculamos las inversas
         exchangeRates.COP.EUR = 1 / exchangeRates.EUR.COP;
         exchangeRates.COP.USD = 1 / exchangeRates.USD.COP;
-        exchangeRates.USD.EUR = 1 / exchangeRates.EUR.USD; // <-- NUEVA LÍNEA
+        exchangeRates.USD.EUR = 1 / exchangeRates.EUR.USD;
+
+        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+        await updateExchangeRatesInDB(exchangeRates); // Guardamos en la BD
 
         // Notificamos a TODOS los clientes (jugadores y admins) de las nuevas tasas
         io.emit('exchangeRatesUpdate', exchangeRates);
