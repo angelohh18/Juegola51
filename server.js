@@ -1526,9 +1526,14 @@ function startTurnTimer(room, playerId, io) {
     if (!playerSeat) return;
 
     // ▼▼▼ LÓGICA FINAL Y LIMPIA ▼▼▼
-    if (playerSeat.haIniciadoSuTurno === false) {
+    if (playerSeat.haIniciadoSuTurno === true) {
+        // Ya inició su primer turno, ahora activamos el temporizador.
+        console.log(`[Timer] Segundo turno (o posterior) para ${playerSeat.playerName}. Iniciando Fase 1.`);
+        // La lógica del temporizador se ejecuta aquí abajo.
+    } else {
         // Es el primer turno. Marcamos la bandera y salimos.
         playerSeat.haIniciadoSuTurno = true;
+        console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
         return; 
     }
     // ▲▲▲ FIN DE LA LÓGICA FINAL ▲▲▲
