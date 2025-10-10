@@ -1365,6 +1365,15 @@ async function botPlay(room, botPlayerId, io) {
                 if (cardToAdd) break;
             }
             if (cardToAdd) {
+                // ▼▼▼ AÑADE ESTA VALIDACIÓN CLAVE ▼▼▼
+                // Si al bot solo le queda una carta, no puede añadirla, debe descartarla para ganar.
+                if (botHand.length <= 1) {
+                    console.log(`[Bot Logic] ${botSeat.playerName} evitó una falta: No añadió su última carta.`);
+                    cardWasAdded = false; // Detiene el bucle de añadir cartas
+                    break; // Sale del bucle for que busca cartas para añadir
+                }
+                // ▲▲▲ FIN DE LA VALIDACIÓN ▲▲▲
+
                 io.to(room.roomId).emit('animateCardAdd', { melderId: botPlayerId, card: cardToAdd, targetMeldIndex: targetMeldIndex });
                 const addPosition = canBeAddedToServerMeld(cardToAdd, room.melds[targetMeldIndex]);
                 if (addPosition === 'prepend') room.melds[targetMeldIndex].cards.unshift(cardToAdd);
@@ -1399,24 +1408,33 @@ async function botPlay(room, botPlayerId, io) {
             }
 
             if (shouldProceedWithMeld) {
-                // El bot cumple las reglas, procede a bajar las combinaciones.
                 const allMeldedCardIds = new Set();
+                meldsToPlay.forEach(meld => meld.cards.forEach(c => allMeldedCardIds.add(c.id)));
 
-                for (const meld of meldsToPlay) {
-                    io.to(room.roomId).emit('animateNewMeld', { melderId: botPlayerId, cards: meld.cards });
-                    room.melds.push({ cards: meld.cards, type: meld.type, points: meld.points, melderId: botPlayerId });
-                    meld.cards.forEach(c => allMeldedCardIds.add(c.id));
+                // ▼▼▼ AÑADE ESTA VALIDACIÓN CLAVE ▼▼▼
+                const remainingCardsCount = botHand.length - allMeldedCardIds.size;
+                if (remainingCardsCount === 0) {
+                    // ¡FALTA! Bajar este juego dejaría al bot sin cartas para descartar.
+                    console.log(`[Bot Logic] ${botSeat.playerName} evitó una falta: La bajada dejaba 0 cartas.`);
+                    // No hacemos nada y simplemente dejamos que el bot pase a la fase de descarte.
+                } else {
+                    // El bot cumple las reglas, procede a bajar las combinaciones.
+                    for (const meld of meldsToPlay) {
+                        io.to(room.roomId).emit('animateNewMeld', { melderId: botPlayerId, cards: meld.cards });
+                        room.melds.push({ cards: meld.cards, type: meld.type, points: meld.points, melderId: botPlayerId });
+                    }
+
+                    if (allMeldedCardIds.size > 0) {
+                        botHand = botHand.filter(card => !allMeldedCardIds.has(card.id));
+                        room.playerHands[botPlayerId] = botHand;
+                    }
+
+                    botSeat.doneFirstMeld = true;
+                    io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
+                    if (await checkVictoryCondition(room, room.roomId, io)) return;
+                    await pause(1500);
                 }
-
-                if (allMeldedCardIds.size > 0) {
-                    botHand = botHand.filter(card => !allMeldedCardIds.has(card.id));
-                    room.playerHands[botPlayerId] = botHand;
-                }
-
-                botSeat.doneFirstMeld = true;
-                io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
-                if (await checkVictoryCondition(room, room.roomId, io)) return;
-                await pause(1500);
+                // ▲▲▲ FIN DE LA VALIDACIÓN ▲▲▲
             }
         }
     }
