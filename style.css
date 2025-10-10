@@ -2479,19 +2479,19 @@ body.game-active {
 /* 2.1. Estilo para el número del temporizador */
 .turn-timer {
     position: absolute;
-    top: -12px; /* Mitad fuera */
-    left: -12px; /* Mitad fuera */
-    width: 24px;
-    height: 24px;
+    top: -8px;      /* <-- CAMBIO: Ajustado para el nuevo tamaño */
+    left: -8px;     /* <-- CAMBIO: Ajustado para el nuevo tamaño */
+    width: 16px;    /* <-- CAMBIO: Reducido a ~50% (era 24px) */
+    height: 16px;   /* <-- CAMBIO: Reducido a ~50% (era 24px) */
     background-color: var(--casino-dark-panel);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 10px;  /* <-- CAMBIO: Reducido a ~50% (era 14px) */
     font-weight: bold;
     color: white;
-    border: 2px solid white;
+    border: 1px solid white; /* <-- CAMBIO: Borde más fino (era 2px) */
     z-index: 10;
     visibility: hidden; /* Oculto por defecto */
 }
