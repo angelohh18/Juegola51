@@ -3248,6 +3248,10 @@ function updatePlayersView(seats, inGame = false) {
 
     // Reemplaza la función showEliminationMessage entera
     function showEliminationMessage(playerName, faultData) {
+        // ▼▼▼ LÍNEA DE SEGURIDAD PARA FAULTDATA ▼▼▼
+        faultData = faultData || {};
+        // ▲▲▲ FIN DE LA LÍNEA DE SEGURIDAD ▲▲▲
+
         const el = document.getElementById('elimination-message');
         const faultDetailsContainer = document.getElementById('fault-details-container');
         const invalidComboContainer = document.getElementById('invalid-combo-container');
