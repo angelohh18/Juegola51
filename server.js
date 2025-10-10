@@ -612,18 +612,19 @@ function resetRoomForNewGame(room) {
     room.drewFromDiscard = null;
     room.firstMeldCompletedByAnyone = false;
     
-    // ▼▼▼ ELIMINA ESTE BLOQUE 'forEach' COMPLETO ▼▼▼
-    /*
+    // ▼▼▼ DESCOMENTA Y MODIFICA ESTE BLOQUE ▼▼▼
     room.seats.forEach(seat => {
         if (seat) {
             seat.active = true;
             seat.doneFirstMeld = false;
             seat.turnCount = 0; // <-- RESETEA CONTADOR DE TURNOS
             seat.inactivityStrikes = 0; // <-- RESETEA STRIKES
-            delete seat.status; // <-- AÑADE ESTA LÍNEA
+            seat.hasCompletedFirstTurn = false; // <-- AÑADE ESTA LÍNEA
+            delete seat.status;
         }
     });
-    */
+    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+    
     console.log(`Sala ${room.roomId} reseteada para una nueva partida.`);
 }
 
@@ -1524,15 +1525,12 @@ function startTurnTimer(room, playerId, io) {
     const playerSeat = room.seats.find(s => s && s.playerId === playerId);
     if (!playerSeat) return;
 
-    // ▼▼▼ CAMBIOS AQUÍ ▼▼▼
-    // 1. ELIMINADA la línea de incremento del contador (ahora se hace en advanceTurnAfterAction)
-    
-    // 2. MODIFICADA la condición para verificar si es el primer turno
-    if ((playerSeat.turnCount || 0) < 1) { // <-- LÍNEA MODIFICADA
+    // ▼▼▼ REEMPLAZA LA CONDICIÓN 'if' ANTERIOR CON ESTA ▼▼▼
+    if (!playerSeat.hasCompletedFirstTurn) {
         console.log(`[Timer] Primer turno para ${playerSeat.playerName}. No se activa el temporizador.`);
         return;
     }
-    // ▲▲▲ FIN DE LOS CAMBIOS ▲▲▲
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     // --- FASE 1: TIEMPO PARA ROBAR (30 segundos) ---
     console.log(`[Timer] Iniciando Fase 1 (Robar) para ${playerSeat.playerName}`);
@@ -1695,14 +1693,13 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
-    // 1. Incrementar el contador del jugador que acaba de terminar su turno.
+    // ▼▼▼ REEMPLAZA EL BLOQUE ANTERIOR CON ESTO ▼▼▼
     const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
     if (finishedPlayerSeat) {
-        finishedPlayerSeat.turnCount = (finishedPlayerSeat.turnCount || 0) + 1;
-        console.log(`[Turn Count] El turno #${finishedPlayerSeat.turnCount} de ${finishedPlayerSeat.playerName} ha terminado.`);
+        finishedPlayerSeat.hasCompletedFirstTurn = true; // <-- LÍNEA CLAVE
+        console.log(`[Turn Flag] El primer turno de ${finishedPlayerSeat.playerName} ha terminado.`);
     }
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     if (await checkVictoryCondition(room, room.roomId, io)) return;
 
@@ -1873,10 +1870,10 @@ function createAndStartPracticeGame(socket, username, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false },
-        { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true },
-        { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true },
-        { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true }
+        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, hasCompletedFirstTurn: false },
+        { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false },
+        { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false },
+        { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, hasCompletedFirstTurn: false }
       ],
       deck: [], discardPile: [], playerHands: {}, melds: [], turnMelds: [], turnPoints: 0, hasDrawn: false, drewFromDiscard: null, firstMeldCompletedByAnyone: false, rematchRequests: new Set()
     };
@@ -2213,7 +2210,8 @@ io.on('connection', (socket) => {
           doneFirstMeld: false,
           userId: userId, // Se usa el ID generado por el servidor
           turnCount: 0, // <-- AÑADE ESTA LÍNEA
-          inactivityStrikes: 0 // <-- AÑADE ESTA LÍNEA
+          inactivityStrikes: 0, // <-- AÑADE ESTA LÍNEA
+          hasCompletedFirstTurn: false // <-- AÑADE ESTA LÍNEA
         },
         null, null, null
       ],
@@ -2342,7 +2340,8 @@ io.on('connection', (socket) => {
         status: isWaitingForNextGame ? 'waiting' : undefined,
         userId: userId, // Usamos el userId generado por el servidor
         turnCount: 0, // <-- AÑADE ESTA LÍNEA
-        inactivityStrikes: 0 // <-- AÑADE ESTA LÍNEA
+        inactivityStrikes: 0, // <-- AÑADE ESTA LÍNEA
+        hasCompletedFirstTurn: false // <-- AÑADE ESTA LÍNEA
     };
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
@@ -2846,7 +2845,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     
     // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
     const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-    if (playerSeat && (playerSeat.turnCount || 0) >= 1) { // <-- LÍNEA MODIFICADA
+    if (playerSeat && playerSeat.hasCompletedFirstTurn) { // <-- LÍNEA MODIFICADA
         startPhase2Timer(room, socket.id, io);
     }
     // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
@@ -2897,7 +2896,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       
       // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
       const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
-      if (playerSeat && (playerSeat.turnCount || 0) >= 1) { // <-- LÍNEA MODIFICADA
+      if (playerSeat && playerSeat.hasCompletedFirstTurn) { // <-- LÍNEA MODIFICADA
           startPhase2Timer(room, socket.id, io);
       }
       // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
