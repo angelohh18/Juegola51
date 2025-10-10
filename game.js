@@ -3074,16 +3074,18 @@ function updatePlayersView(seats, inGame = false) {
         display.appendChild(g);
         });
     }
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN animateCardMovement ENTERA CON ESTA VERSIÓN CORREGIDA ▼▼▼
     function animateCardMovement({
         cardsData = [],
         startElement,
         endElement,
         isBack = false,
-        duration = 1200, // <<-- Duración por defecto aumentada para más realismo
+        duration = 1200,
         rotation = 5
     }) {
         return new Promise(resolve => {
             if (!startElement || !endElement) {
+                console.warn("Animación omitida: falta el elemento de inicio o fin.");
                 return resolve();
             }
             const startRect = startElement.getBoundingClientRect();
@@ -3095,9 +3097,11 @@ function updatePlayersView(seats, inGame = false) {
             const cardWidth = 90;
             const cardHeight = 135;
             const cardCount = cardsData.length || 1;
-            
-            // --- CORRECCIÓN: Evitar duplicación de la primera carta ---
-            for(let i=0; i < cardCount; i++) {
+
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Se utiliza un único bucle que empieza en i=0 para crear TODAS las cartas.
+            // Esto elimina cualquier código previo que creara la primera carta por separado.
+            for (let i = 0; i < cardCount; i++) {
                 const cardData = cardsData[i];
                 const innerCard = document.createElement('div');
                 innerCard.className = 'card';
@@ -3105,28 +3109,29 @@ function updatePlayersView(seats, inGame = false) {
                 innerCard.style.height = `${cardHeight}px`;
                 innerCard.style.position = 'relative';
                 innerCard.style.zIndex = '1000';
-                
+
                 if (isBack) {
                     innerCard.classList.add('card-back');
                 } else if (cardData) {
                     innerCard.innerHTML = `<img src="${getCardImageUrl(cardData)}" alt="${cardData.value}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
                 }
-                
-                // --- CORRECCIÓN: Solo aplicar margen negativo a partir de la segunda carta ---
+
+                // Se aplica el margen de superposición solo a partir de la segunda carta (cuando i > 0).
                 if (i > 0) {
                     innerCard.style.marginLeft = `-${cardWidth / 2}px`;
                 }
-                
+
                 animContainer.appendChild(innerCard);
             }
-            
+            // --- FIN DE LA CORRECCIÓN ---
+
             const totalAnimWidth = cardWidth + (cardCount - 1) * (cardWidth / 2);
             animContainer.style.left = `${startRect.left + (startRect.width / 2) - (totalAnimWidth / 2)}px`;
             animContainer.style.top = `${startRect.top + (startRect.height / 2) - (cardHeight / 2)}px`;
             animContainer.style.position = 'fixed';
             animContainer.style.zIndex = '9999';
             document.body.appendChild(animContainer);
-            
+
             requestAnimationFrame(() => {
                 animContainer.style.transition = `all ${duration}ms cubic-bezier(0.65, 0, 0.35, 1)`;
                 const targetLeft = endRect.left + (endRect.width / 2) - (totalAnimWidth / 2);
@@ -3134,7 +3139,7 @@ function updatePlayersView(seats, inGame = false) {
                 const finalScale = (endElement.querySelector('.card')?.offsetWidth || 60) / cardWidth;
                 animContainer.style.transform = `translate(${targetLeft - parseFloat(animContainer.style.left)}px, ${targetTop - parseFloat(animContainer.style.top)}px) scale(${finalScale}) rotate(0deg)`;
             });
-            
+
             setTimeout(() => {
                 if (animContainer.parentNode) {
                     animContainer.remove();
@@ -3143,6 +3148,7 @@ function updatePlayersView(seats, inGame = false) {
             }, duration);
         });
     }
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }
     function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
     function updateTurnIndicator() { for (let i = 0; i < 4; i++) { const e = document.getElementById(`info-player${i}`); if(e) e.classList.remove('current-turn-glow'); } const e = document.getElementById(`info-player${currentPlayer}`); if(e) e.classList.add('current-turn-glow'); }
