@@ -2833,7 +2833,13 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
     room.hasDrawn = true;
     room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
-    startPhase2Timer(room, socket.id, io); // <-- AÑADE ESTA LÍNEA
+    
+    // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
+    const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
+    if (playerSeat && playerSeat.turnCount > 1) {
+        startPhase2Timer(room, socket.id, io);
+    }
+    // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
     
     io.to(roomId).emit('playerDrewCard', {
         playerId: socket.id,
@@ -2878,7 +2884,13 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
       room.hasDrawn = true;
       room.drewFromDiscard = cardDrawn;
       room.lastDrawnCard = cardDrawn; // <-- AÑADE ESTA LÍNEA
-      startPhase2Timer(room, socket.id, io); // <-- AÑADE ESTA LÍNEA
+      
+      // ▼▼▼ VERIFICAR TURNO ANTES DE INICIAR TEMPORIZADOR ▼▼▼
+      const playerSeat = room.seats.find(s => s && s.playerId === socket.id);
+      if (playerSeat && playerSeat.turnCount > 1) {
+          startPhase2Timer(room, socket.id, io);
+      }
+      // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
       
       // Notificar a todos en la sala sobre el robo del descarte
       io.to(roomId).emit('playerDrewCard', {

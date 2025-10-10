@@ -2499,7 +2499,7 @@ body.game-active {
 /* 2.2. Estilos para la animación del borde */
 .info-bot {
     position: relative; /* Necesario para el pseudo-elemento */
-    overflow: hidden; /* Evita que el gradiente se salga del borde redondeado */
+    /* overflow: hidden; */ /* <-- ELIMINADO para permitir visibilidad del temporizador */
 }
 
 .info-bot::before {

@@ -1350,6 +1350,14 @@ function showRoomsOverview() {
     // Versión definitiva de 'turnChanged'
     socket.on('turnChanged', (data) => {
         console.log('Server broadcast: El turno ha cambiado.', data);
+
+        // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+        // Limpieza instantánea de todos los temporizadores visuales al cambiar de turno.
+        document.querySelectorAll('.turn-timer').forEach(el => el.style.visibility = 'hidden');
+        document.querySelectorAll('.info-bot').forEach(el => {
+            el.classList.remove('timer-active', 'timer-green', 'timer-yellow', 'timer-red');
+        });
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
     
         // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
         isWaitingForNextTurn = false;
