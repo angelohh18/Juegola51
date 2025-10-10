@@ -165,8 +165,12 @@
     <ol>
       
         <li>
-            <strong>No usar la carta del descarte en la primera bajada:</strong> Si robas del descarte, estás obligado a usar esa carta en la primera combinación que bajes en ese mismo turno.
-            <div class="example">Falta: Robas un 8♠ del descarte. Luego, intentas bajar un trío de Reyes (K-K-K). Es falta, porque tu primera jugada debía incluir obligatoriamente el 8♠.</div>
+            <strong>Uso Obligatorio de la Carta del Descarte:</strong> Si robas una carta del descarte, tu <strong>primera acción obligatoria</strong> de ese turno debe ser usar esa misma carta para <strong>bajar una nueva combinación</strong> a la mesa. No está permitido realizar otra acción primero.
+            <div class="example">
+                <strong>Falta Grave:</strong> Robas un <strong>5♦</strong> del descarte. En la mesa hay un trío de Reyes. Primero, añades un Rey de tu mano a ese trío. <span class="penalty">Serás eliminado.</span> Tu primera acción debió ser usar el <strong>5♦</strong>.
+                <br><br>
+                <strong>Jugada Correcta:</strong> Robas un <strong>5♦</strong>. Lo usas para bajar una escalera <strong>4♦-5♦-6♦</strong>. Ahora que has cumplido la regla, ya eres libre de realizar otras acciones como añadir un Rey al trío existente, bajar más juegos y, finalmente, descartar.
+            </div>
         </li>
         <li>
             <strong>Robar del descarte y no bajar:</strong> Si robas del descarte, es obligatorio bajar al menos una combinación. No puedes robar del descarte y simplemente tirar otra carta de tu mano.
@@ -189,6 +193,24 @@
             <strong>Abandonar la partida:</strong> Salir del juego voluntariamente mientras está en curso.
         </li>
     </ol>
+
+    <h4>6. El Temporizador de Turno</h4>
+    <p>
+        Para mantener el juego dinámico, existe un temporizador por turnos.
+    </p>
+    <ul>
+        <li>El <strong>primer turno</strong> de cada jugador en la partida <strong>no tiene temporizador</strong>, para dar tiempo a organizar las cartas.</li>
+        <li>A partir del <strong>segundo turno</strong>, el temporizador se activará:
+            <ul>
+                <li>Tendrás <strong>30 segundos para robar</strong> una carta. Si no lo haces, el sistema robará una del mazo por ti.</li>
+                <li>Tras robar, tendrás <strong>30 segundos para jugar y descartar</strong>. Si no descartas, el sistema descartará por ti la carta que acabas de robar.</li>
+                <li>Si empiezas a bajar combinaciones, el temporizador se reinicia y te da <strong>1 minuto adicional</strong> para completar todas tus jugadas y descartar.</li>
+            </ul>
+        </li>
+    </ul>
+    <div class="example penalty">
+        <strong>Falta por Inactividad:</strong> Si el temporizador juega por ti durante <strong>3 turnos consecutivos</strong>, serás eliminado de la partida y pagarás la multa.
+    </div>
     <button id="btn-close-rules-modal" class="secondary">Entendido</button>
     </div>
 </div>
@@ -480,6 +502,7 @@
                     <div class="player-details">
                         <span class="player-name">Bot 1</span>
                         <div class="card-counter" id="counter-bot1">🂠 0</div>
+                        <div class="turn-timer"></div>
                     </div>
                 </div>
                 <div class="info-bot" id="info-player2">
@@ -487,6 +510,7 @@
                     <div class="player-details">
                         <span class="player-name">Bot 2</span>
                         <div class="card-counter" id="counter-bot2">🂠 0</div>
+                        <div class="turn-timer"></div>
                     </div>
                 </div>
                 <div class="info-bot" id="info-player3">
@@ -494,6 +518,7 @@
                     <div class="player-details">
                         <span class="player-name">Bot 3</span>
                         <div class="card-counter" id="counter-bot3">🂠 0</div>
+                        <div class="turn-timer"></div>
                     </div>
                 </div>
             </div>
@@ -515,6 +540,7 @@
                 <div class="player-details">
                     <span class="player-name">Jugador</span>
                     <div class="card-counter" id="counter-human">🂠 0</div>
+                    <div class="turn-timer"></div>
                 </div>
             </div>
             <div class="hand human" id="human-hand">

@@ -3219,7 +3219,10 @@ function updatePlayersView(seats, inGame = false) {
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }
     function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'♦'; if(s==='clubs')return'♣'; if(s==='spades')return'♠'; return ''; }
-    function updateTurnIndicator() { for (let i = 0; i < 4; i++) { const e = document.getElementById(`info-player${i}`); if(e) e.classList.remove('current-turn-glow'); } const e = document.getElementById(`info-player${currentPlayer}`); if(e) e.classList.add('current-turn-glow'); }
+    function updateTurnIndicator() { 
+        // Esta función se deja vacía intencionadamente para desactivar el sistema de brillo antiguo.
+        // La nueva animación del temporizador se encargará ahora de indicar el turno.
+    }
     function updatePointsIndicator() { } function updateDebugInfo() { } let hidePlayerActionToasts = true; function showPlayerToast(msg, duration=3000) { if (hidePlayerActionToasts) return; showToast(msg, duration); } function showOverlay(id) { document.getElementById(id).style.display = 'flex'; } function hideOverlay(id) { document.getElementById(id).style.display = 'none'; }
     // Pega esta función completa en tu game.js
     function createCardDisplayHTML(cards) {

@@ -2526,6 +2526,16 @@ io.on('connection', (socket) => {
 
     // --- LÓGICA PARA AÑADIR A UN MELD EXISTENTE (PERMANENTE) ---
     if (typeof targetMeldIndex !== 'undefined') {
+
+        // ▼▼▼ VALIDACIÓN REFORZADA: REGLA DEL DESCARTE ▼▼▼
+        // REGLA ESTRICTA: Si robó del descarte, su primera acción NO PUEDE ser añadir a un juego existente.
+        if (room.drewFromDiscard && room.discardCardRequirementMet === false) {
+            const reason = 'Después de robar del descarte, tu primera acción debe ser bajar una NUEVA combinación usando esa carta.';
+            console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
+            return handlePlayerElimination(room, socket.id, reason, io);
+        }
+        // ▲▲▲ FIN DE LA VALIDACIÓN REFORZADA ▲▲▲
+
         if (cards.length !== 1) {
             return io.to(socket.id).emit('fault', { reason: 'Solo puedes añadir una carta a la vez.' });
         }
