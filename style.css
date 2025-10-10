@@ -2474,39 +2474,37 @@ body.game-active {
 
 /* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
-/* ▼▼▼ ESTILOS DEL TEMPORIZADOR DE TURNOS ▼▼▼ */
+/* ▼▼▼ NUEVA ANIMACIÓN DEL TEMPORIZADOR CON BORDE GIRATORIO ▼▼▼ */
 
-/* 2.1. Estilo para el número del temporizador */
+/* Estilo para el número del temporizador */
 .turn-timer {
     position: absolute;
-    top: -8px;      /* <-- CAMBIO: Ajustado para el nuevo tamaño */
-    left: -8px;     /* <-- CAMBIO: Ajustado para el nuevo tamaño */
-    width: 16px;    /* <-- CAMBIO: Reducido a ~50% (era 24px) */
-    height: 16px;   /* <-- CAMBIO: Reducido a ~50% (era 24px) */
+    top: -5px;
+    left: -5px;
+    width: 18px;
+    height: 18px;
     background-color: var(--casino-dark-panel);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;  /* <-- CAMBIO: Reducido a ~50% (era 14px) */
+    font-size: 0.6rem;
     font-weight: bold;
     color: white;
-    border: 1px solid white; /* <-- CAMBIO: Borde más fino (era 2px) */
+    border: 1px solid white;
     z-index: 10;
-    visibility: hidden; /* Oculto por defecto */
+    visibility: hidden; /* Oculto por defecto, se activa con JS */
+}
+.turn-timer:not(:empty) {
+    visibility: visible; /* Se muestra si tiene contenido */
 }
 
-/* 2.2. Estilos para la animación del borde */
-.info-bot {
-    position: relative; /* Necesario para el pseudo-elemento */
-    /* overflow: hidden; */ /* <-- ELIMINADO para permitir visibilidad del temporizador */
-}
-
+/* Estilos para la animación del borde usando un pseudo-elemento */
 .info-bot::before {
     content: '';
     position: absolute;
-    inset: 0;
-    border-radius: inherit; /* Hereda el borde redondeado del padre */
+    inset: -2px; /* Se expande ligeramente fuera del contenedor */
+    border-radius: inherit;
     padding: 2px; /* Grosor del borde */
     background: conic-gradient(from var(--angle), var(--color1), var(--color2), var(--color1));
     -webkit-mask:
@@ -2517,6 +2515,7 @@ body.game-active {
     animation: rotate 4s linear infinite;
     opacity: 0; /* Oculto por defecto */
     transition: opacity 0.3s;
+    pointer-events: none; /* Evita que interfiera con clics */
 }
 
 @keyframes rotate {
@@ -2529,7 +2528,7 @@ body.game-active {
     inherits: false;
 }
 
-/* Clases para controlar el color y la visibilidad */
+/* Clases para controlar el color y la visibilidad de la animación */
 .info-bot.timer-active::before {
     opacity: 1;
 }
@@ -2537,6 +2536,6 @@ body.game-active {
 .info-bot.timer-yellow { --color1: #fffb00; --color2: #ffd700; }
 .info-bot.timer-red { --color1: #ff4444; --color2: #ff8c00; }
 
-/* ▲▲▲ FIN ESTILOS DEL TEMPORIZADOR ▲▲▲ */
+/* ▲▲▲ FIN DE LA NUEVA ANIMACIÓN DEL TEMPORIZADOR ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
