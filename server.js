@@ -1049,9 +1049,8 @@ async function checkVictoryCondition(room, roomId, io) {
   const winnerSeat = room.seats.find(s => s && s.active !== false && room.playerHands[s.playerId]?.length === 0);
   
   if (winnerSeat) {
-    console.log(`¡VICTORIA! ${winnerSeat.playerName} se ha quedado sin cartas y gana la partida.`);
-    await endGameAndCalculateScores(room, winnerSeat, io);
-    return true;
+    // La función ahora solo detecta la condición, pero no finaliza el juego aquí.
+    return winnerSeat; // Devuelve el asiento del ganador en lugar de true.
   }
   return false;
 }
@@ -2342,7 +2341,17 @@ io.on('connection', (socket) => {
     });
 
     socket.emit('meldSuccess', { meldedCardIds: cardIds });
-    await checkVictoryCondition(room, roomId, io);
+    
+    // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO ▼▼▼
+    
+    // Comprobación de falta: ¿El jugador se quedó sin cartas para descartar?
+    if (room.playerHands[socket.id].length === 0) {
+      const reason = 'Bajó o añadió todas sus cartas, pero no tiene una para descartar y finalizar el turno.';
+      console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
+      // Se llama a la función de eliminación y se detiene la ejecución.
+      return handlePlayerElimination(room, socket.id, reason, io);
+    }
+    
   });
 
 socket.on('accionDescartar', async (data) => {
@@ -2454,7 +2463,7 @@ socket.on('accionDescartar', async (data) => {
 
     // 1. Procesar la jugada.
     console.log(`[DEBUG] Eliminando carta de la mano...`);
-    playerHand.splice(cardIndex, 1);
+    playerHand.splice(cardIndex, 1); // La carta se elimina de la mano.
     console.log(`[DEBUG] Agregando carta al descarte...`);
     room.discardPile.push(card);
     console.log(`[DEBUG] Descartar procesado exitosamente`);
@@ -2462,14 +2471,16 @@ socket.on('accionDescartar', async (data) => {
         room.melds.push(...room.turnMelds);
     }
 
-    // 2. Comprobar victoria.
-    console.log(`[DEBUG] Comprobando condición de victoria...`);
-    if (await checkVictoryCondition(room, roomId, io)) {
-        console.log(`[DEBUG] Juego terminado por victoria`);
-        return;
+    // 2. ¡NUEVA LÓGICA DE VICTORIA!
+    // Se comprueba si la mano quedó vacía DESPUÉS de descartar.
+    if (playerHand.length === 0) {
+        console.log(`¡VICTORIA! ${playerSeat.playerName} ha descartado su última carta.`);
+        // Llamamos directamente a la función que calcula los puntos y finaliza el juego.
+        await endGameAndCalculateScores(room, playerSeat, io);
+        return; // Detenemos la ejecución para no pasar el turno.
     }
 
-    // 3. Resetear y cambiar turno.
+    // 3. Si no hay victoria, resetear y cambiar turno.
     console.log(`[DEBUG] Reseteando estado del turno...`);
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
