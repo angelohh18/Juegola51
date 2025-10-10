@@ -1425,19 +1425,22 @@ async function botPlay(room, botPlayerId, io) {
     if (botHand.length > 0) {
         const cardToDiscard = findWorstCardToDiscard(botHand, room.melds);
 
-        // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN COMPLETO AQUÍ ▼▼▼
+        // ▼▼▼ CÓDIGO ACTUALIZADO ▼▼▼
         // VALIDACIÓN DE FALTA: Comprobamos si el descarte del bot es ilegal.
-        if (cardToDiscard) {
-            for (const meld of room.melds) {
-                if (canBeAddedToServerMeld(cardToDiscard, meld)) {
-                    const reason = `Descarte ilegal del bot. La carta ${cardToDiscard.value}${getSuitIcon(cardToDiscard.suit)} se podía añadir a un juego en mesa.`;
-                    console.log(`FALTA GRAVE BOT: ${botSeat.playerName} - ${reason}`);
-                    // Si es ilegal, eliminamos al bot y detenemos su turno.
-                    return handlePlayerElimination(room, botPlayerId, reason, io);
+        // Solo validamos si NO es el descarte para ganar la partida.
+        if (botHand.length > 1) { 
+            if (cardToDiscard) {
+                for (const meld of room.melds) {
+                    if (canBeAddedToServerMeld(cardToDiscard, meld)) {
+                        const reason = `Descarte ilegal del bot. La carta ${cardToDiscard.value}${getSuitIcon(cardToDiscard.suit)} se podía añadir a un juego en mesa.`;
+                        console.log(`FALTA GRAVE BOT: ${botSeat.playerName} - ${reason}`);
+                        // Si es ilegal, eliminamos al bot y detenemos su turno.
+                        return handlePlayerElimination(room, botPlayerId, reason, io);
+                    }
                 }
             }
         }
-        // ▲▲▲ FIN DEL BLOQUE DE VALIDACIÓN ▲▲▲
+        // ▲▲▲ FIN DEL CÓDIGO ACTUALIZADO ▲▲▲
 
         if (cardToDiscard) {
             const cardIndex = botHand.findIndex(c => c.id === cardToDiscard.id);
