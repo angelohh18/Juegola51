@@ -1187,6 +1187,15 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
             if (topCard) room.discardPile.push(topCard);
         }
         room.playerHands[faultingPlayerId] = [];
+        
+        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL ELIMINAR JUGADOR ▼▼▼
+        if (turnTimers[room.roomId]) {
+            clearTimeout(turnTimers[room.roomId].timerId);
+            clearInterval(turnTimers[room.roomId].intervalId);
+            delete turnTimers[room.roomId];
+        }
+        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+        
         resetTurnState(room);
 
         playerSeat.active = false;
@@ -1721,8 +1730,11 @@ function startPhase2Timer(room, playerId, io) {
 function startPhase3Timer(room, playerId, io) {
     if (turnTimers[room.roomId] && turnTimers[room.roomId].phase === 3) return; // Evitar reiniciar si ya está en fase 3
 
-    clearTimeout(turnTimers[room.roomId].timerId);
-    clearInterval(turnTimers[room.roomId].intervalId);
+    // Verificar que el temporizador existe antes de limpiar
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+    }
 
     console.log(`[Timer] Iniciando Fase 3 (Bajar) para ${room.seats.find(s=>s.playerId===playerId).playerName}`);
     let timeLeft = MELD_TIME;
@@ -1787,6 +1799,14 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
         console.log(`[Turno Completado] ${finishedPlayerSeat.playerName} completó su primer turno.`);
     }
     // ▲▲▲ FIN DE LA MARCA DE TURNO COMPLETADO ▲▲▲
+    
+    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL CAMBIAR TURNO ▼▼▼
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+        delete turnTimers[room.roomId];
+    }
+    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
     
     resetTurnState(room);
     const seatedPlayers = room.seats.filter(s => s !== null);
