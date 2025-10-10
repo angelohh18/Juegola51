@@ -1571,7 +1571,8 @@ function showRoomsOverview() {
 
         if (timeLeft <= 0) return;
 
-        // Encontrar y actualizar solo el contador del jugador correcto
+        // ▼▼▼ LÓGICA CORREGIDA PARA ENCONTRAR EL JUGADOR CORRECTO ▼▼▼
+        // Buscar el jugador en orderedSeats (que está ordenado para cada cliente)
         const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === playerId);
         if (playerViewIndex !== -1) {
             const playerInfoEl = document.getElementById(`info-player${playerViewIndex}`);
@@ -1581,7 +1582,32 @@ function showRoomsOverview() {
                     countdownEl.textContent = timeLeft;
                 }
             }
+        } else {
+            // ▼▼▼ FALLBACK: Si no se encuentra en orderedSeats, buscar en todos los elementos ▼▼▼
+            // Esto puede pasar si hay problemas de sincronización
+            console.log(`[Timer] No se encontró el jugador ${playerId} en orderedSeats, usando fallback`);
+            
+            // Buscar en todos los elementos info-player
+            for (let i = 0; i < 4; i++) {
+                const playerInfoEl = document.getElementById(`info-player${i}`);
+                if (playerInfoEl) {
+                    // Verificar si este elemento contiene el jugador correcto
+                    const playerNameEl = playerInfoEl.querySelector('.player-name');
+                    if (playerNameEl) {
+                        // Buscar en orderedSeats para ver si este índice corresponde al jugador
+                        const seatAtIndex = orderedSeats[i];
+                        if (seatAtIndex && seatAtIndex.playerId === playerId) {
+                            const countdownEl = playerInfoEl.querySelector('.timer-countdown');
+                            if (countdownEl) {
+                                countdownEl.textContent = timeLeft;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
+        // ▲▲▲ FIN DE LA LÓGICA CORREGIDA ▲▲▲
     });
 
     socket.on('kickedForInactivity', ({ reason }) => {
