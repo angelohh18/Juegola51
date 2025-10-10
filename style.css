@@ -1420,7 +1420,7 @@ body.game-active {
 
 .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.9); z-index:999; }
 .overlay.hidden { display:none; }
-.overlay .content { background: var(--casino-bg); padding:20px; border-radius:12px; border:3px solid var(--casino-gold); color:var(--casino-tan); width:90%; max-width:560px; text-align:center; box-shadow: 0 0 25px rgba(0,0,0,0.7); }
+.overlay .content { background: var(--casino-bg); padding:20px; border-radius:12px; border:3px solid var(--casino-gold); color:var(--casino-tan); width:90%; max-width:560px; text-align:center; box-shadow: 0 0 25px rgba(0,0,0,0.7); max-height: 90vh; overflow-y: auto; }
 .overlay .content p { margin: 10px 0; font-size: 1.1rem; }
 .overlay .content button { margin-top: 15px; }
 
