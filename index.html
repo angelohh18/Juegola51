@@ -732,7 +732,8 @@ if ('serviceWorker' in navigator) {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             // Hay una nueva versión disponible
                             console.log('Nueva versión disponible');
-                            // Opcional: mostrar notificación al usuario
+                            // Mostrar notificación al usuario
+                            showUpdateNotification(registration);
                         }
                     });
                 });
@@ -750,6 +751,44 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
 });
+
+// ▼▼▼ SISTEMA DE ACTUALIZACIÓN AUTOMÁTICA DE LA PWA ▼▼▼
+
+// Escucha si el controlador del Service Worker cambia (es decir, si uno nuevo toma el control)
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Cuando el nuevo SW está activo, recargamos la página para usar los archivos nuevos.
+    window.location.reload();
+});
+
+// Función para mostrar la notificación de actualización
+function showUpdateNotification(registration) {
+    const updateToast = document.createElement('div');
+    updateToast.style.position = 'fixed';
+    updateToast.style.bottom = '20px';
+    updateToast.style.left = '50%';
+    updateToast.style.transform = 'translateX(-50%)';
+    updateToast.style.background = '#c5a56a';
+    updateToast.style.color = '#211e18';
+    updateToast.style.padding = '12px 20px';
+    updateToast.style.borderRadius = '8px';
+    updateToast.style.zIndex = '10001';
+    updateToast.style.boxShadow = '0 4px 10px rgba(0,0,0,0.5)';
+    updateToast.style.fontWeight = 'bold';
+    updateToast.style.cursor = 'pointer';
+    updateToast.innerHTML = '¡Nueva versión disponible! Toca para actualizar.';
+    document.body.appendChild(updateToast);
+
+    // Al hacer clic en la notificación...
+    updateToast.addEventListener('click', () => {
+        updateToast.textContent = 'Actualizando...';
+        // Le enviamos un mensaje al SW que está en espera para que se active.
+        if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+    });
+}
+
+// ▲▲▲ FIN DEL SISTEMA DE ACTUALIZACIÓN AUTOMÁTICA ▲▲▲
 
 // Manejar cuando la PWA se instala
 window.addEventListener('appinstalled', (evt) => {

@@ -636,6 +636,21 @@ html {
 
 #register-modal .modal-content {
     width: 360px; /* Ancho específico del modal de registro */
+    max-height: 85vh;      /* Limita la altura máxima al 85% de la pantalla */
+    overflow-y: auto;      /* Permite scroll vertical cuando el contenido excede la altura */
+}
+
+/* Estilos de la barra de scroll para el modal de registro */
+#register-modal .modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+#register-modal .modal-content::-webkit-scrollbar-track {
+    background: #6d2932;
+    border-radius: 10px;
+}
+#register-modal .modal-content::-webkit-scrollbar-thumb {
+    background: #c5a56a;
+    border-radius: 10px;
 }
 
 #register-modal .success {
