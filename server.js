@@ -457,7 +457,6 @@ function generateRoomId() {
 
 let rooms = {}; // Estado de las mesas se mantiene en memoria
 let connectedUsers = {}; // Objeto para rastrear usuarios activos
-let disconnectedPlayers = {}; // Jugadores desconectados temporalmente
 let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
@@ -2231,31 +2230,6 @@ io.on('connection', (socket) => {
 
     // Escucha cuando un usuario inicia sesión en el lobby
     socket.on('userLoggedIn', async ({ username, currency }) => {
-        // ▼▼▼ AÑADE ESTE BLOQUE DE RECONEXIÓN AL INICIO ▼▼▼
-        const potentialUserId = 'user_' + username.toLowerCase();
-        if (disconnectedPlayers[potentialUserId]) {
-            console.log(`✅ Jugador ${potentialUserId} se ha reconectado a tiempo!`);
-            // Cancelamos el temporizador que lo iba a expulsar
-            clearTimeout(disconnectedPlayers[potentialUserId].timeout);
-            
-            const { roomId, socketId: oldSocketId } = disconnectedPlayers[potentialUserId];
-            
-            // Limpiamos la entrada para que no se procese dos veces
-            delete disconnectedPlayers[potentialUserId];
-
-            // Notificamos a los demás que el jugador ha vuelto
-            io.to(roomId).emit('playerConnectionUpdate', { 
-                playerId: oldSocketId, 
-                newPlayerId: socket.id, // Enviamos el nuevo ID de socket
-                status: 'reconnected',
-                message: `${username} se ha reconectado.`
-            });
-            
-            // El resto de la lógica de 'userLoggedIn' se encargará de reasignar
-            // el estado del usuario, así que no necesitamos hacer más aquí.
-        }
-        // ▲▲▲ FIN DEL BLOQUE DE RECONEXIÓN ▲▲▲
-
         if (!username || !currency) return;
 
         // ----- CORRECCIÓN #1: La misma errata estaba aquí -----
@@ -3132,49 +3106,22 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
+  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE CÓDIGO ORIGINAL ▼▼▼
   socket.on('disconnect', () => {
-    console.log(`🔌 Jugador desconectado temporalmente: ${socket.id}`);
-    const roomId = socket.currentRoomId;
-    const userId = socket.userId;
+    console.log('❌ Un jugador se ha desconectado:', socket.id);
+    const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
 
-    // Si el jugador no estaba logueado o en una sala, no hacemos nada.
-    if (!userId || !roomId || !rooms[roomId]) {
-        console.log(`   -> No estaba en una partida, limpieza normal.`);
-        if (connectedUsers[socket.id]) {
-            delete connectedUsers[socket.id];
-            broadcastUserListUpdate(io);
-        }
-        return;
+    // Elimina al usuario de la lista de conectados y notifica a todos
+    if (connectedUsers[socket.id]) {
+        delete connectedUsers[socket.id];
+        broadcastUserListUpdate(io);
     }
 
-    // Guardamos la información del jugador y establecemos un temporizador de 60 segundos
-    disconnectedPlayers[userId] = {
-        socketId: socket.id,
-        roomId: roomId,
-        timeout: setTimeout(() => {
-            console.log(`⏰ Tiempo de gracia expirado para ${userId}. Eliminando de la partida.`);
-            
-            // Si el temporizador se completa, ejecutamos la lógica de salida original
-            handlePlayerDeparture(roomId, socket.id, io);
-            
-            // Limpiamos los datos del jugador desconectado
-            delete disconnectedPlayers[userId];
-            if (connectedUsers[socket.id]) {
-                delete connectedUsers[socket.id];
-                broadcastUserListUpdate(io);
-            }
-        }, 60000) // 60 segundos de gracia
-    };
-
-    console.log(`   -> Jugador ${userId} en sala ${roomId}. Iniciando temporizador de 60s.`);
-    
-    // Notificamos a los demás jugadores que está "Reconectando..."
-    io.to(roomId).emit('playerConnectionUpdate', { 
-        playerId: socket.id, 
-        status: 'reconnecting',
-        message: `${connectedUsers[socket.id]?.username || 'Un jugador'} ha perdido la conexión. Esperando...`
-    });
+    if (roomId && rooms[roomId]) {
+        // Si el jugador estaba en una sala válida, procesamos su salida.
+        console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
+        handlePlayerDeparture(roomId, socket.id, io);
+    }
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
