@@ -8,7 +8,7 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
-app.use(express.json()); // <-- AÑADE ESTA LÍNEA (después de const app = express())
+app.use(express.json({ limit: '5mb' })); // Aumentamos el límite para aceptar avatares más grandes
 
 // Middleware de logging para debug
 app.use((req, res, next) => {
