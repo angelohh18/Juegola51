@@ -492,10 +492,36 @@ function showPwaInstallModal() {
             reader.onload = function(evt) {
                 // Llamamos al modal de recorte y le decimos qué hacer cuando se guarde
                 openCropModal(evt.target.result, (croppedDataUrl) => {
-                    userAvatarEl.src = croppedDataUrl; // Actualiza el avatar del lobby
-                    currentUser.userAvatar = croppedDataUrl; // Actualiza la variable global
-                    localStorage.setItem('userAvatar', croppedDataUrl); // Guarda en localStorage
-                    showToast('Avatar actualizado con éxito.', 2500);
+                    // Lógica existente (actualización visual inmediata)
+                    userAvatarEl.src = croppedDataUrl;
+                    currentUser.userAvatar = croppedDataUrl;
+                    localStorage.setItem('userAvatar', croppedDataUrl);
+                    
+                    // --- INICIO DE LA MODIFICACIÓN ---
+                    // Enviamos el nuevo avatar al servidor para guardarlo en la BD
+                    fetch('/update-avatar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: currentUser.username, // Usamos el nombre del usuario logueado
+                            avatarUrl: croppedDataUrl
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Avatar guardado permanentemente en la base de datos.');
+                            showToast('Avatar actualizado con éxito.', 2500);
+                        } else {
+                            console.error('Error del servidor al guardar el avatar:', data.message);
+                            showToast('Error al guardar el avatar.', 3000);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error de red al actualizar el avatar:', err);
+                        showToast('Error de red. No se pudo guardar el avatar.', 3000);
+                    });
+                    // --- FIN DE LA MODIFICACIÓN ---
                 });
             };
             reader.readAsDataURL(file);

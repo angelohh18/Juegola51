@@ -607,6 +607,37 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// ▼▼▼ AÑADE ESTE BLOQUE COMPLETO ▼▼▼
+app.post('/update-avatar', async (req, res) => {
+    const { username, avatarUrl } = req.body;
+
+    if (!username || !avatarUrl) {
+        return res.status(400).json({ success: false, message: 'Faltan datos para actualizar el avatar.' });
+    }
+
+    try {
+        // Actualizamos la base de datos
+        await pool.query(
+            'UPDATE users SET avatar_url = $1 WHERE username = $2',
+            [avatarUrl, username.toLowerCase()]
+        );
+        
+        // Opcional pero recomendado: Actualizar el estado en memoria si el usuario está conectado
+        const userId = 'user_' + username.toLowerCase();
+        if (users[userId]) {
+            users[userId].avatar_url = avatarUrl;
+        }
+
+        console.log(`✅ Avatar actualizado para el usuario: ${username}`);
+        res.status(200).json({ success: true, message: 'Avatar actualizado exitosamente.' });
+
+    } catch (error) {
+        console.error(`❌ Error al actualizar el avatar para ${username}:`, error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    }
+});
+// ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
 // RUTA DE ADMIN
 app.get('/admin', adminAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
