@@ -1341,7 +1341,8 @@ body.game-active {
     cursor: pointer;
     transition: all 0.18s ease;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    will-change: transform, opacity, outline; /* << AÑADE ESTA LÍNEA */
 }
 
 .card.selected { outline:4px solid var(--casino-gold); transform:translateY(-20px); } 
