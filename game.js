@@ -2187,6 +2187,34 @@ socket.on('gameStarted', (initialState) => {
         updatePlayersView(roomData.seats, gameStarted); // Pasamos el estado actual del juego
         renderGameControls();
     });
+
+    // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
+    socket.on('playerConnectionUpdate', (data) => {
+        console.log('Actualización de estado de conexión:', data);
+        
+        // Buscamos el índice visual del jugador afectado (puede ser el ID viejo o el nuevo)
+        let playerViewIndex = orderedSeats.findIndex(s => s && (s.playerId === data.playerId || s.playerId === data.newPlayerId));
+
+        if (playerViewIndex !== -1) {
+            const infoBotEl = document.getElementById(`info-player${playerViewIndex}`);
+            if (!infoBotEl) return;
+            
+            // Quitamos cualquier estado visual anterior
+            infoBotEl.classList.remove('player-reconnecting');
+            
+            if (data.status === 'reconnecting') {
+                infoBotEl.classList.add('player-reconnecting');
+                showToast(data.message, 5000); // Mostramos el aviso
+            } else if (data.status === 'reconnected') {
+                // El jugador ha vuelto, actualizamos su ID de socket en la UI
+                if (orderedSeats[playerViewIndex]) {
+                    orderedSeats[playerViewIndex].playerId = data.newPlayerId;
+                }
+                showToast(data.message, 3000);
+            }
+        }
+    });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
     
     function resetClientGameState() {
         console.log('CLIENTE: Reseteando estado del juego para nueva partida.');

@@ -2475,24 +2475,48 @@ body.game-active {
 
 /* ▼▼▼ ANIMACIÓN PULSANTE ORIGINAL DEL TEMPORIZADOR ▼▼▼ */
 
-@keyframes pulsing-glow {
-  0% {
-    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 5px rgba(197, 165, 106, 0.4);
-    border-color: var(--casino-gold);
+/* ▼▼▼ ANIMACIÓN OPTIMIZADA PARA MAYOR FLUIDEZ ▼▼▼ */
+
+/* Hacemos que .info-bot sea un contenedor de posicionamiento */
+.info-bot {
+    position: relative; 
+    /* El resto de tus estilos para .info-bot no se tocan */
+}
+
+/* Creamos un pseudo-elemento para el brillo, que es más eficiente de animar */
+.info-bot.current-turn-glow::after {
+    content: '';
+    position: absolute;
+    inset: -4px; /* Un poco más grande que el contenedor */
+    border: 2px solid #adff2f;
+    border-radius: 12px; /* Un poco más redondeado que el original (8px) */
+    
+    /* Propiedades para la animación */
+    opacity: 0;
+    transform: scale(0.95);
+    
+    /* ¡La clave! Le decimos al navegador que se prepare para animar esto */
+    will-change: transform, opacity; 
+    
+    /* Asignamos la nueva animación */
+    animation: efficient-glow 1.8s infinite ease-in-out;
+}
+
+/* La nueva animación que solo usa transform y opacity (aceleradas por hardware) */
+@keyframes efficient-glow {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0;
   }
   50% {
-    box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 20px rgba(173, 255, 47, 0.8);
-    border-color: #adff2f;
-  }
-  100% {
-    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 5px rgba(197, 165, 106, 0.4);
-    border-color: var(--casino-gold);
+    transform: scale(1.05);
+    opacity: 1;
   }
 }
 
-.info-bot.current-turn-glow {
-  animation: pulsing-glow 1.8s infinite ease-in-out;
-}
+/* Ya no necesitamos reglas CSS adicionales para .current-turn-glow,
+   el pseudo-elemento ::after se encarga de toda la animación */
+/* ▲▲▲ FIN DEL BLOQUE DE ANIMACIÓN OPTIMIZADA ▲▲▲ */
 
 /* Estilos para el contador numérico */
 .timer-countdown {
@@ -2536,5 +2560,24 @@ body.game-active {
     border-color: #f8d7da;
 }
 /* ▲▲▲ FIN DE LOS COLORES DINÁMICOS ▲▲▲ */
+
+/* ▼▼▼ ESTILOS PARA ESTADO DE RECONEXIÓN ▼▼▼ */
+.info-bot.player-reconnecting::after {
+    content: 'Reconectando...';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 165, 0, 0.75); /* Naranja semitransparente */
+    color: #211e18;
+    font-weight: bold;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 2px dashed #211e18;
+    text-align: center;
+    z-index: 5;
+}
+/* ▲▲▲ FIN DE ESTILOS DE RECONEXIÓN ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
