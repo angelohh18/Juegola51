@@ -170,6 +170,7 @@ let lastRenderedHandIds = []; // Para renderizado incremental de la mano
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
 let clientExchangeRates = {}; // Para guardar las tasas
 let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
+let selectedCards = new Set(); // Variable global para cartas seleccionadas
 
 
 // Variables globales para el estado del usuario (migración segura)
@@ -2115,7 +2116,6 @@ function showRoomsOverview() {
     let isAnimatingLocalMeld = false; // <<-- AÑADE ESTA LÍNEA
     let practiceGameEndedByFault = false; // <<-- AÑADE ESTA LÍNEA
     let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, isDrawing;
-    let selectedCards = new Set(); // <--- ESTA ES LA LÍNEA IMPORTANTE
 
     // ▼▼▼ PEGA EL BLOQUE COMPLETO AQUÍ ▼▼▼
     // Configuración de los botones del modal de reinicio de práctica (Ubicación corregida)
