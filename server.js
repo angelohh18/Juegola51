@@ -2059,7 +2059,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
 
-    // --- INICIO: LIMPIEZA PREVENTIVA (VERSIÓN FINAL Y MÁS ROBUSTA) ---
+    // --- INICIO: LIMPIEZA PREVENTIVA ULTRA-ROBUSTA ---
     // Esta es la corrección más importante. No busca en un bucle, sino que ataca
     // directamente al ID de la sala que podría haber quedado huérfana.
     if (rooms[roomId]) {
@@ -2074,7 +2074,30 @@ function createAndStartPracticeGame(socket, username, io) {
 
         delete rooms[roomId]; // Eliminación directa y atómica.
     }
-    // --- FIN: LIMPIEZA PREVENTIVA ---
+
+    // --- LIMPIEZA ADICIONAL: Buscar y eliminar CUALQUIER sala de práctica del mismo socket ---
+    // Esto es una medida de seguridad extra para casos donde el socket.id cambió
+    // o hay inconsistencias en el estado.
+    Object.keys(rooms).forEach(existingRoomId => {
+        if (existingRoomId.startsWith('practice-') && rooms[existingRoomId]) {
+            const room = rooms[existingRoomId];
+            // Si la sala es de práctica y tiene el mismo socket.id en cualquier asiento
+            const hasSameSocket = room.seats.some(seat => seat && seat.playerId === socket.id);
+            if (hasSameSocket) {
+                console.warn(`[LIMPIEZA ADICIONAL] Eliminando sala de práctica huérfana: ${existingRoomId}`);
+                
+                // Limpiar temporizador si existe
+                if (turnTimers[existingRoomId]) {
+                    clearTimeout(turnTimers[existingRoomId].timerId);
+                    clearInterval(turnTimers[existingRoomId].intervalId);
+                    delete turnTimers[existingRoomId];
+                }
+                
+                delete rooms[existingRoomId];
+            }
+        }
+    });
+    // --- FIN: LIMPIEZA PREVENTIVA ULTRA-ROBUSTA ---
 
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -2153,6 +2176,24 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
+
+  // --- LIMPIEZA AUTOMÁTICA AL CONECTAR ---
+  // Si un socket se conecta, limpiamos cualquier sala de práctica que pudiera haber quedado huérfana
+  // con el mismo socket.id (por si hubo una reconexión)
+  const potentialRoomId = `practice-${socket.id}`;
+  if (rooms[potentialRoomId]) {
+    console.warn(`[LIMPIEZA AL CONECTAR] Se encontró una sala de práctica huérfana (${potentialRoomId}). Eliminándola.`);
+    
+    // Limpiar temporizador si existe
+    if (turnTimers[potentialRoomId]) {
+      clearTimeout(turnTimers[potentialRoomId].timerId);
+      clearInterval(turnTimers[potentialRoomId].intervalId);
+      delete turnTimers[potentialRoomId];
+    }
+    
+    delete rooms[potentialRoomId];
+  }
+  // --- FIN: LIMPIEZA AUTOMÁTICA ---
 
   // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
   socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
