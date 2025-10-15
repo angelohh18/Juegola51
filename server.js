@@ -2051,29 +2051,24 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
-    
-    // ▼▼▼ LIMPIEZA AGRESIVA DE CUALQUIER RESIDUO ANTERIOR ▼▼▼
-    console.log(`[Práctica] Creando nueva partida de práctica ${roomId} - Limpiando residuos anteriores...`);
-    
-    // 1. Limpiar temporizadores de cualquier partida anterior del mismo jugador
-    Object.keys(turnTimers).forEach(timerRoomId => {
-        if (timerRoomId.includes(socket.id)) {
-            clearTimeout(turnTimers[timerRoomId].timerId);
-            clearInterval(turnTimers[timerRoomId].intervalId);
-            delete turnTimers[timerRoomId];
-            console.log(`[Limpieza] Temporizador residual ${timerRoomId} eliminado.`);
+
+    // --- INICIO: LIMPIEZA PREVENTIVA (VERSIÓN FINAL Y MÁS ROBUSTA) ---
+    // Esta es la corrección más importante. No busca en un bucle, sino que ataca
+    // directamente al ID de la sala que podría haber quedado huérfana.
+    if (rooms[roomId]) {
+        console.warn(`[LIMPIEZA PREVENTIVA] Se encontró una sala de práctica antigua (${roomId}). Eliminándola a la fuerza ANTES de crear una nueva.`);
+
+        // Limpia también su temporizador, por si quedó activo.
+        if (turnTimers[roomId]) {
+            clearTimeout(turnTimers[roomId].timerId);
+            clearInterval(turnTimers[roomId].intervalId);
+            delete turnTimers[roomId];
         }
-    });
-    
-    // 2. Eliminar cualquier sala de práctica anterior del mismo jugador
-    Object.keys(rooms).forEach(existingRoomId => {
-        if (existingRoomId.includes(socket.id) && rooms[existingRoomId]?.isPractice) {
-            console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId}`);
-            delete rooms[existingRoomId];
-        }
-    });
-    // ▲▲▲ FIN DE LA LIMPIEZA AGRESIVA ▲▲▲
-    
+
+        delete rooms[roomId]; // Eliminación directa y atómica.
+    }
+    // --- FIN: LIMPIEZA PREVENTIVA ---
+
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
     const newRoom = {
@@ -2107,21 +2102,23 @@ function createAndStartPracticeGame(socket, username, io) {
 
     rooms[roomId] = newRoom;
     socket.join(roomId);
-    socket.currentRoomId = roomId; // Aseguramos que la sala actual se actualice
+    socket.currentRoomId = roomId;
 
-    // ▼▼▼ AÑADE ESTE BLOQUE PARA ACTUALIZAR EL ESTADO ▼▼▼
     if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].status = 'Jugando en Mesa de Practica';
         broadcastUserListUpdate(io);
     }
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     const playerHandCounts = {};
-    newRoom.seats.forEach(p => { 
-        if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length; 
+    newRoom.seats.forEach(p => {
+        if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length;
     });
 
+    // --- INICIO: CORRECCIÓN DE SINCRONIZACIÓN ---
+    // Ahora el servidor le dice al cliente cuál es el ID de la sala.
+    // Esto evita que el cliente use un ID incorrecto o desactualizado.
     io.to(socket.id).emit('gameStarted', {
+        roomId: newRoom.roomId, // <-- SE AÑADE ESTA LÍNEA
         hand: newRoom.playerHands[socket.id],
         discardPile: newRoom.discardPile,
         seats: newRoom.seats,
@@ -2130,6 +2127,7 @@ function createAndStartPracticeGame(socket, username, io) {
         melds: newRoom.melds,
         isPractice: true
     });
+    // --- FIN: CORRECCIÓN DE SINCRONIZACIÓN ---
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 

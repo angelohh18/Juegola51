@@ -2181,13 +2181,16 @@ function showRoomsOverview() {
 
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
-    // Tu código original para iniciar la partida (es correcto, se queda)
+    // --- INICIO DE LA CORRECCIÓN CLAVE ---
     if (initialState.isPractice) {
+        // Antes, el cliente construía su propio ID. Ahora, usa el que el servidor le ha enviado.
+        // Esto garantiza una sincronización perfecta.
         currentGameSettings = {
             isPractice: true,
-            roomId: `practice-${socket.id}`,
+            roomId: initialState.roomId, // <-- USA EL ID DEL SERVIDOR
             settings: { username: 'Práctica', bet: 0, penalty: 0 }
         };
+        // El resto de la lógica de inicialización para la práctica
         document.body.classList.add('game-active');
         document.getElementById('lobby-overlay').style.display = 'none';
         document.getElementById('game-container').style.display = 'block';
@@ -2195,6 +2198,7 @@ socket.on('gameStarted', (initialState) => {
         setupInGameLeaveButton();
         showFunctionsModalOnce();
     }
+    // --- FIN DE LA CORRECCIÓN CLAVE ---
     document.querySelector('.player-actions').style.display = 'flex';
     console.log("Servidor ha iniciado la partida. Recibiendo estado:", initialState);
     document.getElementById('btn-start-rematch').style.display = 'none';
