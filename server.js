@@ -462,6 +462,40 @@ let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
 let practiceGameRegistry = {}; // Rastreará: { "username": "practice-roomId" }
 
+// ▼▼▼ FUNCIÓN NUCLEAR DE LIMPIEZA TOTAL ▼▼▼
+function nuclearCleanupAllPracticeGames(io, reason = "Limpieza nuclear") {
+    console.error(`💥 [LIMPIEZA NUCLEAR] INICIANDO eliminación de TODAS las partidas de práctica. Razón: ${reason}`);
+    
+    let cleanedCount = 0;
+    
+    // 1. Eliminar TODAS las salas de práctica que existan
+    Object.keys(rooms).forEach(roomId => {
+        if (roomId.startsWith('practice-') && rooms[roomId]) {
+            console.error(`💥 [LIMPIEZA NUCLEAR] Eliminando sala: ${roomId}`);
+            
+            // Limpiar temporizadores
+            if (turnTimers[roomId]) {
+                clearTimeout(turnTimers[roomId].timerId);
+                clearInterval(turnTimers[roomId].intervalId);
+                delete turnTimers[roomId];
+            }
+            
+            // Eliminar sala
+            delete rooms[roomId];
+            cleanedCount++;
+        }
+    });
+    
+    // 2. Limpiar TODO el registro
+    practiceGameRegistry = {};
+    
+    // 3. Notificar actualización del lobby
+    broadcastRoomListUpdate(io);
+    
+    console.error(`💥 [LIMPIEZA NUCLEAR] ✅ COMPLETADA. ${cleanedCount} salas eliminadas. Registro limpiado.`);
+}
+// ▲▲▲ FIN DE LA FUNCIÓN NUCLEAR ▲▲▲
+
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
 const LOBBY_CHAT_HISTORY_LIMIT = 50; // Guardaremos los últimos 50 mensajes
@@ -2072,20 +2106,10 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
-    // --- INICIO: LÓGICA DE LIMPIEZA "NUCLEAR" BASADA EN USERNAME ---
-    const lowerCaseUsername = username.toLowerCase();
-    const oldRoomId = practiceGameRegistry[lowerCaseUsername];
-
-    if (oldRoomId && rooms[oldRoomId]) {
-        console.warn(`[REGISTRO DE PRÁCTICA] Se encontró una sala antigua (${oldRoomId}) para el usuario '${username}'.`);
-        console.warn(`[REGISTRO DE PRÁCTICA] Destruyendo sala antigua ANTES de crear la nueva...`);
-
-        // Usamos la función de limpieza existente para asegurar que todo se borre.
-        cleanupPracticeGame(oldRoomId, io, `Nueva partida solicitada por ${username}`);
-
-        console.warn(`[REGISTRO DE PRÁCTICA] ✅ Sala antigua ${oldRoomId} destruida.`);
-    }
-    // --- FIN: LÓGICA DE LIMPIEZA "NUCLEAR" ---
+    // --- LIMPIEZA NUCLEAR TOTAL ---
+    console.error(`💥 [NUEVA PARTIDA] Aplicando limpieza nuclear antes de crear partida para ${username}`);
+    nuclearCleanupAllPracticeGames(io, `Nueva partida solicitada por ${username}`);
+    // --- FIN: LIMPIEZA NUCLEAR TOTAL ---
 
     const roomId = `practice-${socket.id}`;
 
@@ -2172,23 +2196,10 @@ io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
 
-  // --- LIMPIEZA AUTOMÁTICA AL CONECTAR ---
-  // Si un socket se conecta, limpiamos cualquier sala de práctica que pudiera haber quedado huérfana
-  // con el mismo socket.id (por si hubo una reconexión)
-  const potentialRoomId = `practice-${socket.id}`;
-  if (rooms[potentialRoomId]) {
-    console.warn(`[LIMPIEZA AL CONECTAR] Se encontró una sala de práctica huérfana (${potentialRoomId}). Eliminándola.`);
-    
-    // Limpiar temporizador si existe
-    if (turnTimers[potentialRoomId]) {
-      clearTimeout(turnTimers[potentialRoomId].timerId);
-      clearInterval(turnTimers[potentialRoomId].intervalId);
-      delete turnTimers[potentialRoomId];
-    }
-    
-    delete rooms[potentialRoomId];
-  }
-  // --- FIN: LIMPIEZA AUTOMÁTICA ---
+  // --- LIMPIEZA NUCLEAR AL CONECTAR ---
+  console.error(`💥 [CONEXIÓN] Aplicando limpieza nuclear al conectar socket ${socket.id}`);
+  nuclearCleanupAllPracticeGames(io, `Nueva conexión: ${socket.id}`);
+  // --- FIN: LIMPIEZA NUCLEAR ---
 
   // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
   socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
