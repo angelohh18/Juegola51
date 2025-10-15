@@ -1377,51 +1377,56 @@ function showRoomsOverview() {
         modal.style.display = 'flex';
     });
 
-    // Versión definitiva de 'turnChanged'
-    socket.on('turnChanged', async (data) => { // <-- MODIFICADO: Añadido 'async'
-        alert("DEBUG #2: Evento 'turnChanged' recibido del servidor."); // <-- DEBUG
-        // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
-        await Promise.all(activeAnimations);
-        // ▲▲▲ FIN DE LA ESPERA ▲▲▲
+    // ▼▼▼ VERSIÓN DEFINITIVA DE 'turnChanged' CON ESPERA CORRECTA ▼▼▼
+    socket.on('turnChanged', async (data) => {
+        // 1. Ya no esperamos aquí. El await se mueve más abajo.
+        // await Promise.all(activeAnimations); <--- LÍNEA ELIMINADA
 
-        // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
-        console.log("EVENTO SERVIDOR: 'turnChanged' recibido. Redibujando la mesa...");
-        // ▲▲▲ FIN DEL LOG ▲▲▲
+        console.log("EVENTO SERVIDOR: 'turnChanged' recibido. Procesando...");
         console.log('Server broadcast: El turno ha cambiado.', data);
 
-        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL CAMBIAR TURNO ▼▼▼
         document.querySelectorAll('.timer-countdown').forEach(el => {
             el.textContent = '';
         });
-        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
-    
-        // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
+
         isWaitingForNextTurn = false;
         
-        // --- INICIO: Bloque para animar el descarte de oponentes ---
+        // --- INICIO DE LA CORRECCIÓN CLAVE ---
+        
+        // 2. Creamos una "promesa de animación" que por defecto se resuelve al instante.
+        let animationToWaitFor = Promise.resolve();
+
+        // 3. Si hay una animación de descarte de oponente, la iniciamos Y la asignamos a nuestra promesa.
         if (data.discardingPlayerId && data.discardingPlayerId !== socket.id && data.discardedCard) {
             const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.discardingPlayerId);
             if (playerViewIndex !== -1) {
                 const startElement = document.getElementById(`info-player${playerViewIndex}`);
                 const endElement = document.getElementById('discard');
                 if (startElement && endElement) {
-                    animateCardMovement({
+                    // Asignamos la animación a nuestra variable.
+                    animationToWaitFor = animateCardMovement({
                         cardsData: [data.discardedCard],
                         startElement,
                         endElement,
                         isBack: false,
-                        duration: 900 // <-- CAMBIA 600 POR 900
+                        duration: 900
                     });
                 }
             }
         }
-        // --- FIN: Bloque para animar el descarte ---
         
+        // 4. AHORA SÍ: Esperamos a que la animación termine (si es que hubo una).
+        await animationToWaitFor;
+        
+        // --- FIN DE LA CORRECCIÓN CLAVE ---
+        
+        // 5. El resto de la lógica se ejecuta DESPUÉS de la animación, eliminando el parpadeo.
+        console.log("Redibujando la mesa POST-animación...");
+
         allMelds = data.newMelds || [];
         turnMelds = [];
         discardPile = data.newDiscardPile;
 
-        // 2. Si el descarte fue mío, AHORA es cuando se elimina la carta de la mano.
         const humanPlayer = players[0];
         if (data.discardingPlayerId === socket.id && humanPlayer && data.discardedCard) {
             const cardIndex = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
@@ -1431,28 +1436,23 @@ function showRoomsOverview() {
             selectedCards.clear();
         }
 
-        // 3. Se determina el siguiente jugador.
         const newCurrentPlayerIndex = orderedSeats.findIndex(s => s && s.playerId === data.nextPlayerId);
         if (newCurrentPlayerIndex !== -1) {
             currentPlayer = newCurrentPlayerIndex;
         }
         
-        // 4. Se resetean los estados del turno.
         hasDrawn = false;
         mustDiscard = false;
         
-        // 5. Se actualizan los contadores de cartas.
         if (data.playerHandCounts) {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // 6. Se renderiza TODA la interfaz con el nuevo estado oficial.
-        renderHands();
+        renderHands(); // <-- Esta llamada ahora es segura.
         renderDiscard();
         updateTurnIndicator();
         updateActionButtons();
-    
-        // 7. Se muestra la notificación de turno.
+
         const newCurrentPlayerSeat = orderedSeats[currentPlayer];
         if (newCurrentPlayerSeat) {
             if (newCurrentPlayerSeat.playerId === socket.id) {
@@ -1462,6 +1462,7 @@ function showRoomsOverview() {
             }
         }
     });
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
 
     socket.on('cardDrawn', async (data) => {
         console.log("Carta recibida del servidor:", data.card);
@@ -1537,7 +1538,6 @@ function showRoomsOverview() {
     });
 
     socket.on('meldUpdate', async (data) => { // <-- MODIFICADO: Añadido 'async'
-        alert("DEBUG #3: Evento 'meldUpdate' recibido del servidor."); // <-- DEBUG
         // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
         await Promise.all(activeAnimations);
         // ▲▲▲ FIN DE LA ESPERA ▲▲▲
@@ -2870,7 +2870,6 @@ function updatePlayersView(seats, inGame = false) {
     // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
     
     function renderHands() {
-        alert("DEBUG #1: La función renderHands() se está ejecutando AHORA."); // <-- DEBUG
         const human = document.getElementById('human-hand');
         human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
@@ -3253,7 +3252,6 @@ function updatePlayersView(seats, inGame = false) {
         duration = 1200,
         rotation = 5
     }) {
-        alert("DEBUG #4: Se inicia una animación de carta (animateCardMovement)."); // <-- DEBUG
         // --- INICIO DE LA MODIFICACIÓN CLAVE ---
         // Creamos la promesa y la registramos en nuestro vigilante global.
         const animationPromise = new Promise(resolve => {
