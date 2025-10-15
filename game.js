@@ -2782,38 +2782,18 @@ function updatePlayersView(seats, inGame = false) {
 
         const cardToDiscard = p.hand[index];
 
-        // 1. Bloqueamos la UI para prevenir más acciones.
+        // Bloqueamos la UI para prevenir más acciones.
         isWaitingForNextTurn = true;
         updateActionButtons();
 
-        const cardEl = document.querySelector(`#human-hand .card[data-index='${index}']`);
-        const discardEl = document.getElementById('discard');
-
-        // --- INICIO DE LA CORRECCIÓN CLAVE ---
-        if (cardEl && discardEl) {
-            // 2. HACEMOS LA CARTA INVISIBLE EN LA MANO INMEDIATAMENTE.
-            //    Las otras cartas se deslizarán suavemente para ocupar su lugar gracias al CSS.
-            cardEl.style.opacity = '0';
-            cardEl.style.pointerEvents = 'none'; // Evita interacciones con la carta invisible.
-
-            // 3. INICIAMOS la animación desde la posición original de la carta (ahora invisible).
-            //    Ya no necesitamos esperar a que esta animación termine aquí.
-            animateCardMovement({
-                cardsData: [cardToDiscard],
-                startElement: cardEl,
-                endElement: discardEl
-            });
-        }
-        // --- FIN DE LA CORRECCIÓN CLAVE ---
-
-        // 4. Emitimos la acción al servidor como siempre.
-        //    El servidor responderá y el listener con 'await' se encargará del redibujado final.
+        // Ya no manipulamos el DOM aquí. Solo enviamos el evento al servidor.
+        // La nueva función renderHands() se encargará de la actualización visual
+        // cuando llegue la confirmación del servidor ('turnChanged').
         socket.emit('accionDescartar', { 
             roomId: currentGameSettings.roomId, 
             card: cardToDiscard 
         });
     }
-    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     
     function updatePlayerHandCounts(playerHandCounts) {
         // Actualiza los contadores de cartas de todos los jugadores en tiempo real
@@ -2883,326 +2863,258 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
+        const humanPlayer = players[0];
 
-        // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
-        // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
-            // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
             human.innerHTML = '';
             lastRenderedHandIds = [];
-            renderDiscard();
-            renderMelds();
-            updateActionButtons();
-            updateDebugInfo();
             return;
         }
-      
-      // ▼▼▼ OPTIMIZACIÓN: Renderizado incremental para evitar pestañeo ▼▼▼
-      const currentHandIds = humanPlayer.hand.map(c => c.id);
-      const handsAreEqual = JSON.stringify(currentHandIds) === JSON.stringify(lastRenderedHandIds);
-      
-      if (handsAreEqual) {
-          // Solo actualizar clases de selección sin reconstruir
-          const existingCards = human.querySelectorAll('.card');
-          existingCards.forEach((cardEl, idx) => {
-              const card = humanPlayer.hand[idx];
-              if (card && selectedCards.has(card.id)) {
-                  cardEl.classList.add('selected');
-              } else {
-                  cardEl.classList.remove('selected');
-              }
-          });
-          return; // No reconstruir si la mano no cambió
-      }
-      
-      lastRenderedHandIds = currentHandIds;
-      // ▲▲▲ FIN DE LA OPTIMIZACIÓN ▲▲▲
-      
-      // ▼▼▼ TRANSICIÓN SUAVE PARA RECONSTRUCCIÓN ▼▼▼
-      // Hacer invisible antes de reconstruir
-      human.style.opacity = '0';
-      
-      // Reconstruir en el siguiente frame
-      requestAnimationFrame(() => {
-          human.innerHTML = '';
-          const fragment = document.createDocumentFragment();
-      humanPlayer.hand.forEach((card, idx) => {
-        // << --- REEMPLAZA EL CONTENIDO DEL BUCLE forEach CON ESTO --- >>
 
-        const d = document.createElement('div');
-        d.className = 'card';
-        if (selectedCards.has(card.id)) {
-            d.classList.add('selected');
-        }
-        d.setAttribute('draggable', true);
-        d.dataset.index = idx;
-        d.dataset.cardId = card.id;
-        d.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+        const currentHandIds = humanPlayer.hand.map(c => c.id);
+        const handsAreEqual = JSON.stringify(currentHandIds) === JSON.stringify(lastRenderedHandIds);
 
-        let longPressTimer;
-
-        // --- Lógica Original de Arrastre (Funciona en PC y Móvil) ---
-
-        const startDrag = (e) => {
-            // Determina qué cartas se están arrastrando (una o un grupo seleccionado)
-            const selectedElements = document.querySelectorAll('#human-hand .card.selected');
-            const isGroupDrag = selectedElements.length > 1 && d.classList.contains('selected');
-            let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [idx];
-            const dataToTransfer = JSON.stringify(indicesToDrag);
-
-            // Para el arrastre en PC, se usa dataTransfer
-            if (e.type === 'dragstart') {
-                e.dataTransfer.setData('application/json', dataToTransfer);
-                
-                // Crea una imagen customizada para el arrastre de grupo en PC
-                let dragImageContainer = document.createElement('div');
-                dragImageContainer.style.position = 'absolute';
-                dragImageContainer.style.left = '-1000px'; // Fuera de la pantalla
-                if (isGroupDrag) {
-                    dragImageContainer.style.display = 'flex';
-                    selectedElements.forEach((selectedCard, index) => {
-                        const clone = selectedCard.cloneNode(true);
-                        clone.classList.remove('selected');
-                        if (index > 0) clone.style.marginLeft = '-35px'; // Superponer
-                        dragImageContainer.appendChild(clone);
-                    });
+        // --- OPTIMIZACIÓN MÁXIMA ---
+        // Si la mano es idéntica (solo cambió la selección), solo actualizamos las clases CSS.
+        // Esto es súper rápido y no produce ningún parpadeo.
+        if (handsAreEqual) {
+            const existingCards = human.querySelectorAll('.card');
+            existingCards.forEach((cardEl, idx) => {
+                const card = humanPlayer.hand[idx];
+                if (card && selectedCards.has(card.id)) {
+                    cardEl.classList.add('selected');
                 } else {
-                    const clone = d.cloneNode(true);
-                    clone.classList.remove('selected');
-                    dragImageContainer.appendChild(clone);
+                    cardEl.classList.remove('selected');
                 }
-                document.body.appendChild(dragImageContainer);
-                e.dataTransfer.setDragImage(dragImageContainer, 35, 52.5);
-                setTimeout(() => document.body.removeChild(dragImageContainer), 0);
-            }
-
-            // Añade la clase 'dragging' para el efecto visual
-            setTimeout(() => {
-                indicesToDrag.forEach(i => {
-                    const cardEl = document.querySelector(`#human-hand .card[data-index='${i}']`);
-                    if (cardEl) cardEl.classList.add('dragging');
-                });
-            }, 0);
-
-            return dataToTransfer; // Devuelve los datos para el manejador táctil
-        };
-
-        const endDrag = () => {
-            clearTimeout(longPressTimer);
-            document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
-        };
-
-        // --- Lógica de Touch (Móvil) ---
-
-        // Esta es la función clave del archivo original que faltaba
-        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN Y EXTREMOS ▼▼▼
-        const handleTouchDrag = (initialTouch, dragData) => {
-            const cloneContainer = document.getElementById('drag-clone-container');
-            cloneContainer.innerHTML = '';
-
-            const indices = JSON.parse(dragData);
-            const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
-            
-            const dragImage = document.createElement('div');
-            dragImage.className = 'drag-clone-visual';
-            dragImage.style.display = 'flex';
-
-            selectedElements.forEach((el, i) => {
-                if (!el) return;
-                const clone = el.cloneNode(true);
-                clone.classList.remove('selected', 'dragging');
-                clone.style.transform = '';
-                if (i > 0) clone.style.marginLeft = `-${clone.offsetWidth / 2}px`;
-                dragImage.appendChild(clone);
             });
+            updateActionButtons(); // Actualizamos los botones por si cambió la selección
+            return; // Salimos para evitar el trabajo pesado
+        }
+        
+        // --- INICIO DE LA NUEVA LÓGICA DE RECONCILIACIÓN ---
 
-            cloneContainer.appendChild(dragImage);
-            const offsetX = dragImage.offsetWidth / 2;
-            const offsetY = dragImage.offsetHeight / 2;
+        // 1. Mapeamos los elementos del DOM que ya existen para poder reutilizarlos.
+        const existingCardElements = new Map();
+        human.querySelectorAll('.card').forEach(el => {
+            existingCardElements.set(el.dataset.cardId, el);
+        });
 
-            const updatePosition = (touch) => {
-                cloneContainer.style.transform = `translate(${touch.clientX - offsetX}px, ${touch.clientY - offsetY}px)`;
-            };
-            updatePosition(initialTouch);
+        const fragment = document.createDocumentFragment();
 
-            let lastTarget = null;
-            const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
+        // 2. Iteramos sobre el NUEVO estado de la mano y decidimos qué hacer con cada carta.
+        humanPlayer.hand.forEach((card, idx) => {
+            let cardEl = existingCardElements.get(card.id);
 
-            const onTouchMove = (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                updatePosition(touch);
-
-                cloneContainer.style.display = 'none';
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-                cloneContainer.style.display = 'block';
-                
-                let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
-
-                if (lastTarget && lastTarget !== currentTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone'); // Se elimina 'drop-zone-hand'
-                }
-                if (currentTarget && currentTarget !== lastTarget) {
-                    let className = 'drop-zone';
-                    if (currentTarget.classList.contains('card')) {
-                        className = 'drag-over';
-                    }
-                    // Ya no se necesita la clase 'drop-zone-hand'
-                    currentTarget.classList.add(className);
-                }
-                lastTarget = currentTarget;
-            };
-
-            const onTouchEnd = (e) => {
-                document.removeEventListener('touchmove', onTouchMove);
-                document.removeEventListener('touchend', onTouchEnd);
-                cloneContainer.innerHTML = '';
-                
-                if (lastTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone');
-                }
-                
-                document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
-
-                try {
-                    const droppedIndices = JSON.parse(dragData);
-                    if (!lastTarget) return;
-
-                    if (lastTarget.classList.contains('card')) {
-                        const finalTouch = e.changedTouches[0];
-                        const rect = lastTarget.getBoundingClientRect();
-                        const midpoint = rect.left + rect.width / 2;
-                        
-                        let originalIndex = parseInt(lastTarget.dataset.index);
-                        let targetIndex = originalIndex;
-
-                        if (finalTouch.clientX > midpoint) {
-                            targetIndex = originalIndex + 1;
-                        }
-                        reorderHand(droppedIndices, targetIndex);
-
-                    } 
-                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA MÓVIL ▼▼▼
-                    else if (lastTarget.id === 'human-hand') {
-                        const player = players[0];
-                        if (!player) return;
-
-                        const finalTouch = e.changedTouches[0];
-                        const firstCard = lastTarget.firstElementChild;
-                        const lastCard = lastTarget.lastElementChild;
-                        let targetIndex = player.hand.length;
-
-                        if (firstCard && lastCard) {
-                            const firstCardRect = firstCard.getBoundingClientRect();
-                            const lastCardRect = lastCard.getBoundingClientRect();
-
-                            if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
-                                targetIndex = 0;
-                            } else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
-                                targetIndex = player.hand.length;
-                            }
-                        }
-                        reorderHand(droppedIndices, targetIndex);
-                    } 
-                    // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
-                    else if (lastTarget.id === 'discard') {
-                        if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
-                        if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
-                    } else if (lastTarget.classList.contains('center-area')) {
-                         if (droppedIndices.length >= 3) {
-                             const p = players[0];
-                             const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
-                             if (cardIds.length === droppedIndices.length) {
-                                 socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
-                             }
-                         } else {
-                             showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
-                         }
-                    } else if (lastTarget.classList.contains('meld-group')) {
-                        if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
-                        else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
-                    }
-                } catch(err) {
-                    console.error("Error en touch end:", err);
-                    renderHands();
-                }
-            };
-            
-            document.addEventListener('touchmove', onTouchMove, { passive: false });
-            document.addEventListener('touchend', onTouchEnd);
-        };
-
-
-        // --- Asignación de Eventos (Como en el original) ---
-
-        d.addEventListener('click', () => {
-            if (selectedCards.has(card.id)) {
-                selectedCards.delete(card.id);
-                d.classList.remove('selected');
+            if (cardEl) {
+                // A. La carta ya existe en el DOM: La reutilizamos.
+                existingCardElements.delete(card.id); // La marcamos como procesada.
             } else {
-                selectedCards.add(card.id);
-                d.classList.add('selected');
+                // B. La carta no existe (es nueva): La creamos desde cero.
+                // ▼▼▼ TODA TU LÓGICA DE CREACIÓN ORIGINAL ESTÁ AQUÍ, INTACTA ▼▼▼
+                cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.setAttribute('draggable', true);
+                cardEl.dataset.cardId = card.id;
+                cardEl.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+
+                let longPressTimer;
+
+                const startDrag = (e) => {
+                    const selectedElements = document.querySelectorAll('#human-hand .card.selected');
+                    const isGroupDrag = selectedElements.length > 1 && cardEl.classList.contains('selected');
+                    let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [parseInt(cardEl.dataset.index)];
+                    const dataToTransfer = JSON.stringify(indicesToDrag);
+
+                    if (e.type === 'dragstart') {
+                        e.dataTransfer.setData('application/json', dataToTransfer);
+                        let dragImageContainer = document.createElement('div');
+                        dragImageContainer.style.position = 'absolute';
+                        dragImageContainer.style.left = '-1000px';
+                        if (isGroupDrag) {
+                            dragImageContainer.style.display = 'flex';
+                            selectedElements.forEach((selectedCard, index) => {
+                                const clone = selectedCard.cloneNode(true);
+                                clone.classList.remove('selected');
+                                if (index > 0) clone.style.marginLeft = '-35px';
+                                dragImageContainer.appendChild(clone);
+                            });
+                        } else {
+                            const clone = cardEl.cloneNode(true);
+                            clone.classList.remove('selected');
+                            dragImageContainer.appendChild(clone);
+                        }
+                        document.body.appendChild(dragImageContainer);
+                        e.dataTransfer.setDragImage(dragImageContainer, 35, 52.5);
+                        setTimeout(() => document.body.removeChild(dragImageContainer), 0);
+                    }
+
+                    setTimeout(() => {
+                        indicesToDrag.forEach(i => {
+                            const draggedEl = document.querySelector(`#human-hand .card[data-index='${i}']`);
+                            if (draggedEl) draggedEl.classList.add('dragging');
+                        });
+                    }, 0);
+
+                    return dataToTransfer;
+                };
+
+                const endDrag = () => {
+                    clearTimeout(longPressTimer);
+                    document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
+                };
+
+                const handleTouchDrag = (initialTouch, dragData) => {
+                    const cloneContainer = document.getElementById('drag-clone-container');
+                    cloneContainer.innerHTML = '';
+                    const indices = JSON.parse(dragData);
+                    const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
+                    const dragImage = document.createElement('div');
+                    dragImage.className = 'drag-clone-visual';
+                    dragImage.style.display = 'flex';
+                    selectedElements.forEach((el, i) => {
+                        if (!el) return;
+                        const clone = el.cloneNode(true);
+                        clone.classList.remove('selected', 'dragging');
+                        clone.style.transform = '';
+                        if (i > 0) clone.style.marginLeft = `-${clone.offsetWidth / 2}px`;
+                        dragImage.appendChild(clone);
+                    });
+                    cloneContainer.appendChild(dragImage);
+                    const offsetX = dragImage.offsetWidth / 2;
+                    const offsetY = dragImage.offsetHeight / 2;
+                    const updatePosition = (touch) => {
+                        cloneContainer.style.transform = `translate(${touch.clientX - offsetX}px, ${touch.clientY - offsetY}px)`;
+                    };
+                    updatePosition(initialTouch);
+                    let lastTarget = null;
+                    const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
+                    const onTouchMove = (e) => {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        updatePosition(touch);
+                        cloneContainer.style.display = 'none';
+                        const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                        cloneContainer.style.display = 'block';
+                        let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
+                        if (lastTarget && lastTarget !== currentTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
+                        if (currentTarget && currentTarget !== lastTarget) {
+                            let className = currentTarget.classList.contains('card') ? 'drag-over' : 'drop-zone';
+                            currentTarget.classList.add(className);
+                        }
+                        lastTarget = currentTarget;
+                    };
+                    const onTouchEnd = (e) => {
+                        document.removeEventListener('touchmove', onTouchMove);
+                        document.removeEventListener('touchend', onTouchEnd);
+                        cloneContainer.innerHTML = '';
+                        if (lastTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
+                        document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
+                        try {
+                            const droppedIndices = JSON.parse(dragData);
+                            if (!lastTarget) return;
+                            if (lastTarget.classList.contains('card')) {
+                                const finalTouch = e.changedTouches[0];
+                                const rect = lastTarget.getBoundingClientRect();
+                                const midpoint = rect.left + rect.width / 2;
+                                let originalIndex = parseInt(lastTarget.dataset.index);
+                                let targetIndex = (finalTouch.clientX > midpoint) ? originalIndex + 1 : originalIndex;
+                                reorderHand(droppedIndices, targetIndex);
+                            } else if (lastTarget.id === 'human-hand') {
+                                const player = players[0];
+                                if (!player) return;
+                                const finalTouch = e.changedTouches[0];
+                                const firstCard = lastTarget.firstElementChild;
+                                const lastCard = lastTarget.lastElementChild;
+                                let targetIndex = player.hand.length;
+                                if (firstCard && lastCard) {
+                                    const firstCardRect = firstCard.getBoundingClientRect();
+                                    const lastCardRect = lastCard.getBoundingClientRect();
+                                    if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) targetIndex = 0;
+                                    else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) targetIndex = player.hand.length;
+                                }
+                                reorderHand(droppedIndices, targetIndex);
+                            } else if (lastTarget.id === 'discard') {
+                                if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+                                if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
+                            } else if (lastTarget.classList.contains('center-area')) {
+                                if (droppedIndices.length >= 3) {
+                                    const p = players[0];
+                                    const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
+                                    if (cardIds.length === droppedIndices.length) socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
+                                } else showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
+                            } else if (lastTarget.classList.contains('meld-group')) {
+                                if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
+                                else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+                            }
+                        } catch (err) { console.error("Error en touch end:", err); renderHands(); }
+                    };
+                    document.addEventListener('touchmove', onTouchMove, { passive: false });
+                    document.addEventListener('touchend', onTouchEnd);
+                };
+
+                cardEl.addEventListener('click', () => {
+                    if (selectedCards.has(card.id)) {
+                        selectedCards.delete(card.id);
+                        cardEl.classList.remove('selected');
+                    } else {
+                        selectedCards.add(card.id);
+                        cardEl.classList.add('selected');
+                    }
+                    updateActionButtons();
+                });
+                cardEl.addEventListener('dragstart', startDrag);
+                cardEl.addEventListener('dragend', endDrag);
+                cardEl.addEventListener('touchstart', (e) => {
+                    longPressTimer = setTimeout(() => {
+                        e.preventDefault();
+                        const dragData = startDrag(e);
+                        handleTouchDrag(e.touches[0], dragData);
+                    }, 200);
+                }, { passive: false });
+                cardEl.addEventListener('touchend', () => clearTimeout(longPressTimer));
+                cardEl.addEventListener('touchcancel', () => clearTimeout(longPressTimer));
+                cardEl.addEventListener('dragover', (e) => { e.preventDefault(); cardEl.classList.add('drag-over'); });
+                cardEl.addEventListener('dragleave', () => cardEl.classList.remove('drag-over'));
+                cardEl.addEventListener('drop', handleDrop);
+                // ▲▲▲ FIN DE LA LÓGICA DE CREACIÓN ORIGINAL ▲▲▲
             }
-            updateActionButtons();
+
+            // 3. Actualizamos las propiedades que pueden cambiar en cada renderizado.
+            cardEl.dataset.index = idx; // El índice siempre se actualiza por si la mano se reordenó.
+            if (selectedCards.has(card.id)) {
+                cardEl.classList.add('selected');
+            } else {
+                cardEl.classList.remove('selected');
+            }
+
+            fragment.appendChild(cardEl);
         });
 
-        // ▼▼▼ RESTAURADO: Drag & drop nativo para PC ▼▼▼
-        d.addEventListener('dragstart', startDrag);
-        d.addEventListener('dragend', endDrag);
-        // ▲▲▲ FIN RESTAURADO ▲▲▲
-
-        d.addEventListener('touchstart', (e) => {
-            // Iniciar un temporizador para el "toque largo"
-            longPressTimer = setTimeout(() => {
-                e.preventDefault(); // Previene scroll solo si es un toque largo
-                const dragData = startDrag(e);
-                handleTouchDrag(e.touches[0], dragData);
-            }, 200);
-        }, { passive: false });
-
-        d.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer); // Si el dedo se levanta rápido, es un clic, no un arrastre
-        });
-        d.addEventListener('touchcancel', () => {
-            clearTimeout(longPressTimer);
+        // 4. Los elementos que quedaron en `existingCardElements` son los que se descartaron. Los eliminamos.
+        existingCardElements.forEach(elToRemove => {
+            // Hacemos una pequeña animación de salida para que sea suave.
+            elToRemove.style.opacity = '0';
+            elToRemove.style.transform = 'scale(0.8)';
+            setTimeout(() => elToRemove.remove(), 200);
         });
 
+        // 5. Usamos `replaceChildren` que es mucho más eficiente que `innerHTML = ''`.
+        // Esto inserta todos los elementos reutilizados y nuevos en el orden correcto de una sola vez.
+        human.replaceChildren(fragment);
 
-        // Eventos de Drop (comunes para PC y Móvil simulado)
-        d.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            d.classList.add('drag-over');
-        });
-        d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
+        // 6. Finalmente, actualizamos el caché para la próxima vez.
+        lastRenderedHandIds = currentHandIds;
 
-        // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA ▼▼▼
-        d.addEventListener('drop', handleDrop);
+        // Y nos aseguramos de que los listeners del contenedor de la mano sigan funcionando.
+        human.addEventListener('dragover', (e) => e.preventDefault());
+        human.addEventListener('drop', handleDrop);
 
-        fragment.appendChild(d);
-    });
-    
-          human.appendChild(fragment);
-
-          // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
-          human.addEventListener('dragover', (e) => {
-              e.preventDefault(); // Crucial para permitir el 'drop'.
-          });
-
-          human.addEventListener('drop', handleDrop);
-          // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
-
-          // Restaurar visibilidad con transición suave
-          requestAnimationFrame(() => {
-              human.style.opacity = '1';
-          });
-      }); // ▲▲▲ FIN DEL requestAnimationFrame ▲▲▲
-
-      renderDiscard();
-      renderMelds();
-      updateActionButtons();
-      updateDebugInfo();
-  }
+        // Llamamos al resto de funciones de renderizado como antes.
+        renderDiscard();
+        renderMelds();
+        updateActionButtons();
+        updateDebugInfo();
+    }
     function reorderHand(draggedIndices, targetDropIndex) {
         const player = players[0];
         if (!player || draggedIndices.includes(targetDropIndex)) {
