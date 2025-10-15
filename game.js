@@ -1375,6 +1375,9 @@ function showRoomsOverview() {
 
     // Versión definitiva de 'turnChanged'
     socket.on('turnChanged', (data) => {
+        // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
+        console.log("EVENTO SERVIDOR: 'turnChanged' recibido. Redibujando la mesa...");
+        // ▲▲▲ FIN DEL LOG ▲▲▲
         console.log('Server broadcast: El turno ha cambiado.', data);
 
         // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL CAMBIAR TURNO ▼▼▼
@@ -1525,6 +1528,9 @@ function showRoomsOverview() {
     });
 
     socket.on('meldUpdate', (data) => {
+        // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
+        console.log("EVENTO SERVIDOR: 'meldUpdate' recibido. Redibujando la mesa...");
+        // ▲▲▲ FIN DEL LOG ▲▲▲
         console.log("Actualización de jugada recibida del servidor:", data);
 
         // Sincronizamos el estado oficial del servidor en nuestras variables locales
@@ -3221,6 +3227,11 @@ function updatePlayersView(seats, inGame = false) {
         rotation = 5
     }) {
         return new Promise(resolve => {
+            // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
+            const animationId = `anim-${Date.now()}`;
+            console.log(`[${animationId}] INICIO de animación.`);
+            // ▲▲▲ FIN DEL LOG ▲▲▲
+
             if (!startElement || !endElement) {
                 console.warn("Animación omitida: falta el elemento de inicio o fin.");
                 return resolve();
@@ -3235,9 +3246,6 @@ function updatePlayersView(seats, inGame = false) {
             const cardHeight = 135;
             const cardCount = cardsData.length || 1;
 
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Se utiliza un único bucle que empieza en i=0 para crear TODAS las cartas.
-            // Esto elimina cualquier código previo que creara la primera carta por separado.
             for (let i = 0; i < cardCount; i++) {
                 const cardData = cardsData[i];
                 const innerCard = document.createElement('div');
@@ -3253,14 +3261,12 @@ function updatePlayersView(seats, inGame = false) {
                     innerCard.innerHTML = `<img src="${getCardImageUrl(cardData)}" alt="${cardData.value}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
                 }
 
-                // Se aplica el margen de superposición solo a partir de la segunda carta (cuando i > 0).
                 if (i > 0) {
                     innerCard.style.marginLeft = `-${cardWidth / 2}px`;
                 }
 
                 animContainer.appendChild(innerCard);
             }
-            // --- FIN DE LA CORRECCIÓN ---
 
             const totalAnimWidth = cardWidth + (cardCount - 1) * (cardWidth / 2);
             animContainer.style.left = `${startRect.left + (startRect.width / 2) - (totalAnimWidth / 2)}px`;
@@ -3277,12 +3283,28 @@ function updatePlayersView(seats, inGame = false) {
                 animContainer.style.transform = `translate(${targetLeft - parseFloat(animContainer.style.left)}px, ${targetTop - parseFloat(animContainer.style.top)}px) scale(${finalScale}) rotate(0deg)`;
             });
 
+            // --- INICIO DE LA CORRECCIÓN CLAVE ---
+            // Este timeout ahora hace dos cosas:
             setTimeout(() => {
-                if (animContainer.parentNode) {
-                    animContainer.remove();
-                }
+                // 1. Hace la carta animada invisible ANTES de resolver la promesa.
+                //    Esto le da tiempo al navegador de renderizar el estado final sin solapamientos.
+                animContainer.style.opacity = '0';
+
+                // 2. Resuelve la promesa para que el resto del código continúe.
+                // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
+                console.log(`[${animationId}] FIN de animación. Resolviendo promesa.`);
+                // ▲▲▲ FIN DEL LOG ▲▲▲
                 resolve();
-            }, duration);
+
+                // 3. Un instante después, elimina el elemento del DOM para limpiar.
+                setTimeout(() => {
+                    if (animContainer.parentNode) {
+                        animContainer.remove();
+                    }
+                }, 100); // 100ms es más que suficiente.
+
+            }, duration); // La duración total de la animación no cambia.
+            // --- FIN DE LA CORRECCIÓN CLAVE ---
         });
     }
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
