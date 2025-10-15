@@ -2353,35 +2353,30 @@ io.on('connection', (socket) => {
 
   // ▼▼▼ REEMPLAZO DEFINITIVO Y REFORZADO ▼▼▼
   socket.on('requestPracticeGame', (user) => { 
-    // Creamos el ID de la posible sala "zombie"
-    const existingRoomId = `practice-${socket.id}`;
+    const roomId = `practice-${socket.id}`;
 
-    // 1. VERIFICACIÓN Y DESTRUCCIÓN
-    // Si una sala con este ID existe en nuestra memoria, la aniquilamos.
-    if (rooms[existingRoomId]) {
-        console.error(`[LIMPIEZA PREVENTIVA] Detectada sala de práctica "zombie": ${existingRoomId}. Destruyendo...`);
-        
-        // Detenemos cualquier temporizador asociado a esa sala para matar a los bots.
-        if (turnTimers[existingRoomId]) {
-            clearTimeout(turnTimers[existingRoomId].timerId);
-            clearInterval(turnTimers[existingRoomId].intervalId);
-            delete turnTimers[existingRoomId];
-            console.error(`[LIMPIEZA PREVENTIVA] Temporizadores de la sala ${existingRoomId} eliminados.`);
-        }
+    // --- ESTA ES LA CORRECCIÓN CLAVE Y DEFINITIVA ---
+    // 1. ANTES de hacer nada, buscamos y destruimos cualquier temporizador "zombie".
+    // Esta limpieza ahora es independiente de si la sala 'rooms[roomId]' existe.
+    if (turnTimers[roomId]) {
+        console.error(`[LIMPIEZA AGRESIVA] Detectado temporizador "zombie" para ${roomId}. Destruyendo...`);
+        clearTimeout(turnTimers[roomId].timerId);
+        clearInterval(turnTimers[roomId].intervalId);
+        delete turnTimers[roomId];
+    }
+    // --- FIN DE LA CORRECCIÓN ---
 
-        // Eliminamos la sala de la memoria.
-        delete rooms[existingRoomId];
-
-        // Notificamos al lobby por si acaso la sala "zombie" era visible para alguien.
+    // 2. Ahora, procedemos con la limpieza de la sala, si es que aún existe.
+    if (rooms[roomId]) {
+        console.log(`[Limpieza Preventiva] Eliminando sala de práctica "zombie" ${roomId}.`);
+        delete rooms[roomId];
         broadcastRoomListUpdate(io);
     }
 
-    // 2. CREACIÓN DE LA NUEVA PARTIDA
-    // Solo después de asegurarnos de que todo está limpio, creamos la nueva partida.
+    // 3. Finalmente, creamos la nueva partida sobre un estado 100% limpio.
     console.log(`[Práctica] Creando una nueva partida para el jugador ${user.username} (${socket.id})`);
     createAndStartPracticeGame(socket, user, io);
   });
-  // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     socket.on('joinRoom', ({ roomId, user }) => {
         const room = rooms[roomId];
