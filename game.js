@@ -161,6 +161,11 @@ const socket = io(window.location.origin, { autoConnect: false });
 let activeAnimations = [];
 // ▲▲▲ FIN DEL VIGILANTE ▲▲▲
 
+// ▼▼▼ CACHE PARA EVITAR RE-RENDERS INNECESARIOS ▼▼▼
+let lastRenderedDiscardId = null;
+let lastRenderedMeldsString = '';
+// ▲▲▲ FIN DEL CACHE ▲▲▲
+
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
 let clientExchangeRates = {}; // Para guardar las tasas
 let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
@@ -1428,10 +1433,13 @@ function showRoomsOverview() {
         discardPile = data.newDiscardPile;
 
         const humanPlayer = players[0];
+        let needsHandRerender = false; // Nueva variable para controlar el re-render
+        
         if (data.discardingPlayerId === socket.id && humanPlayer && data.discardedCard) {
             const cardIndex = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
             if (cardIndex !== -1) {
                 humanPlayer.hand.splice(cardIndex, 1);
+                needsHandRerender = true; // SOLO re-renderizamos si nuestra mano cambió
             }
             selectedCards.clear();
         }
@@ -1448,7 +1456,10 @@ function showRoomsOverview() {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        renderHands(); // <-- Esta llamada ahora es segura.
+        // OPTIMIZACIÓN CLAVE: Solo re-renderizar la mano si cambió
+        if (needsHandRerender) {
+            renderHands();
+        }
         renderDiscard();
         updateTurnIndicator();
         updateActionButtons();
@@ -3184,6 +3195,14 @@ function updatePlayersView(seats, inGame = false) {
             if (canDiscardByDrag()) discardCardByIndex(indices[0]);
         } catch(err) { console.error("Error en drop de descarte:", err); }
       };
+      
+      // OPTIMIZACIÓN: Solo actualizar si el descarte cambió
+      const currentDiscardId = discardPile.length > 0 ? discardPile[discardPile.length-1].id : null;
+      if (currentDiscardId === lastRenderedDiscardId) {
+        return; // No re-renderizar si no ha cambiado
+      }
+      lastRenderedDiscardId = currentDiscardId;
+      
       if (discardPile.length > 0) {
         const top = discardPile[discardPile.length-1];
         pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
@@ -3191,10 +3210,16 @@ function updatePlayersView(seats, inGame = false) {
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        display.innerHTML = '';
         
-        // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
+        // OPTIMIZACIÓN: Solo re-renderizar si los melds cambiaron
         const combinedMelds = [...allMelds, ...turnMelds];
+        const currentMeldsString = JSON.stringify(combinedMelds.map(m => m.cards.map(c => c.id)));
+        if (currentMeldsString === lastRenderedMeldsString) {
+            return; // No re-renderizar si no ha cambiado
+        }
+        lastRenderedMeldsString = currentMeldsString;
+        
+        display.innerHTML = '';
 
         combinedMelds.forEach(meld => {
             const g = document.createElement('div');
