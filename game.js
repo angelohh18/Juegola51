@@ -2761,12 +2761,12 @@ function updatePlayersView(seats, inGame = false) {
         }
     }
     
-    // ▼▼▼ REEMPLAZA TU FUNCIÓN handleDrop ENTERA CON ESTA VERSIÓN ORIGINAL ▼▼▼
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN handleDrop ENTERA CON ESTA VERSIÓN ORIGINAL Y COMPLETA ▼▼▼
     const handleDrop = (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Detiene la propagación para que solo actúe un listener.
+        e.stopPropagation();
 
-        const targetElement = e.currentTarget;
+        const targetElement = e.currentTarget; // Puede ser una carta o el contenedor de la mano
         targetElement.classList.remove('drag-over', 'drop-zone');
 
         try {
@@ -2774,28 +2774,44 @@ function updatePlayersView(seats, inGame = false) {
             const player = players[0];
             if (!player) return;
 
-            // A. Lógica original para soltar sobre OTRA CARTA.
-            // Calcula el punto de inserción basado en la mitad de la carta sobre la que se suelta.
+            let targetIndex;
+
+            // CASO 1: Se suelta sobre OTRA CARTA
             if (targetElement.classList.contains('card')) {
                 const rect = targetElement.getBoundingClientRect();
                 const midpoint = rect.left + rect.width / 2;
-                let originalIndex = parseInt(targetElement.dataset.index);
-                let targetIndex = (e.clientX > midpoint) ? originalIndex + 1 : originalIndex;
+                const originalIndex = parseInt(targetElement.dataset.index);
+
+                targetIndex = (e.clientX > midpoint) ? originalIndex + 1 : originalIndex;
+            }
+            // CASO 2: Se suelta en un espacio vacío del CONTENEDOR de la mano
+            else if (targetElement.id === 'human-hand') {
+                const firstCard = targetElement.firstElementChild;
+                const lastCard = targetElement.lastElementChild;
+                targetIndex = player.hand.length; // Por defecto, va al final
+
+                if (firstCard && lastCard) {
+                    const firstCardRect = firstCard.getBoundingClientRect();
+                    const lastCardRect = lastCard.getBoundingClientRect();
+
+                    if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                        targetIndex = 0; // Se suelta al principio
+                    } else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                        targetIndex = player.hand.length; // Se suelta al final
+                    }
+                }
+            }
+
+            if (targetIndex !== undefined) {
                 reorderHand(droppedIndices, targetIndex);
             }
-            // B. Lógica original para soltar en un espacio vacío del CONTENEDOR de la mano.
-            // Si se suelta en el contenedor, las cartas van al final.
-            else if (targetElement.id === 'human-hand') {
-                reorderHand(droppedIndices, player.hand.length);
-            }
-            // NOTA: Si se suelta en el descarte o en una jugada, esos elementos tienen sus propios listeners 'ondrop' que se encargarán.
 
         } catch (error) {
             console.error("Error al procesar el drop:", error);
-            renderHands(); // Restaura la mano si algo falla.
+            renderHands(); // Restaura la mano si algo falla
         }
     };
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+    // ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
     
     function renderHands() {
         const humanHandContainer = document.getElementById('human-hand');
