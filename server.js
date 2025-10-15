@@ -1192,6 +1192,15 @@ async function checkVictoryCondition(room, roomId, io) {
 }
 
 async function handlePlayerElimination(room, faultingPlayerId, faultData, io, forceLeave = false) { // <-- AÑADE forceLeave
+    // ▼▼▼ LIMPIEZA DEL TEMPORIZADOR ▼▼▼
+    if (turnTimers[room.roomId]) {
+        clearTimeout(turnTimers[room.roomId].timerId);
+        clearInterval(turnTimers[room.roomId].intervalId);
+        delete turnTimers[room.roomId];
+        console.log(`[Elimination] Temporizador de la sala ${room.roomId} detenido debido a una falta.`);
+    }
+    // ▲▲▲ FIN DEL BLOQUE DE LIMPIEZA ▲▲▲
+
     if (!room) return;
     const roomId = room.roomId;
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
