@@ -1895,108 +1895,79 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
 
-    // 1. Verificación inicial de la sala
     if (!room) {
         console.error(`[Abandono] La sala ${roomId} NO EXISTE. No se puede procesar la salida.`);
         return;
     }
 
-    // 2. Lógica para Mesas de Práctica (esta parte ya es correcta y la mantenemos)
     if (room.isPractice) {
+        // La lógica de práctica se mantiene igual
         console.log(`[Práctica] Jugador ha salido. Eliminando la mesa de práctica ${roomId}.`);
         if (turnTimers[roomId]) {
             clearTimeout(turnTimers[roomId].timerId);
             clearInterval(turnTimers[roomId].intervalId);
             delete turnTimers[roomId];
-            console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y limpiado.`);
         }
         delete rooms[roomId];
         broadcastRoomListUpdate(io);
         return;
     }
 
-    console.log(`[Abandono] Gestionando salida del jugador ${leavingPlayerId} de la sala real ${roomId}.`);
-
-    // 3. Lógica para Espectadores y Jugadores en Espera (sin multa)
     const seatIndex = room.seats.findIndex(s => s && s.playerId === leavingPlayerId);
-    if (seatIndex === -1 || room.state === 'waiting' || (room.seats[seatIndex] && room.seats[seatIndex].status === 'waiting')) {
-        console.log(`[Abandono] El jugador era espectador o estaba en espera. Saliendo sin multa.`);
-        if (room.spectators) {
-            room.spectators = room.spectators.filter(s => s.id !== leavingPlayerId);
-            io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
-        }
+
+    // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
+    // Añadimos room.state === 'post-game' a la condición.
+    // Ahora, si un jugador sale desde la pantalla de revancha, se gestiona como una salida normal sin multa.
+    if (seatIndex === -1 || room.state === 'waiting' || room.state === 'post-game' || (room.seats[seatIndex] && room.seats[seatIndex].status === 'waiting')) {
+        console.log(`[Abandono Simple] Jugador saliendo de la sala ${roomId} en estado '${room.state}'.`);
         if (seatIndex !== -1) {
-            room.seats[seatIndex] = null;
+            room.seats[seatIndex] = null; // ¡Esta es la línea crucial que ahora se ejecutará!
         }
-        handleHostLeaving(room, leavingPlayerId, io);
-        io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
-        checkAndCleanRoom(roomId, io);
-        return;
-    }
-
-    // 4. LÓGICA CLAVE PARA JUGADOR ACTIVO QUE ABANDONA (CON MULTA)
-    const leavingPlayerSeat = { ...room.seats[seatIndex] }; // Hacemos una copia de sus datos
-    const playerName = leavingPlayerSeat.playerName;
-
-    if (room.state === 'playing' && leavingPlayerSeat.active) {
+        // El resto de la lógica de limpieza se ejecuta después
+    } 
+    // --- LÓGICA PARA ABANDONO EN MITAD DE PARTIDA (CON MULTA) ---
+    else if (room.state === 'playing' && room.seats[seatIndex]?.active) {
+        const leavingPlayerSeat = { ...room.seats[seatIndex] };
+        const playerName = leavingPlayerSeat.playerName;
         console.error(`[FALTA] ¡Jugador activo ${playerName} ha abandonado la partida!`);
 
-        // A. Aplicar multa y actualizar bote
+        // ... (Toda tu lógica de aplicar multa, devolver cartas, etc. se mantiene aquí sin cambios)
         const penalty = room.settings.penalty || 0;
         const playerInfo = users[leavingPlayerSeat.userId];
         if (penalty > 0 && playerInfo) {
             const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
             playerInfo.credits -= penaltyInPlayerCurrency;
             room.pot = (room.pot || 0) + penalty;
-            
-            io.to(leavingPlayerId).emit('userStateUpdated', playerInfo); // Notifica al jugador (si aún puede recibirlo)
+            io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
             io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
-            
-            // Actualiza la base de datos en segundo plano
-            updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency)
-                .catch(err => console.error(`[BG] Falla al actualizar créditos por abandono para ${leavingPlayerSeat.userId}:`, err));
+            updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency).catch(err => console.error(`[BG] Falla al actualizar créditos por abandono para ${leavingPlayerSeat.userId}:`, err));
         }
-
-        // B. Devolver las cartas del jugador al mazo de descarte (excepto la superior)
         const playerHand = room.playerHands[leavingPlayerId] || [];
         if (playerHand.length > 0) {
             const topCard = room.discardPile.pop();
-            shuffle(playerHand); // Barajamos su mano
-            room.discardPile.unshift(...playerHand); // Devolvemos las cartas debajo
-            if (topCard) room.discardPile.push(topCard); // Volvemos a poner la superior
+            shuffle(playerHand);
+            room.discardPile.unshift(...playerHand);
+            if (topCard) room.discardPile.push(topCard);
         }
-        room.playerHands[leavingPlayerId] = []; // Vaciamos su mano
-
-        // C. Marcar el asiento como inactivo y notificar a los clientes
+        room.playerHands[leavingPlayerId] = [];
         leavingPlayerSeat.active = false;
-        room.seats[seatIndex] = null; // Liberamos el asiento
-
+        room.seats[seatIndex] = null;
         const reason = `${playerName} ha abandonado la partida.`;
-        io.to(roomId).emit('playerEliminated', {
-            playerId: leavingPlayerId,
-            playerName: playerName,
-            faultData: { reason }
-        });
-
-        // D. Comprobar si la partida debe terminar
+        io.to(roomId).emit('playerEliminated', { playerId: leavingPlayerId, playerName: playerName, faultData: { reason } });
         const activePlayers = room.seats.filter(s => s && s.active !== false);
         if (activePlayers.length === 1) {
-            console.log("[Abandono] Solo queda un jugador. Finalizando partida.");
             await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
-            return; // El juego termina aquí
+            return;
         }
-
-        // E. Si el juego continúa, pasar el turno si era del jugador que abandonó
         if (room.currentPlayerId === leavingPlayerId) {
-            console.log("[Abandono] Era el turno del jugador que salió. Avanzando turno...");
             await advanceTurnAfterAction(room, leavingPlayerId, null, io);
         }
     }
 
-    // 5. Lógica final de limpieza y actualización para todos los casos
+    // --- LÓGICA DE LIMPIEZA FINAL (se ejecuta para todas las salidas) ---
     handleHostLeaving(room, leavingPlayerId, io);
     io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
-    checkAndCleanRoom(roomId, io);
+    checkAndCleanRoom(roomId, io); // Esta función ahora recibirá la información correcta
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 

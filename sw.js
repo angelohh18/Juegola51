@@ -1,41 +1,41 @@
 // sw.js (Service Worker para PWA - La 51)
 
-const NOMBRE_DE_CACHE = 'la51-v1.0.1';
+const CACHE_NAME = 'la51-v1.1.0';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/juego.js',
-  '/estilo.css',
+  '/game.js',
+  '/style.css',
   '/admin.html',
-  '/icono-192.png',
-  '/icono-512.png',
-  '/icono-144.png'
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-144.png'
 ];
 
 // Instalar Service Worker
-self.addEventListener('install', (evento) => {
+self.addEventListener('install', (event) => {
   console.log('Service Worker: Instalando...');
-  evento.waitUntil(
-    caches.open(NOMBRE_DE_CACHE)
+  event.waitUntil(
+    caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Cacheando archivos');
         return cache.addAll(urlsToCache);
       })
       .catch((error) => {
-        console.error('Service Worker: Error al almacenar archivos:', error);
+        console.error('Service Worker: Error al cachear archivos:', error);
       })
   );
 });
 
 // Activar Service Worker
-self.addEventListener('activate', (evento) => {
-  console.log('Trabajador de servicio: Activando...');
-  evento.waitUntil(
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker: Activando...');
+  event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== NOMBRE_DE_CACHE) {
-            console.log('Service Worker: Eliminando caché antiguo:', cacheName);
+          if (cacheName !== CACHE_NAME) {
+            console.log('Service Worker: Eliminando cache antiguo:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -44,29 +44,29 @@ self.addEventListener('activate', (evento) => {
   );
 });
 
-// Interceptar solicitudes
-self.addEventListener('fetch', (evento) => {
-  // Solicitudes de interceptación en solitario GET
-  if (evento.request.method !== 'GET') {
+// Interceptar requests
+self.addEventListener('fetch', (event) => {
+  // Solo interceptar requests GET
+  if (event.request.method !== 'GET') {
     return;
   }
 
-  // Para archivos estáticos, usar caché primero
-  if (evento.request.destination === 'document' ||
-      evento.request.destination === 'script' ||
-      evento.request.destination === 'style' ||
-      evento.request.destination === 'image') {
+  // Para archivos estáticos, usar cache primero
+  if (event.request.destination === 'document' || 
+      event.request.destination === 'script' || 
+      event.request.destination === 'style' ||
+      event.request.destination === 'image') {
     
-    evento.respondWith(
-      caches.match(evento.request)
+    event.respondWith(
+      caches.match(event.request)
         .then((response) => {
-          // Si está en caché, devuélvelo
+          // Si está en cache, devolverlo
           if (response) {
             return response;
           }
           
-          // Si no está en caché, hacer fetch y cachear
-          return fetch(evento.request).then((response) => {
+          // Si no está en cache, hacer fetch y cachear
+          return fetch(event.request).then((response) => {
             // Verificar que la respuesta es válida
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
@@ -75,15 +75,15 @@ self.addEventListener('fetch', (evento) => {
             // Clonar la respuesta
             const responseToCache = response.clone();
 
-            caches.open(NOMBRE_DE_CACHE)
+            caches.open(CACHE_NAME)
               .then((cache) => {
-                cache.put(evento.request, responseToCache);
+                cache.put(event.request, responseToCache);
               });
 
             return response;
           }).catch(() => {
             // Si falla el fetch y es un documento, devolver index.html
-            if (evento.request.destination === 'document') {
+            if (event.request.destination === 'document') {
               return caches.match('/index.html');
             }
           });
@@ -93,17 +93,18 @@ self.addEventListener('fetch', (evento) => {
 });
 
 // Manejar mensajes del cliente
-self.addEventListener('message', (evento) => {
-  if (evento.data && evento.data.type === 'SKIP_WAITING') {
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
 // Notificar actualizaciones
-self.addEventListener('notificationclick', (evento) => {
-  evento.notification.close();
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
   
-  evento.waitUntil(
+  event.waitUntil(
     clients.openWindow('/')
   );
 });
+
