@@ -1400,6 +1400,29 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN botPlay ENTERA EN SERVER.JS CON ESTA VERSIÓN ▼▼▼
 async function botPlay(room, botPlayerId, io) {
+    // ▼▼▼ VERIFICACIÓN CRÍTICA: LA SALA DEBE EXISTIR ▼▼▼
+    // Si la sala fue eliminada (ej. jugador salió de práctica), detenemos al bot.
+    if (!room || !room.roomId || !rooms[room.roomId]) {
+        console.log(`[BOT DETENIDO] La sala ya no existe. Bot ${botPlayerId} se detiene.`);
+        return;
+    }
+
+    // VERIFICACIÓN ADICIONAL: Si es una sala de práctica y no tiene jugador humano, la destruimos.
+    if (room.isPractice) {
+        const humanPlayer = room.seats.find(s => s && !s.isBot);
+        if (!humanPlayer) {
+            console.log(`[BOT DETENIDO] Sala de práctica sin jugador humano. Eliminando sala ${room.roomId}.`);
+            delete rooms[room.roomId];
+            if (turnTimers[room.roomId]) {
+                clearTimeout(turnTimers[room.roomId].timerId);
+                clearInterval(turnTimers[room.roomId].intervalId);
+                delete turnTimers[room.roomId];
+            }
+            return;
+        }
+    }
+    // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
+
     const botSeat = room.seats.find(s => s.playerId === botPlayerId);
     if (!botSeat || !botSeat.active) return;
 
@@ -1842,7 +1865,16 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
     // Si el siguiente jugador es un bot, se vuelve a llamar a la función botPlay
     const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
     if (nextPlayerSeat && nextPlayerSeat.isBot) {
-        setTimeout(() => botPlay(room, room.currentPlayerId, io), 1000);
+        setTimeout(() => {
+            // ▼▼▼ VERIFICACIÓN CRÍTICA ANTES DE EJECUTAR BOT ▼▼▼
+            // Solo ejecutamos el bot si la sala todavía existe
+            if (rooms[room.roomId]) {
+                botPlay(room, room.currentPlayerId, io);
+            } else {
+                console.log(`[BOT CANCELADO] La sala ${room.roomId} ya no existe. Bot no ejecutado.`);
+            }
+            // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
+        }, 1000);
     }
 }
 
