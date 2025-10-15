@@ -3110,28 +3110,35 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-  // ▼▼▼ REEMPLAZO DEFINITIVO DEL LISTENER 'disconnect' ▼▼▼
+  // ▼▼▼ REEMPLAZO FINAL Y DEFINITIVO DEL LISTENER 'disconnect' ▼▼▼
   socket.on('disconnect', () => {
     console.log('❌ Un jugador se ha desconectado:', socket.id);
 
-    // Elimina al usuario de la lista de conectados y notifica a todos
+    // Actualiza la lista de usuarios en el lobby (esto ya es correcto)
     if (connectedUsers[socket.id]) {
         delete connectedUsers[socket.id];
         broadcastUserListUpdate(io);
     }
 
-    // BÚSQUEDA ROBUSTA: Iteramos sobre las salas a las que el socket pertenecía.
-    // socket.rooms es un Set que incluye el ID del propio socket.
-    socket.rooms.forEach(roomId => {
-        // Buscamos una sala que NO sea el ID personal del socket y que EXISTA en nuestro registro.
-        if (roomId !== socket.id && rooms[roomId]) {
-            console.log(`[DISCONNECT ROBUSTO] El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
+    // --- BÚSQUEDA FORZADA Y ROBUSTA ---
+    // En lugar de confiar en socket.rooms, buscamos manualmente en nuestro estado.
+    for (const roomId in rooms) {
+        const room = rooms[roomId];
+        if (room && room.seats) {
+            // Comprobamos si el ID del socket desconectado está en algún asiento de esta sala.
+            const isPlayerInRoom = room.seats.some(seat => seat && seat.playerId === socket.id);
             
-            // Llamamos a la función de limpieza que ya tiene toda la lógica correcta 
-            // para detener bots y eliminar la mesa de práctica.
-            handlePlayerDeparture(roomId, socket.id, io);
+            if (isPlayerInRoom) {
+                console.log(`[DISCONNECT FORZADO] Jugador ${socket.id} encontrado en la mesa ${roomId}. Procesando abandono...`);
+                
+                // Si lo encontramos, llamamos a la misma función de limpieza que al salir voluntariamente.
+                // Esta función ya sabe cómo aplicar multas, eliminar al jugador y limpiar la mesa.
+                handlePlayerDeparture(roomId, socket.id, io);
+                
+                break; // Salimos del bucle una vez encontrada y procesada la sala.
+            }
         }
-    });
+    }
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
