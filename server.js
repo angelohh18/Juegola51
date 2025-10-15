@@ -2510,24 +2510,24 @@ io.on('connection', (socket) => {
 
   socket.on('requestPracticeGame', (username) => {
     console.error(`🚨 [SERVIDOR] EVENTO 'requestPracticeGame' RECIBIDO del socket ${socket.id} para usuario: ${username}`);
-    
+
     // --- INICIO DEL MECANISMO DE SEGURIDAD ---
     // Esto asegura que si una sala de práctica anterior con el mismo ID de socket
     // no se borró, se elimine a la fuerza ANTES de crear una nueva.
     const existingRoomId = `practice-${socket.id}`;
     console.error(`🚨 [SERVIDOR] Verificando sala existente: ${existingRoomId}`);
     console.error(`🚨 [SERVIDOR] Sala existe:`, rooms[existingRoomId] ? 'SÍ' : 'NO');
-    
+
     if (rooms[existingRoomId]) {
         console.log(`[SEGURIDAD] Se encontró una sala de práctica antigua (${existingRoomId}). Eliminándola antes de crear una nueva.`);
-        
+
         // Limpiamos también su temporizador por si quedó activo
         if (turnTimers[existingRoomId]) {
             clearTimeout(turnTimers[existingRoomId].timerId);
             clearInterval(turnTimers[existingRoomId].intervalId);
             delete turnTimers[existingRoomId];
         }
-        
+
         delete rooms[existingRoomId];
         console.error(`🚨 [SERVIDOR] Sala antigua eliminada: ${existingRoomId}`);
     }
