@@ -385,26 +385,32 @@ function handleHostLeaving(room, leavingPlayerId, io) {
     }
 }
 
+// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN checkAndCleanRoom ▼▼▼
 function checkAndCleanRoom(roomId, io) {
     const room = rooms[roomId];
+
     if (!room) {
-        // Si la sala ya no existe, aun así notificamos a todos para que actualicen su lista.
-        broadcastRoomListUpdate(io);
-        return;
+        // Si la sala ya no existe (ej: dos eventos la limpiaron a la vez),
+        // aun así notificamos para asegurar que todos los clientes estén sincronizados.
+        return broadcastRoomListUpdate(io);
     }
 
     const playersInSeats = room.seats.filter(s => s !== null).length;
 
-    // UNA SALA ESTÁ VACÍA SI NO HAY NADIE EN LOS ASIENTOS.
     if (playersInSeats === 0) {
         console.log(`Mesa ${roomId} está completamente vacía. Eliminando...`);
         delete rooms[roomId];
+        
+        // CORRECCIÓN CLAVE: Después de eliminar, notificamos y terminamos la ejecución aquí.
+        // Esto garantiza que la lista SIN la sala eliminada se envíe inmediatamente.
+        return broadcastRoomListUpdate(io);
     }
 
-    // Se emite la actualización SIEMPRE que un jugador sale,
-    // para que el contador (ej: 3/4 -> 2/4) se actualice en tiempo real.
+    // Si la sala NO se eliminó (porque aún tiene jugadores), simplemente
+    // notificamos para que se actualice el contador de jugadores (ej: 2/4).
     broadcastRoomListUpdate(io);
 }
+// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 // ▼▼▼ FUNCIÓN PARA ACTUALIZAR LISTA DE USUARIOS ▼▼▼
 function broadcastUserListUpdate(io) {
