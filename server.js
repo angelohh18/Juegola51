@@ -3116,10 +3116,9 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
+  // ▼▼▼ REEMPLAZO DEFINITIVO DEL LISTENER 'disconnect' ▼▼▼
   socket.on('disconnect', () => {
     console.log('❌ Un jugador se ha desconectado:', socket.id);
-    const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
 
     // Elimina al usuario de la lista de conectados y notifica a todos
     if (connectedUsers[socket.id]) {
@@ -3127,11 +3126,18 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         broadcastUserListUpdate(io);
     }
 
-    if (roomId && rooms[roomId]) {
-        // Si el jugador estaba en una sala válida, procesamos su salida.
-        console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
-        handlePlayerDeparture(roomId, socket.id, io);
-    }
+    // BÚSQUEDA ROBUSTA: Iteramos sobre las salas a las que el socket pertenecía.
+    // socket.rooms es un Set que incluye el ID del propio socket.
+    socket.rooms.forEach(roomId => {
+        // Buscamos una sala que NO sea el ID personal del socket y que EXISTA en nuestro registro.
+        if (roomId !== socket.id && rooms[roomId]) {
+            console.log(`[DISCONNECT ROBUSTO] El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
+            
+            // Llamamos a la función de limpieza que ya tiene toda la lógica correcta 
+            // para detener bots y eliminar la mesa de práctica.
+            handlePlayerDeparture(roomId, socket.id, io);
+        }
+    });
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
