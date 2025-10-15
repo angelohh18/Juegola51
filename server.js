@@ -1895,20 +1895,42 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     if (room && room.isPractice) {
-        console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
+        console.log(`[Práctica] El jugador humano ha salido. TERMINANDO COMPLETAMENTE la mesa de práctica ${roomId}.`);
         
-        // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ ▼▼▼
-        // Detiene y limpia cualquier temporizador asociado a esta sala
+        // ▼▼▼ TERMINAR COMPLETAMENTE LA PARTIDA DE PRÁCTICA ▼▼▼
+        // 1. Detener y limpiar cualquier temporizador asociado a esta sala
         if (turnTimers[roomId]) {
             clearTimeout(turnTimers[roomId].timerId);
             clearInterval(turnTimers[roomId].intervalId);
             delete turnTimers[roomId];
             console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y eliminado.`);
         }
-        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
-
-        delete rooms[roomId]; // Elimina la sala del servidor
-        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
+        
+        // 2. Notificar a todos los bots que la partida ha terminado
+        room.seats.forEach(seat => {
+            if (seat && seat.isBot) {
+                // Enviar evento de fin de partida a cada bot
+                io.to(seat.playerId).emit('gameEnd', {
+                    reason: 'practice_terminated',
+                    message: 'La partida de práctica ha sido terminada por el jugador humano.'
+                });
+            }
+        });
+        
+        // 3. Limpiar completamente el estado de la sala
+        room.gameStarted = false;
+        room.currentPlayer = null;
+        room.discardPile = [];
+        room.allMelds = [];
+        room.turnMelds = [];
+        room.spectators = [];
+        
+        // 4. Eliminar la sala completamente
+        delete rooms[roomId];
+        console.log(`[Práctica] Sala ${roomId} eliminada completamente. Partida terminada.`);
+        
+        // 5. Notificar actualización del lobby
+        broadcastRoomListUpdate(io);
         return; // Detiene la ejecución para no aplicar lógica de mesas reales
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
@@ -2030,6 +2052,29 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
+    
+    // ▼▼▼ LIMPIEZA AGRESIVA DE CUALQUIER RESIDUO ANTERIOR ▼▼▼
+    console.log(`[Práctica] Creando nueva partida de práctica ${roomId} - Limpiando residuos anteriores...`);
+    
+    // 1. Limpiar temporizadores de cualquier partida anterior del mismo jugador
+    Object.keys(turnTimers).forEach(timerRoomId => {
+        if (timerRoomId.includes(socket.id)) {
+            clearTimeout(turnTimers[timerRoomId].timerId);
+            clearInterval(turnTimers[timerRoomId].intervalId);
+            delete turnTimers[timerRoomId];
+            console.log(`[Limpieza] Temporizador residual ${timerRoomId} eliminado.`);
+        }
+    });
+    
+    // 2. Eliminar cualquier sala de práctica anterior del mismo jugador
+    Object.keys(rooms).forEach(existingRoomId => {
+        if (existingRoomId.includes(socket.id) && rooms[existingRoomId]?.isPractice) {
+            console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId}`);
+            delete rooms[existingRoomId];
+        }
+    });
+    // ▲▲▲ FIN DE LA LIMPIEZA AGRESIVA ▲▲▲
+    
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
     const newRoom = {
