@@ -1856,9 +1856,21 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     if (room && room.isPractice) {
         console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
-        delete rooms[roomId]; // Elimina la sala del servidor
-        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
-        return; // Detiene la ejecución para no aplicar lógica de mesas reales
+
+        // ▼▼▼ BLOQUE A AÑADIR ▼▼▼
+        // LÍNEA CLAVE: Detenemos y limpiamos cualquier temporizador activo para esta sala.
+        // Esto previene que los bots sigan jugando.
+        if (turnTimers[roomId]) {
+            clearTimeout(turnTimers[roomId].timerId);
+            clearInterval(turnTimers[roomId].intervalId);
+            delete turnTimers[roomId];
+            console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y limpiado.`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
+        delete rooms[roomId]; // Ahora sí, elimina la sala del servidor.
+        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby.
+        return; // Detiene la ejecución para no aplicar lógica de mesas reales.
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
@@ -2374,6 +2386,16 @@ io.on('connection', (socket) => {
     const existingRoomId = `practice-${socket.id}`;
     if (rooms[existingRoomId]) {
         console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        
+        // ▼▼▼ BLOQUE A AÑADIR (DOBLE SEGURIDAD) ▼▼▼
+        if (turnTimers[existingRoomId]) {
+            clearTimeout(turnTimers[existingRoomId].timerId);
+            clearInterval(turnTimers[existingRoomId].intervalId);
+            delete turnTimers[existingRoomId];
+            console.log(`[Limpieza] Temporizador de práctica zombie para ${existingRoomId} eliminado.`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
         delete rooms[existingRoomId];
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
