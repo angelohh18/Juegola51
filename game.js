@@ -733,8 +733,6 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        // --- ALERTA A: Confirma que el clic funciona ---
-        alert("DEBUG A: Clic en 'Jugar'. A continuación se limpiará el estado del cliente.");
         console.log('🎯 INICIANDO NUEVA PARTIDA DE PRÁCTICA - Limpieza completa del cliente...');
 
         // Tu bloque de "limpieza agresiva" original (es correcto, se queda)
@@ -787,10 +785,6 @@ function renderRoomsOverview(rooms = []) {
         if (deckEl) deckEl.onclick = null;
         if (discardEl) discardEl.onclick = null;
         console.log('✅ Estado del cliente completamente limpiado');
-
-        // --- ALERTA B: Confirma que la limpieza funcionó ---
-        alert(`DEBUG B: Limpieza finalizada.\n\nESTADO ACTUAL:\n- Juegos en mesa (allMelds): ${allMelds.length}\n- Cartas en descarte: ${discardPile.length}\n\nAhora se pedirá la nueva partida al servidor.`);
-        console.warn(`[DEBUG B] Estado después de la limpieza:`, { allMelds, discardPile, players, orderedSeats });
 
         const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
@@ -2176,14 +2170,6 @@ function showRoomsOverview() {
 
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
-    // --- ALERTA C: Muestra lo que envía el servidor ---
-    alert("DEBUG C: Recibido 'gameStarted' del servidor. Comprueba la consola para ver el 'initialState' que llegó.");
-    console.warn(`[DEBUG C] 'initialState' recibido del servidor:`, JSON.parse(JSON.stringify(initialState)));
-
-    // --- ALERTA D: Muestra el estado del cliente justo antes de dibujar la partida ---
-    alert(`DEBUG D: A punto de asignar el nuevo estado.\n\nESTADO ACTUAL DEL CLIENTE:\n- Juegos en mesa (allMelds): ${allMelds.length}\n- Cartas en descarte: ${discardPile.length}\n\nDespués de esta alerta, se dibujará la partida.`);
-    console.warn(`[DEBUG D] Estado del cliente ANTES de asignar el nuevo estado:`, { allMelds, discardPile, players, orderedSeats });
-
     // Tu código original para iniciar la partida (es correcto, se queda)
     if (initialState.isPractice) {
         currentGameSettings = {

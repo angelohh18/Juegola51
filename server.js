@@ -1897,8 +1897,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     if (room && room.isPractice) {
         console.log(`[Práctica] El jugador humano ha salido. TERMINANDO COMPLETAMENTE la mesa de práctica ${roomId}.`);
         
-        // ▼▼▼ TERMINAR COMPLETAMENTE LA PARTIDA DE PRÁCTICA ▼▼▼
-        // 1. Detener y limpiar cualquier temporizador asociado a esta sala
+        // 1. (LA CORRECCIÓN CLAVE) Detiene y limpia cualquier temporizador asociado a esta sala
         if (turnTimers[roomId]) {
             clearTimeout(turnTimers[roomId].timerId);
             clearInterval(turnTimers[roomId].intervalId);
@@ -1906,30 +1905,11 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
             console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y eliminado.`);
         }
         
-        // 2. Notificar a todos los bots que la partida ha terminado
-        room.seats.forEach(seat => {
-            if (seat && seat.isBot) {
-                // Enviar evento de fin de partida a cada bot
-                io.to(seat.playerId).emit('gameEnd', {
-                    reason: 'practice_terminated',
-                    message: 'La partida de práctica ha sido terminada por el jugador humano.'
-                });
-            }
-        });
-        
-        // 3. Limpiar completamente el estado de la sala
-        room.gameStarted = false;
-        room.currentPlayer = null;
-        room.discardPile = [];
-        room.allMelds = [];
-        room.turnMelds = [];
-        room.spectators = [];
-        
-        // 4. Eliminar la sala completamente
+        // 2. Eliminar la sala completamente para que no queden residuos
         delete rooms[roomId];
-        console.log(`[Práctica] Sala ${roomId} eliminada completamente. Partida terminada.`);
+        console.log(`[Práctica] Sala ${roomId} eliminada completamente.`);
         
-        // 5. Notificar actualización del lobby
+        // 3. Notificar actualización del lobby
         broadcastRoomListUpdate(io);
         return; // Detiene la ejecución para no aplicar lógica de mesas reales
     }
