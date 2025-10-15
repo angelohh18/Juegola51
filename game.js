@@ -696,8 +696,13 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        const username = localStorage.getItem('username') || 'Jugador';
-        socket.emit('requestPracticeGame', username);
+        // Obtenemos los datos del usuario desde la variable global 'currentUser'
+        const user = {
+            username: currentUser.username || 'Jugador',
+            avatar: currentUser.userAvatar || 'https://i.pravatar.cc/150?img=1' // Usamos un avatar por defecto si no existe
+        };
+        // Enviamos el objeto completo al servidor
+        socket.emit('requestPracticeGame', user);
     };
     roomsOverviewEl.appendChild(practiceTable);
 

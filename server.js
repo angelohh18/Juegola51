@@ -1977,7 +1977,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
-function createAndStartPracticeGame(socket, username, io) {
+function createAndStartPracticeGame(socket, user, io) { // <-- Aceptamos el objeto 'user'
     const roomId = `practice-${socket.id}`;
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -1988,7 +1988,8 @@ function createAndStartPracticeGame(socket, username, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
+        // CAMBIO CLAVE: Usamos los datos del objeto 'user' para el jugador humano
+        { playerId: socket.id, playerName: user.username, avatar: user.avatar, active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
         { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false }
@@ -2367,16 +2368,18 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  socket.on('requestPracticeGame', (username) => {
-    // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
-    const existingRoomId = `practice-${socket.id}`;
-    if (rooms[existingRoomId]) {
-        console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
-        delete rooms[existingRoomId];
+  socket.on('requestPracticeGame', (user) => { // <-- Aceptamos el objeto 'user'
+    // Lógica de limpieza preventiva (mejorada)
+    const roomId = `practice-${socket.id}`;
+    if (rooms[roomId]) {
+        console.log(`[Limpieza] Eliminando sala de práctica anterior ${roomId} antes de crear una nueva.`);
+        delete rooms[roomId];
+        // Notificamos a todos para asegurar que la sala vieja desaparezca de la lista
+        broadcastRoomListUpdate(io);
     }
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    createAndStartPracticeGame(socket, username, io);
+    // Pasamos el socket, el objeto de usuario completo y el 'io' a la función
+    createAndStartPracticeGame(socket, user, io);
   });
 
     socket.on('joinRoom', ({ roomId, user }) => {
