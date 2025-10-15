@@ -2114,7 +2114,8 @@ function showRoomsOverview() {
     let isWaitingForNextTurn = false;
     let isAnimatingLocalMeld = false; // <<-- AÑADE ESTA LÍNEA
     let practiceGameEndedByFault = false; // <<-- AÑADE ESTA LÍNEA
-    let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, selectedCards, isDrawing;
+    let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, isDrawing;
+    let selectedCards = new Set(); // <--- ESTA ES LA LÍNEA IMPORTANTE
 
     // ▼▼▼ PEGA EL BLOQUE COMPLETO AQUÍ ▼▼▼
     // Configuración de los botones del modal de reinicio de práctica (Ubicación corregida)
