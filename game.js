@@ -2569,18 +2569,17 @@ function updatePlayersView(seats, inGame = false) {
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     // ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN goBackToLobby ▼▼▼
     window.goBackToLobby = function() {
-        console.warn(`[ACCIÓN DECISIVA] El jugador ha decidido volver al lobby.`);
+        // 1. Verificamos que estamos en una sala.
+        if (currentGameSettings && currentGameSettings.roomId) {
+            console.log(`[ACCIÓN DECISIVA] Notificando al servidor la salida de la sala: ${currentGameSettings.roomId}`);
+            
+            // 2. Emitimos el evento 'leaveGame'. Este es el paso clave.
+            // El servidor está escuchando este evento y sabe exactamente qué hacer.
+            socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
+        }
 
-        // 1. Desconectar FORZOSAMENTE el socket del cliente.
-        // Esto dispara el evento 'disconnect' en el servidor, que ya tiene
-        // la lógica de limpieza MÁS ROBUSTA para CUALQUIER tipo de sala.
-        socket.disconnect();
-
-        // 2. Volver a conectar INMEDIATAMENTE para el lobby.
-        // El servidor asignará un nuevo socket.id, garantizando un estado limpio.
-        socket.connect();
-
-        // 3. Limpiar el estado del juego en el cliente y mostrar el lobby.
+        // 3. Reseteamos el estado del cliente y mostramos el lobby.
+        // Esto se hace inmediatamente, sin esperar respuesta.
         resetClientGameState();
         currentGameSettings = null;
 
@@ -2591,7 +2590,6 @@ function updatePlayersView(seats, inGame = false) {
 
         showLobbyView();
     }
-    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     function getCardImageUrl(card) {
