@@ -2760,7 +2760,7 @@ function updatePlayersView(seats, inGame = false) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     function renderSpectatorListForHost() { }
-    // Versión definitiva de discardCardByIndex
+    // ▼▼▼ VERSIÓN MEJORADA DE discardCardByIndex ▼▼▼
     async function discardCardByIndex(index) {
         if (isWaitingForNextTurn) return;
         const p = players[0];
@@ -2768,26 +2768,38 @@ function updatePlayersView(seats, inGame = false) {
 
         const cardToDiscard = p.hand[index];
 
-        // 1. Emitir la acción al servidor.
-        socket.emit('accionDescartar', { 
-            roomId: currentGameSettings.roomId, 
-            card: cardToDiscard 
-        });
-
-        // 2. Bloquear la UI y animar.
+        // 1. Bloqueamos la UI para prevenir más acciones.
         isWaitingForNextTurn = true;
         updateActionButtons();
 
         const cardEl = document.querySelector(`#human-hand .card[data-index='${index}']`);
         const discardEl = document.getElementById('discard');
-        if (cardEl && discardEl) {
-            // La animación ahora es solo un efecto visual, no esperamos a que termine.
-            animateCardMovement({ cardsData: [cardToDiscard], startElement: cardEl, endElement: discardEl });
-        }
 
-        // IMPORTANTE: No se modifica la mano ni se renderiza nada aquí.
-        // Solo esperamos la respuesta del servidor.
+        // --- INICIO DE LA CORRECCIÓN CLAVE ---
+        if (cardEl && discardEl) {
+            // 2. HACEMOS LA CARTA INVISIBLE EN LA MANO INMEDIATAMENTE.
+            //    Las otras cartas se deslizarán suavemente para ocupar su lugar gracias al CSS.
+            cardEl.style.opacity = '0';
+            cardEl.style.pointerEvents = 'none'; // Evita interacciones con la carta invisible.
+
+            // 3. INICIAMOS la animación desde la posición original de la carta (ahora invisible).
+            //    Ya no necesitamos esperar a que esta animación termine aquí.
+            animateCardMovement({
+                cardsData: [cardToDiscard],
+                startElement: cardEl,
+                endElement: discardEl
+            });
+        }
+        // --- FIN DE LA CORRECCIÓN CLAVE ---
+
+        // 4. Emitimos la acción al servidor como siempre.
+        //    El servidor responderá y el listener con 'await' se encargará del redibujado final.
+        socket.emit('accionDescartar', { 
+            roomId: currentGameSettings.roomId, 
+            card: cardToDiscard 
+        });
     }
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     
     function updatePlayerHandCounts(playerHandCounts) {
         // Actualiza los contadores de cartas de todos los jugadores en tiempo real

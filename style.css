@@ -1339,10 +1339,10 @@ body.game-active {
     position: relative;
     font-family: "Georgia", serif;
     cursor: pointer;
-    transition: all 0.18s ease;
+    transition: transform 0.18s ease, margin-left 0.25s ease-out, opacity 0.2s ease-in-out; /* << TRANSICIÓN MEJORADA */
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    will-change: transform, opacity, outline; /* << AÑADE ESTA LÍNEA */
+    will-change: transform, opacity, outline;
 }
 
 .card.selected { outline:4px solid var(--casino-gold); transform:translateY(-20px); } 
