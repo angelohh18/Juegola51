@@ -1880,161 +1880,114 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 
 // Configuración de archivos estáticos ya definida arriba
 
-// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
-// ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
+// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN handlePlayerDeparture ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
-    // ▼▼▼ LÍNEAS DE ALERTA A AÑADIR ▼▼▼
-    console.error(`------------------- DEBUG SALIDA DE JUGADOR -------------------`);
-    console.warn(`[ALERTA handlePlayerDeparture] Función llamada para sala: ${roomId}`);
     const room = rooms[roomId];
 
+    // 1. Verificación inicial de la sala
     if (!room) {
-        console.error(`[ALERTA GRAVE] La sala ${roomId} NO EXISTE en el servidor. No se puede limpiar.`);
-        return; // Detenemos aquí si no hay sala
+        console.error(`[Abandono] La sala ${roomId} NO EXISTE. No se puede procesar la salida.`);
+        return;
     }
 
-    // Inspeccionamos las propiedades clave de la sala
-    console.log(`[INSPECCIÓN] Propiedades de la sala ${roomId}:`, {
-        isPractice: room.isPractice,
-        state: room.state,
-        hostId: room.hostId
-    });
-    console.error(`-------------------------------------------------------------`);
-    // ▲▲▲ FIN DE LAS LÍNEAS DE ALERTA ▲▲▲
-
-    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
-    if (room && room.isPractice) {
-        console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
-
-        // ▼▼▼ BLOQUE A AÑADIR ▼▼▼
-        // LÍNEA CLAVE: Detenemos y limpiamos cualquier temporizador activo para esta sala.
-        // Esto previene que los bots sigan jugando.
+    // 2. Lógica para Mesas de Práctica (esta parte ya es correcta y la mantenemos)
+    if (room.isPractice) {
+        console.log(`[Práctica] Jugador ha salido. Eliminando la mesa de práctica ${roomId}.`);
         if (turnTimers[roomId]) {
             clearTimeout(turnTimers[roomId].timerId);
             clearInterval(turnTimers[roomId].intervalId);
             delete turnTimers[roomId];
             console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y limpiado.`);
         }
-        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
-
-        delete rooms[roomId]; // Ahora sí, elimina la sala del servidor.
-        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby.
-        return; // Detiene la ejecución para no aplicar lógica de mesas reales.
-    }
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
-
-    // La verificación de !room ya se hizo arriba, no es necesaria aquí
-    console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala ${roomId}.`);
-
-    if (room.spectators) {
-        room.spectators = room.spectators.filter(s => s.id !== leavingPlayerId);
+        delete rooms[roomId];
+        broadcastRoomListUpdate(io);
+        return;
     }
 
+    console.log(`[Abandono] Gestionando salida del jugador ${leavingPlayerId} de la sala real ${roomId}.`);
+
+    // 3. Lógica para Espectadores y Jugadores en Espera (sin multa)
     const seatIndex = room.seats.findIndex(s => s && s.playerId === leavingPlayerId);
-    if (seatIndex === -1) {
-        io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+    if (seatIndex === -1 || room.state === 'waiting' || (room.seats[seatIndex] && room.seats[seatIndex].status === 'waiting')) {
+        console.log(`[Abandono] El jugador era espectador o estaba en espera. Saliendo sin multa.`);
+        if (room.spectators) {
+            room.spectators = room.spectators.filter(s => s.id !== leavingPlayerId);
+            io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+        }
+        if (seatIndex !== -1) {
+            room.seats[seatIndex] = null;
+        }
+        handleHostLeaving(room, leavingPlayerId, io);
+        io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
         checkAndCleanRoom(roomId, io);
         return;
     }
-    
-    const leavingPlayerSeat = { ...room.seats[seatIndex] };
+
+    // 4. LÓGICA CLAVE PARA JUGADOR ACTIVO QUE ABANDONA (CON MULTA)
+    const leavingPlayerSeat = { ...room.seats[seatIndex] }; // Hacemos una copia de sus datos
     const playerName = leavingPlayerSeat.playerName;
 
-    room.seats[seatIndex] = null;
+    if (room.state === 'playing' && leavingPlayerSeat.active) {
+        console.error(`[FALTA] ¡Jugador activo ${playerName} ha abandonado la partida!`);
 
-    if (room.state === 'playing') {
-        // VALIDACIÓN CLAVE: Solo aplicamos lógica de abandono si el jugador estaba ACTIVO.
-        if (leavingPlayerSeat.status !== 'waiting') {
-            // --- JUGADOR ACTIVO: Se aplica multa y se gestiona el turno ---
-            console.log(`Jugador activo ${playerName} ha abandonado. Se aplica multa.`);
+        // A. Aplicar multa y actualizar bote
+        const penalty = room.settings.penalty || 0;
+        const playerInfo = users[leavingPlayerSeat.userId];
+        if (penalty > 0 && playerInfo) {
+            const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+            playerInfo.credits -= penaltyInPlayerCurrency;
+            room.pot = (room.pot || 0) + penalty;
+            
+            io.to(leavingPlayerId).emit('userStateUpdated', playerInfo); // Notifica al jugador (si aún puede recibirlo)
+            io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+            
+            // Actualiza la base de datos en segundo plano
+            updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency)
+                .catch(err => console.error(`[BG] Falla al actualizar créditos por abandono para ${leavingPlayerSeat.userId}:`, err));
+        }
 
-            const reason = `${playerName} ha abandonado la partida.`;
-            io.to(roomId).emit('playerEliminated', {
-                playerId: leavingPlayerId,
-                playerName: playerName,
-                faultData: { reason: reason } // <-- CORRECCIÓN AQUÍ
-            });
+        // B. Devolver las cartas del jugador al mazo de descarte (excepto la superior)
+        const playerHand = room.playerHands[leavingPlayerId] || [];
+        if (playerHand.length > 0) {
+            const topCard = room.discardPile.pop();
+            shuffle(playerHand); // Barajamos su mano
+            room.discardPile.unshift(...playerHand); // Devolvemos las cartas debajo
+            if (topCard) room.discardPile.push(topCard); // Volvemos a poner la superior
+        }
+        room.playerHands[leavingPlayerId] = []; // Vaciamos su mano
 
-            if (leavingPlayerSeat && leavingPlayerSeat.userId) {
-                const penalty = room.settings.penalty || 0;
-                const playerInfo = users[leavingPlayerSeat.userId];
-                if (penalty > 0 && playerInfo) {
-                    const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
-                    playerInfo.credits -= penaltyInPlayerCurrency;
-                    room.pot = (room.pot || 0) + penalty;
-                    io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
-                    io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
-                    
-                    // <<-- INICIO DE LA CORRECCIÓN -->>
-                    // 1. Eliminamos 'await' para no bloquear el juego.
-                    //    La actualización se inicia en segundo plano.
-                    updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency)
-                        // 2. Añadimos .catch para registrar cualquier error sin detener el servidor.
-                        .catch(err => {
-                            console.error(`[BG] Falla al actualizar créditos para ${leavingPlayerSeat.userId} en segundo plano:`, err);
-                        });
-                    // <<-- FIN DE LA CORRECCIÓN -->>
-                }
-            }
+        // C. Marcar el asiento como inactivo y notificar a los clientes
+        leavingPlayerSeat.active = false;
+        room.seats[seatIndex] = null; // Liberamos el asiento
 
-            const activePlayers = room.seats.filter(s => s && s.active !== false);
-            if (activePlayers.length === 1) {
-                await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
-                return;
-            } else if (activePlayers.length > 1) {
-                if (room.currentPlayerId === leavingPlayerId) {
-                    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
-                    if (turnTimers[room.roomId]) {
-                        clearTimeout(turnTimers[room.roomId].timerId);
-                        clearInterval(turnTimers[room.roomId].intervalId);
-                        delete turnTimers[room.roomId];
-                    }
-                    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
-                    
-                    resetTurnState(room);
-                    let oldPlayerIndex = -1;
-                    if (room.initialSeats) {
-                        oldPlayerIndex = room.initialSeats.findIndex(s => s && s.playerId === leavingPlayerId);
-                    }
-                    let nextPlayerIndex = oldPlayerIndex !== -1 ? oldPlayerIndex : 0;
-                    let attempts = 0;
-                    let nextPlayer = null;
-                    while (!nextPlayer && attempts < room.seats.length * 2) {
-                        nextPlayerIndex = (nextPlayerIndex + 1) % room.seats.length;
-                        const potentialNextPlayerSeat = room.seats[nextPlayerIndex];
-                        if (potentialNextPlayerSeat && potentialNextPlayerSeat.active) {
-                            nextPlayer = potentialNextPlayerSeat;
-                        }
-                        attempts++;
-                    }
-                    if (nextPlayer) {
-                        room.currentPlayerId = nextPlayer.playerId;
-                        io.to(roomId).emit('turnChanged', {
-                            discardedCard: null,
-                            discardingPlayerId: leavingPlayerId,
-                            newDiscardPile: room.discardPile,
-                            nextPlayerId: room.currentPlayerId,
-                            playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
-                            newMelds: room.melds
-                        });
-                    }
-                }
-            }
-        } else {
-            // --- JUGADOR EN ESPERA: No hay multa, solo se notifica ---
-            console.log(`Jugador ${playerName} ha salido mientras esperaba. No se aplica multa.`);
-            io.to(roomId).emit('playerAbandoned', {
-                message: `${playerName} ha abandonado la mesa antes de empezar la partida.`
-            });
+        const reason = `${playerName} ha abandonado la partida.`;
+        io.to(roomId).emit('playerEliminated', {
+            playerId: leavingPlayerId,
+            playerName: playerName,
+            faultData: { reason }
+        });
+
+        // D. Comprobar si la partida debe terminar
+        const activePlayers = room.seats.filter(s => s && s.active !== false);
+        if (activePlayers.length === 1) {
+            console.log("[Abandono] Solo queda un jugador. Finalizando partida.");
+            await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
+            return; // El juego termina aquí
+        }
+
+        // E. Si el juego continúa, pasar el turno si era del jugador que abandonó
+        if (room.currentPlayerId === leavingPlayerId) {
+            console.log("[Abandono] Era el turno del jugador que salió. Avanzando turno...");
+            await advanceTurnAfterAction(room, leavingPlayerId, null, io);
         }
     }
-    
+
+    // 5. Lógica final de limpieza y actualización para todos los casos
     handleHostLeaving(room, leavingPlayerId, io);
     io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
     checkAndCleanRoom(roomId, io);
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
-// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 // >> FIRMA DE LA FUNCIÓN MODIFICADA
