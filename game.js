@@ -2762,56 +2762,53 @@ function updatePlayersView(seats, inGame = false) {
     }
     
     // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA (DROP) ▼▼▼
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN handleDrop ENTERA CON ESTA VERSIÓN ▼▼▼
     const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const targetElement = e.currentTarget; // Puede ser una carta o el contenedor de la mano
-        targetElement.classList.remove('drag-over', 'drop-zone');
+        const humanHandContainer = document.getElementById('human-hand');
+        // Limpiamos los indicadores visuales de todas las posibles zonas de drop
+        humanHandContainer.classList.remove('drag-over', 'drop-zone');
+        humanHandContainer.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over'));
 
         try {
             const droppedIndices = JSON.parse(e.dataTransfer.getData('application/json'));
             const player = players[0];
-            if (!player) return;
+            if (!player || !player.hand) return;
 
-            let targetIndex;
+            // --- INICIO DE LA LÓGICA MEJORADA ---
 
-            // CASO 1: Se suelta sobre OTRA CARTA
-            if (targetElement.classList.contains('card')) {
-                const rect = targetElement.getBoundingClientRect();
-                const midpoint = rect.left + rect.width / 2;
-                const originalIndex = parseInt(targetElement.dataset.index);
+            const cardsInHand = Array.from(humanHandContainer.querySelectorAll('.card'));
+            let targetIndex = player.hand.length; // Por defecto, la carta irá al final.
 
-                targetIndex = (e.clientX > midpoint) ? originalIndex + 1 : originalIndex;
-            } 
-            // CASO 2: Se suelta en un espacio vacío del CONTENEDOR de la mano
-            else if (targetElement.id === 'human-hand') {
-                const firstCard = targetElement.firstElementChild;
-                const lastCard = targetElement.lastElementChild;
-                targetIndex = player.hand.length; // Por defecto, va al final
+            // 1. Recorremos las cartas que SÍ están en el DOM para encontrar la posición del cursor.
+            for (let i = 0; i < cardsInHand.length; i++) {
+                const cardNode = cardsInHand[i];
+                const rect = cardNode.getBoundingClientRect();
 
-                if (firstCard && lastCard) {
-                    const firstCardRect = firstCard.getBoundingClientRect();
-                    const lastCardRect = lastCard.getBoundingClientRect();
+                // 2. Calculamos el punto medio de cada carta.
+                // Hacemos un pequeño ajuste para que sea más intuitivo soltar en los huecos.
+                const midpoint = rect.left + (rect.width / 2) - 15; 
 
-                    if (e.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
-                        targetIndex = 0; // Se suelta al principio
-                    } else if (e.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
-                        targetIndex = player.hand.length; // Se suelta al final
-                    }
+                // 3. Si la posición X del cursor es MENOR que el punto medio de una carta,
+                // hemos encontrado el lugar correcto para insertar.
+                if (e.clientX < midpoint) {
+                    targetIndex = parseInt(cardNode.dataset.index);
+                    break; // Salimos del bucle una vez que encontramos la posición.
                 }
             }
 
-            if (targetIndex !== undefined) {
-                reorderHand(droppedIndices, targetIndex);
-            }
+            // 4. Con el targetIndex correcto, llamamos a la función que reordena el array.
+            reorderHand(droppedIndices, targetIndex);
+            // --- FIN DE LA LÓGICA MEJORADA ---
 
         } catch (error) {
             console.error("Error al procesar el drop:", error);
             renderHands(); // Restaura la mano si algo falla
         }
     };
-    // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     
     function renderHands() {
         const humanHandContainer = document.getElementById('human-hand');
@@ -3041,7 +3038,6 @@ function updatePlayersView(seats, inGame = false) {
                 cardNode.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); });
                 cardNode.addEventListener('dragover', (e) => { e.preventDefault(); cardNode.classList.add('drag-over'); });
                 cardNode.addEventListener('dragleave', () => cardNode.classList.remove('drag-over'));
-                cardNode.addEventListener('drop', handleDrop);
                 
                 // Añadimos la carta recién creada a un fragmento para insertarla al final.
                 fragmentForNewCards.appendChild(cardNode);
