@@ -2059,45 +2059,36 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
 
-    // --- INICIO: LIMPIEZA PREVENTIVA ULTRA-ROBUSTA ---
-    // Esta es la corrección más importante. No busca en un bucle, sino que ataca
-    // directamente al ID de la sala que podría haber quedado huérfana.
-    if (rooms[roomId]) {
-        console.warn(`[LIMPIEZA PREVENTIVA] Se encontró una sala de práctica antigua (${roomId}). Eliminándola a la fuerza ANTES de crear una nueva.`);
-
-        // Limpia también su temporizador, por si quedó activo.
-        if (turnTimers[roomId]) {
-            clearTimeout(turnTimers[roomId].timerId);
-            clearInterval(turnTimers[roomId].intervalId);
-            delete turnTimers[roomId];
-        }
-
-        delete rooms[roomId]; // Eliminación directa y atómica.
-    }
-
-    // --- LIMPIEZA ADICIONAL: Buscar y eliminar CUALQUIER sala de práctica del mismo socket ---
-    // Esto es una medida de seguridad extra para casos donde el socket.id cambió
-    // o hay inconsistencias en el estado.
+    // --- SOLUCIÓN SIMPLE Y DIRECTA: ELIMINAR TODAS LAS SALAS DE PRÁCTICA ---
+    console.warn(`[LIMPIEZA TOTAL] Eliminando TODAS las salas de práctica antes de crear una nueva.`);
+    
+    // Eliminar TODAS las salas que empiecen con "practice-"
     Object.keys(rooms).forEach(existingRoomId => {
-        if (existingRoomId.startsWith('practice-') && rooms[existingRoomId]) {
-            const room = rooms[existingRoomId];
-            // Si la sala es de práctica y tiene el mismo socket.id en cualquier asiento
-            const hasSameSocket = room.seats.some(seat => seat && seat.playerId === socket.id);
-            if (hasSameSocket) {
-                console.warn(`[LIMPIEZA ADICIONAL] Eliminando sala de práctica huérfana: ${existingRoomId}`);
-                
-                // Limpiar temporizador si existe
-                if (turnTimers[existingRoomId]) {
-                    clearTimeout(turnTimers[existingRoomId].timerId);
-                    clearInterval(turnTimers[existingRoomId].intervalId);
-                    delete turnTimers[existingRoomId];
-                }
-                
-                delete rooms[existingRoomId];
+        if (existingRoomId.startsWith('practice-')) {
+            console.warn(`[LIMPIEZA TOTAL] Eliminando sala de práctica: ${existingRoomId}`);
+            
+            // Limpiar temporizador si existe
+            if (turnTimers[existingRoomId]) {
+                clearTimeout(turnTimers[existingRoomId].timerId);
+                clearInterval(turnTimers[existingRoomId].intervalId);
+                delete turnTimers[existingRoomId];
             }
+            
+            delete rooms[existingRoomId];
         }
     });
-    // --- FIN: LIMPIEZA PREVENTIVA ULTRA-ROBUSTA ---
+    
+    // También limpiar TODOS los temporizadores que empiecen con "practice-"
+    Object.keys(turnTimers).forEach(timerRoomId => {
+        if (timerRoomId.startsWith('practice-')) {
+            clearTimeout(turnTimers[timerRoomId].timerId);
+            clearInterval(turnTimers[timerRoomId].intervalId);
+            delete turnTimers[timerRoomId];
+        }
+    });
+    
+    console.warn(`[LIMPIEZA TOTAL] ✅ Todas las salas de práctica eliminadas.`);
+    // --- FIN: SOLUCIÓN SIMPLE Y DIRECTA ---
 
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
