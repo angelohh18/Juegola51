@@ -2567,36 +2567,31 @@ function updatePlayersView(seats, inGame = false) {
     }
 
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
+    // ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN goBackToLobby ▼▼▼
     window.goBackToLobby = function() {
-        if (currentGameSettings && currentGameSettings.roomId) {
-            // ▼▼▼ LÍNEAS DE ALERTA A AÑADIR ▼▼▼
-            console.warn(`[ALERTA CLIENTE] Intentando salir de la sala: ${currentGameSettings.roomId}`);
-            console.warn(`[ALERTA CLIENTE] ¿Es una sala de práctica? -> ${currentGameSettings.isPractice}`);
-            // ▲▲▲ FIN DE LAS LÍNEAS DE ALERTA ▲▲▲
+        console.warn(`[ACCIÓN DECISIVA] El jugador ha decidido volver al lobby.`);
 
-            console.log('Notificando al servidor la salida de la sala para limpieza...');
-            socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
-        }
+        // 1. Desconectar FORZOSAMENTE el socket del cliente.
+        // Esto dispara el evento 'disconnect' en el servidor, que ya tiene
+        // la lógica de limpieza MÁS ROBUSTA para CUALQUIER tipo de sala.
+        socket.disconnect();
 
-        // --- EL BLOQUE DE "NUEVA IDENTIDAD" HA SIDO ELIMINADO ---
-        // Ya no se genera un nuevo userId cada vez. La identidad del jugador
-        // se mantiene estable desde que inicia sesión hasta que la cierra.
+        // 2. Volver a conectar INMEDIATAMENTE para el lobby.
+        // El servidor asignará un nuevo socket.id, garantizando un estado limpio.
+        socket.connect();
 
-        // Limpiamos las variables de la partida anterior
+        // 3. Limpiar el estado del juego en el cliente y mostrar el lobby.
         resetClientGameState();
-        currentGameSettings = null; // Limpiar configuración de la partida anterior
+        currentGameSettings = null;
 
-        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
-        // Reseteamos visualmente el bote al salir de la partida
         const potValueEl = document.querySelector('#game-pot-container .pot-value');
         if (potValueEl) {
             potValueEl.textContent = '0';
         }
-        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
-        
-        // Mostramos la vista del lobby
+
         showLobbyView();
     }
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     function getCardImageUrl(card) {
