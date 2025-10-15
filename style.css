@@ -1250,6 +1250,7 @@ body.game-active {
     flex-grow: 1;
     max-width: 70%;
     contain: layout paint; /* <-- SOLUCIÓN DEFINITIVA: Aísla el renderizado del contenedor */
+    transition: opacity 0.15s ease-in-out; /* Transición suave para re-renders */
 }
 .info-bot {
     position: relative; /* <-- AÑADE ESTA LÍNEA */

@@ -164,6 +164,7 @@ let activeAnimations = [];
 // ▼▼▼ CACHE PARA EVITAR RE-RENDERS INNECESARIOS ▼▼▼
 let lastRenderedDiscardId = null;
 let lastRenderedMeldsString = '';
+let lastRenderedHandIds = []; // Para renderizado incremental de la mano
 // ▲▲▲ FIN DEL CACHE ▲▲▲
 
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
@@ -2882,13 +2883,14 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
         // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
             // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
+            human.innerHTML = '';
+            lastRenderedHandIds = [];
             renderDiscard();
             renderMelds();
             updateActionButtons();
@@ -2896,7 +2898,35 @@ function updatePlayersView(seats, inGame = false) {
             return;
         }
       
-      const fragment = document.createDocumentFragment();
+      // ▼▼▼ OPTIMIZACIÓN: Renderizado incremental para evitar pestañeo ▼▼▼
+      const currentHandIds = humanPlayer.hand.map(c => c.id);
+      const handsAreEqual = JSON.stringify(currentHandIds) === JSON.stringify(lastRenderedHandIds);
+      
+      if (handsAreEqual) {
+          // Solo actualizar clases de selección sin reconstruir
+          const existingCards = human.querySelectorAll('.card');
+          existingCards.forEach((cardEl, idx) => {
+              const card = humanPlayer.hand[idx];
+              if (card && selectedCards.has(card.id)) {
+                  cardEl.classList.add('selected');
+              } else {
+                  cardEl.classList.remove('selected');
+              }
+          });
+          return; // No reconstruir si la mano no cambió
+      }
+      
+      lastRenderedHandIds = currentHandIds;
+      // ▲▲▲ FIN DE LA OPTIMIZACIÓN ▲▲▲
+      
+      // ▼▼▼ TRANSICIÓN SUAVE PARA RECONSTRUCCIÓN ▼▼▼
+      // Hacer invisible antes de reconstruir
+      human.style.opacity = '0';
+      
+      // Reconstruir en el siguiente frame
+      requestAnimationFrame(() => {
+          human.innerHTML = '';
+          const fragment = document.createDocumentFragment();
       humanPlayer.hand.forEach((card, idx) => {
         // << --- REEMPLAZA EL CONTENIDO DEL BUCLE forEach CON ESTO --- >>
 
@@ -3152,21 +3182,27 @@ function updatePlayersView(seats, inGame = false) {
         fragment.appendChild(d);
     });
     
-    human.appendChild(fragment);
+          human.appendChild(fragment);
 
-    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
-    human.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Crucial para permitir el 'drop'.
-    });
+          // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
+          human.addEventListener('dragover', (e) => {
+              e.preventDefault(); // Crucial para permitir el 'drop'.
+          });
 
-    human.addEventListener('drop', handleDrop);
-    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
+          human.addEventListener('drop', handleDrop);
+          // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
-    renderDiscard();
-    renderMelds();
-    updateActionButtons();
-    updateDebugInfo();
-}
+          // Restaurar visibilidad con transición suave
+          requestAnimationFrame(() => {
+              human.style.opacity = '1';
+          });
+      }); // ▲▲▲ FIN DEL requestAnimationFrame ▲▲▲
+
+      renderDiscard();
+      renderMelds();
+      updateActionButtons();
+      updateDebugInfo();
+  }
     function reorderHand(draggedIndices, targetDropIndex) {
         const player = players[0];
         if (!player || draggedIndices.includes(targetDropIndex)) {
