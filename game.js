@@ -2569,6 +2569,11 @@ function updatePlayersView(seats, inGame = false) {
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
         if (currentGameSettings && currentGameSettings.roomId) {
+            // ▼▼▼ LÍNEAS DE ALERTA A AÑADIR ▼▼▼
+            console.warn(`[ALERTA CLIENTE] Intentando salir de la sala: ${currentGameSettings.roomId}`);
+            console.warn(`[ALERTA CLIENTE] ¿Es una sala de práctica? -> ${currentGameSettings.isPractice}`);
+            // ▲▲▲ FIN DE LAS LÍNEAS DE ALERTA ▲▲▲
+
             console.log('Notificando al servidor la salida de la sala para limpieza...');
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }

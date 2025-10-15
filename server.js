@@ -1851,7 +1851,24 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 // ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
+    // ▼▼▼ LÍNEAS DE ALERTA A AÑADIR ▼▼▼
+    console.error(`------------------- DEBUG SALIDA DE JUGADOR -------------------`);
+    console.warn(`[ALERTA handlePlayerDeparture] Función llamada para sala: ${roomId}`);
     const room = rooms[roomId];
+
+    if (!room) {
+        console.error(`[ALERTA GRAVE] La sala ${roomId} NO EXISTE en el servidor. No se puede limpiar.`);
+        return; // Detenemos aquí si no hay sala
+    }
+
+    // Inspeccionamos las propiedades clave de la sala
+    console.log(`[INSPECCIÓN] Propiedades de la sala ${roomId}:`, {
+        isPractice: room.isPractice,
+        state: room.state,
+        hostId: room.hostId
+    });
+    console.error(`-------------------------------------------------------------`);
+    // ▲▲▲ FIN DE LAS LÍNEAS DE ALERTA ▲▲▲
 
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     if (room && room.isPractice) {
@@ -1874,8 +1891,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    if (!room) return;
-
+    // La verificación de !room ya se hizo arriba, no es necesaria aquí
     console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala ${roomId}.`);
 
     if (room.spectators) {
@@ -3356,6 +3372,10 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
     const { roomId } = data;
+
+    // ▼▼▼ LÍNEA DE ALERTA A AÑADIR ▼▼▼
+    console.warn(`[ALERTA SERVIDOR] Evento 'leaveGame' recibido. Sala: ${roomId}, Jugador: ${socket.id}`);
+    // ▲▲▲ FIN DE LA LÍNEA DE ALERTA ▲▲▲
 
     // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
     if (roomId) {
