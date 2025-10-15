@@ -157,6 +157,10 @@ function showBotInfoModalOnce() {
 
 const socket = io(window.location.origin, { autoConnect: false });
 
+// ▼▼▼ VIGILANTE DE ANIMACIONES ▼▼▼
+let activeAnimations = [];
+// ▲▲▲ FIN DEL VIGILANTE ▲▲▲
+
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
 let clientExchangeRates = {}; // Para guardar las tasas
 let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
@@ -1374,7 +1378,11 @@ function showRoomsOverview() {
     });
 
     // Versión definitiva de 'turnChanged'
-    socket.on('turnChanged', (data) => {
+    socket.on('turnChanged', async (data) => { // <-- MODIFICADO: Añadido 'async'
+        // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
+        await Promise.all(activeAnimations);
+        // ▲▲▲ FIN DE LA ESPERA ▲▲▲
+
         // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
         console.log("EVENTO SERVIDOR: 'turnChanged' recibido. Redibujando la mesa...");
         // ▲▲▲ FIN DEL LOG ▲▲▲
@@ -1527,7 +1535,11 @@ function showRoomsOverview() {
         }
     });
 
-    socket.on('meldUpdate', (data) => {
+    socket.on('meldUpdate', async (data) => { // <-- MODIFICADO: Añadido 'async'
+        // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
+        await Promise.all(activeAnimations);
+        // ▲▲▲ FIN DE LA ESPERA ▲▲▲
+
         // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
         console.log("EVENTO SERVIDOR: 'meldUpdate' recibido. Redibujando la mesa...");
         // ▲▲▲ FIN DEL LOG ▲▲▲
@@ -3226,7 +3238,9 @@ function updatePlayersView(seats, inGame = false) {
         duration = 1200,
         rotation = 5
     }) {
-        return new Promise(resolve => {
+        // --- INICIO DE LA MODIFICACIÓN CLAVE ---
+        // Creamos la promesa y la registramos en nuestro vigilante global.
+        const animationPromise = new Promise(resolve => {
             // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
             const animationId = `anim-${Date.now()}`;
             console.log(`[${animationId}] INICIO de animación.`);
@@ -3283,29 +3297,33 @@ function updatePlayersView(seats, inGame = false) {
                 animContainer.style.transform = `translate(${targetLeft - parseFloat(animContainer.style.left)}px, ${targetTop - parseFloat(animContainer.style.top)}px) scale(${finalScale}) rotate(0deg)`;
             });
 
-            // --- INICIO DE LA CORRECCIÓN CLAVE ---
-            // Este timeout ahora hace dos cosas:
             setTimeout(() => {
-                // 1. Hace la carta animada invisible ANTES de resolver la promesa.
-                //    Esto le da tiempo al navegador de renderizar el estado final sin solapamientos.
                 animContainer.style.opacity = '0';
-
-                // 2. Resuelve la promesa para que el resto del código continúe.
                 // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
                 console.log(`[${animationId}] FIN de animación. Resolviendo promesa.`);
                 // ▲▲▲ FIN DEL LOG ▲▲▲
                 resolve();
 
-                // 3. Un instante después, elimina el elemento del DOM para limpiar.
                 setTimeout(() => {
                     if (animContainer.parentNode) {
                         animContainer.remove();
                     }
-                }, 100); // 100ms es más que suficiente.
+                }, 100);
 
-            }, duration); // La duración total de la animación no cambia.
-            // --- FIN DE LA CORRECCIÓN CLAVE ---
+            }, duration);
         });
+
+        // La registramos en el vigilante
+        activeAnimations.push(animationPromise);
+
+        // Nos aseguramos de quitarla del vigilante cuando termine (incluso si falla)
+        animationPromise.finally(() => {
+            activeAnimations = activeAnimations.filter(p => p !== animationPromise);
+        });
+
+        // Devolvemos la promesa como siempre
+        return animationPromise;
+        // --- FIN DE LA MODIFICACIÓN CLAVE ---
     }
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }
