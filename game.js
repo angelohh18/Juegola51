@@ -732,14 +732,92 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        console.log('🎯 INICIANDO NUEVA PARTIDA DE PRÁCTICA...');
+        console.log('🎯 INICIANDO NUEVA PARTIDA DE PRÁCTICA - Limpieza completa del cliente...');
         
-        // ▼▼▼ REEMPLAZA TODO TU BLOQUE DE "LIMPIEZA AGRESIVA" CON ESTAS DOS LÍNEAS ▼▼▼
-        resetClientGameState(); // ¡Nuestra nueva función lo hace todo!
+        // ▼▼▼ RESTAURA ESTE BLOQUE DE LIMPIEZA ORIGINAL ▼▼▼
+        console.log('🧹 Limpiando TODAS las variables del cliente antes de nueva práctica...');
         
-        const username = currentUser.username || 'Jugador';
+        // 1. Limpiar variables de estado del juego
+        gameStarted = false;
+        players = [];
+        orderedSeats = [];
+        deck = [];
+        discardPile = [];
+        currentPlayer = 0;
+        allMelds = [];
+        turnMelds = [];
+        unreadMessages = 0;
+        isWaitingForNextTurn = false;
+        hasDrawn = false;
+        drewFromDiscard = false;
+        discardCardUsed = null;
+        mustDiscard = false;
+        drewFromDeckToWin = false;
+        isDrawing = false;
+        
+        // 2. Limpiar selección de cartas
+        if (selectedCards) selectedCards.clear();
+        
+        // 3. Limpiar configuración de la partida
+        currentGameSettings = null;
+        
+        // 4. Limpiar temporizadores activos
+        if (activeAnimations) {
+            activeAnimations = [];
+        }
+        
+        // 5. Limpiar caché de renderizado
+        lastRenderedDiscardId = null;
+        lastRenderedMeldsString = '';
+        
+        // 6. Limpiar DOM completamente
+        document.getElementById('human-hand').innerHTML = '';
+        document.getElementById('melds-display').innerHTML = '';
+        document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
+        document.getElementById('start-game-btn').style.display = 'none';
+        
+        // 7. Limpiar temporizadores visuales
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
+        });
+        
+        // 8. Limpiar información de jugadores
+        for (let i = 0; i < 4; i++) {
+            const playerInfoEl = document.getElementById(`info-player${i}`);
+            if (playerInfoEl) {
+                playerInfoEl.classList.remove('current-turn-glow');
+                const playerNameEl = playerInfoEl.querySelector('.player-name');
+                const playerAvatarEl = playerInfoEl.querySelector('.player-avatar');
+                const playerCounterEl = playerInfoEl.querySelector('.card-counter');
+                playerNameEl.textContent = "Asiento Vacío";
+                playerAvatarEl.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                playerCounterEl.textContent = '';
+            }
+        }
+        
+        // 9. Limpiar bote visualmente
+        const potValueEl = document.querySelector('#game-pot-container .pot-value');
+        if (potValueEl) {
+            potValueEl.textContent = '0';
+        }
+        
+        // 10. Ocultar overlays
+        hideOverlay('victory-overlay');
+        hideOverlay('elimination-overlay');
+        hideOverlay('practice-restart-modal');
+        
+        // 11. Limpiar event listeners
+        const deckEl = document.getElementById('deck');
+        const discardEl = document.getElementById('discard');
+        if (deckEl) deckEl.onclick = null;
+        if (discardEl) discardEl.onclick = null;
+        
+        console.log('✅ Estado del cliente completamente limpiado antes de nueva práctica');
+        // FIN DE LA LIMPIEZA AGRESIVA
+        
+        const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
-        // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+        // ▲▲▲ FIN DE LA RESTAURACIÓN ▲▲▲
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -2227,12 +2305,16 @@ socket.on('gameStarted', (initialState) => {
     });
     
     function resetClientGameState() {
-        console.log('CLIENTE: Reseteando COMPLETAMENTE el estado del juego...');
+        console.log('CLIENTE: Reseteando estado del juego para nueva partida.');
 
-        // 1. Limpiar variables de estado del juego
+        // LIMPIEZA DE TEMPORIZADORES VISUALES
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
+        });
+
         gameStarted = false;
         players = [];
-        orderedSeats = [];
+        orderedSeats = []; // <<-- ESTA ES LA LÍNEA QUE FALTABA Y SOLUCIONA TODO
         deck = [];
         discardPile = [];
         currentPlayer = 0;
@@ -2240,77 +2322,40 @@ socket.on('gameStarted', (initialState) => {
         turnMelds = [];
         unreadMessages = 0;
         isWaitingForNextTurn = false;
+
         hasDrawn = false;
         drewFromDiscard = false;
         discardCardUsed = null;
         mustDiscard = false;
         drewFromDeckToWin = false;
         isDrawing = false;
-        isAnimatingLocalMeld = false;
-        practiceGameEndedByFault = false;
-
-        // 2. Limpiar selección de cartas
         if (selectedCards) selectedCards.clear();
 
-        // 3. Limpiar configuración de la partida
-        currentGameSettings = {}; // Se resetea a un objeto vacío
-
-        // 4. Limpiar temporizadores de animación activos
-        activeAnimations = [];
-
-        // 5. Limpiar caché de renderizado para forzar redibujado
-        lastRenderedDiscardId = null;
-        lastRenderedMeldsString = '';
-        lastRenderedHandIds = [];
-
-        // 6. Limpiar el DOM de elementos del juego
+        // El resto del código de limpieza que ya tenías
         document.getElementById('human-hand').innerHTML = '';
         document.getElementById('melds-display').innerHTML = '';
         document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
         document.getElementById('start-game-btn').style.display = 'none';
 
-        // 7. Limpiar temporizadores visuales de todos los jugadores
-        document.querySelectorAll('.timer-countdown').forEach(el => {
-            el.textContent = '';
-            el.className = 'timer-countdown'; // Resetea clases de color
-        });
-
-        // 8. Limpiar información visual de los 4 asientos de jugador
-        for (let i = 0; i < 4; i++) {
-            const playerInfoEl = document.getElementById(`info-player${i}`);
-            if (playerInfoEl) {
-                playerInfoEl.classList.remove('current-turn-glow', 'empty-seat', 'player-waiting');
-                playerInfoEl.style.visibility = 'visible';
-                const playerNameEl = playerInfoEl.querySelector('.player-name');
-                const playerAvatarEl = playerInfoEl.querySelector('.player-avatar');
-                const playerCounterEl = playerInfoEl.querySelector('.card-counter');
-                if (playerNameEl) playerNameEl.textContent = "Asiento Vacío";
-                if (playerAvatarEl) playerAvatarEl.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-                if (playerCounterEl) playerCounterEl.textContent = '';
-            }
-        }
-
-        // 9. Limpiar bote visualmente
-        const potValueEl = document.querySelector('#game-pot-container .pot-value');
-        if (potValueEl) {
-            potValueEl.textContent = '0';
-        }
-
-        // 10. Ocultar todos los overlays de juego
         hideOverlay('victory-overlay');
-        hideOverlay('elimination-overlay');
-        hideOverlay('practice-restart-modal');
-        hideOverlay('practice-victory-modal');
-        hideOverlay('ready-overlay');
-        hideOverlay('confirm-leave-modal');
 
-        // 11. Limpiar event listeners de las pilas
         const deckEl = document.getElementById('deck');
         const discardEl = document.getElementById('discard');
         if (deckEl) deckEl.onclick = null;
         if (discardEl) discardEl.onclick = null;
-        
-        console.log('✅ Estado del cliente completamente limpiado y listo para una nueva partida.');
+
+        for (let i = 0; i < 4; i++) {
+            const playerInfoEl = document.getElementById(`info-player${i}`);
+            if (playerInfoEl) {
+                playerInfoEl.classList.remove('current-turn-glow');
+                const playerNameEl = playerInfoEl.querySelector('.player-name');
+                const playerAvatarEl = playerInfoEl.querySelector('.player-avatar');
+                const playerCounterEl = playerInfoEl.querySelector('.card-counter');
+                playerNameEl.textContent = "Asiento Vacío";
+                playerAvatarEl.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                playerCounterEl.textContent = '';
+            }
+        }
     }
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     
@@ -2660,17 +2705,95 @@ function updatePlayersView(seats, inGame = false) {
 
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
-        console.log('🎯 SALIENDO AL LOBBY...');
+        console.log('🎯 SALIENDO AL LOBBY - Limpieza completa del estado del cliente...');
         
-        // 1. Notificar al servidor para que limpie la sala (si estamos en una)
         if (currentGameSettings && currentGameSettings.roomId) {
+            console.log('Notificando al servidor la salida de la sala para limpieza...');
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
 
-        // 2. Ejecutar nuestra nueva y robusta función de limpieza del cliente
-        resetClientGameState();
-
-        // 3. Mostrar la vista del lobby
+        // LIMPIEZA AGRESIVA COMPLETA DEL ESTADO DEL CLIENTE
+        console.log('🧹 Limpiando TODAS las variables del cliente...');
+        
+        // 1. Limpiar variables de estado del juego
+        gameStarted = false;
+        players = [];
+        orderedSeats = [];
+        deck = [];
+        discardPile = [];
+        currentPlayer = 0;
+        allMelds = [];
+        turnMelds = [];
+        unreadMessages = 0;
+        isWaitingForNextTurn = false;
+        hasDrawn = false;
+        drewFromDiscard = false;
+        discardCardUsed = null;
+        mustDiscard = false;
+        drewFromDeckToWin = false;
+        isDrawing = false;
+        
+        // 2. Limpiar selección de cartas
+        if (selectedCards) selectedCards.clear();
+        
+        // 3. Limpiar configuración de la partida
+        currentGameSettings = null;
+        
+        // 4. Limpiar temporizadores activos
+        if (activeAnimations) {
+            activeAnimations = [];
+        }
+        
+        // 5. Limpiar caché de renderizado
+        lastRenderedDiscardId = null;
+        lastRenderedMeldsString = '';
+        
+        // 6. Limpiar DOM completamente
+        document.getElementById('human-hand').innerHTML = '';
+        document.getElementById('melds-display').innerHTML = '';
+        document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
+        document.getElementById('start-game-btn').style.display = 'none';
+        
+        // 7. Limpiar temporizadores visuales
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
+        });
+        
+        // 8. Limpiar información de jugadores
+        for (let i = 0; i < 4; i++) {
+            const playerInfoEl = document.getElementById(`info-player${i}`);
+            if (playerInfoEl) {
+                playerInfoEl.classList.remove('current-turn-glow');
+                const playerNameEl = playerInfoEl.querySelector('.player-name');
+                const playerAvatarEl = playerInfoEl.querySelector('.player-avatar');
+                const playerCounterEl = playerInfoEl.querySelector('.card-counter');
+                playerNameEl.textContent = "Asiento Vacío";
+                playerAvatarEl.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                playerCounterEl.textContent = '';
+            }
+        }
+        
+        // 9. Limpiar bote visualmente
+        const potValueEl = document.querySelector('#game-pot-container .pot-value');
+        if (potValueEl) {
+            potValueEl.textContent = '0';
+        }
+        
+        // 10. Ocultar overlays
+        hideOverlay('victory-overlay');
+        hideOverlay('elimination-overlay');
+        hideOverlay('practice-restart-modal');
+        
+        // 11. Limpiar event listeners
+        const deckEl = document.getElementById('deck');
+        const discardEl = document.getElementById('discard');
+        if (deckEl) deckEl.onclick = null;
+        if (discardEl) discardEl.onclick = null;
+        
+        console.log('✅ Estado del cliente completamente limpiado');
+        // FIN DE LA LIMPIEZA AGRESIVA
+        
+        // Mostramos la vista del lobby
         showLobbyView();
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
