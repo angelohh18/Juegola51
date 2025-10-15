@@ -2397,28 +2397,37 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  socket.on('requestPracticeGame', (user) => { // >> PARÁMETRO MODIFICADO
-    // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
+  // ▼▼▼ REEMPLAZO DEFINITIVO Y REFORZADO ▼▼▼
+  socket.on('requestPracticeGame', (user) => { 
+    // Creamos el ID de la posible sala "zombie"
     const existingRoomId = `practice-${socket.id}`;
+
+    // 1. VERIFICACIÓN Y DESTRUCCIÓN
+    // Si una sala con este ID existe en nuestra memoria, la aniquilamos.
     if (rooms[existingRoomId]) {
-        console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        console.error(`[LIMPIEZA PREVENTIVA] Detectada sala de práctica "zombie": ${existingRoomId}. Destruyendo...`);
         
-        // ▼▼▼ BLOQUE A AÑADIR (DOBLE SEGURIDAD) ▼▼▼
+        // Detenemos cualquier temporizador asociado a esa sala para matar a los bots.
         if (turnTimers[existingRoomId]) {
             clearTimeout(turnTimers[existingRoomId].timerId);
             clearInterval(turnTimers[existingRoomId].intervalId);
             delete turnTimers[existingRoomId];
-            console.log(`[Limpieza] Temporizador de práctica zombie para ${existingRoomId} eliminado.`);
+            console.error(`[LIMPIEZA PREVENTIVA] Temporizadores de la sala ${existingRoomId} eliminados.`);
         }
-        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
+        // Eliminamos la sala de la memoria.
         delete rooms[existingRoomId];
-    }
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    // Pasamos el objeto 'user' completo a la función de creación.
-    createAndStartPracticeGame(socket, user, io); // >> ARGUMENTO MODIFICADO
+        // Notificamos al lobby por si acaso la sala "zombie" era visible para alguien.
+        broadcastRoomListUpdate(io);
+    }
+
+    // 2. CREACIÓN DE LA NUEVA PARTIDA
+    // Solo después de asegurarnos de que todo está limpio, creamos la nueva partida.
+    console.log(`[Práctica] Creando una nueva partida para el jugador ${user.username} (${socket.id})`);
+    createAndStartPracticeGame(socket, user, io);
   });
+  // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
     socket.on('joinRoom', ({ roomId, user }) => {
         const room = rooms[roomId];
@@ -3464,6 +3473,12 @@ setTimeout(() => {
 }, 30000); // 30 segundos de espera inicial
 
 server.listen(PORT, async () => {
+  // ▼▼▼ LIMPIEZA DEFINITIVA AL INICIAR SERVIDOR ▼▼▼
+  console.error('[SERVER START] Forzando limpieza de estado al iniciar el servidor.');
+  rooms = {};
+  turnTimers = {};
+  // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
   
   // Verificar estructura de la tabla users (solo si hay conexión a BD)
