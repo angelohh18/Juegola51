@@ -1379,6 +1379,7 @@ function showRoomsOverview() {
 
     // Versión definitiva de 'turnChanged'
     socket.on('turnChanged', async (data) => { // <-- MODIFICADO: Añadido 'async'
+        alert("DEBUG #2: Evento 'turnChanged' recibido del servidor."); // <-- DEBUG
         // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
         await Promise.all(activeAnimations);
         // ▲▲▲ FIN DE LA ESPERA ▲▲▲
@@ -1536,6 +1537,7 @@ function showRoomsOverview() {
     });
 
     socket.on('meldUpdate', async (data) => { // <-- MODIFICADO: Añadido 'async'
+        alert("DEBUG #3: Evento 'meldUpdate' recibido del servidor."); // <-- DEBUG
         // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
         await Promise.all(activeAnimations);
         // ▲▲▲ FIN DE LA ESPERA ▲▲▲
@@ -2868,6 +2870,7 @@ function updatePlayersView(seats, inGame = false) {
     // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
     
     function renderHands() {
+        alert("DEBUG #1: La función renderHands() se está ejecutando AHORA."); // <-- DEBUG
         const human = document.getElementById('human-hand');
         human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
@@ -3250,6 +3253,7 @@ function updatePlayersView(seats, inGame = false) {
         duration = 1200,
         rotation = 5
     }) {
+        alert("DEBUG #4: Se inicia una animación de carta (animateCardMovement)."); // <-- DEBUG
         // --- INICIO DE LA MODIFICACIÓN CLAVE ---
         // Creamos la promesa y la registramos en nuestro vigilante global.
         const animationPromise = new Promise(resolve => {
