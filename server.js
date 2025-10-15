@@ -1977,7 +1977,8 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
-function createAndStartPracticeGame(socket, username, io) {
+// >> FIRMA DE LA FUNCIÓN MODIFICADA
+function createAndStartPracticeGame(socket, user, io) { 
     const roomId = `practice-${socket.id}`;
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -1988,7 +1989,8 @@ function createAndStartPracticeGame(socket, username, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
+        // >> LÍNEAS MODIFICADAS
+        { playerId: socket.id, playerName: user.username, avatar: user.avatar, active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
         { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false }
@@ -2367,7 +2369,7 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  socket.on('requestPracticeGame', (username) => {
+  socket.on('requestPracticeGame', (user) => { // >> PARÁMETRO MODIFICADO
     // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
     const existingRoomId = `practice-${socket.id}`;
     if (rooms[existingRoomId]) {
@@ -2376,7 +2378,8 @@ io.on('connection', (socket) => {
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    createAndStartPracticeGame(socket, username, io);
+    // Pasamos el objeto 'user' completo a la función de creación.
+    createAndStartPracticeGame(socket, user, io); // >> ARGUMENTO MODIFICADO
   });
 
     socket.on('joinRoom', ({ roomId, user }) => {
@@ -3362,6 +3365,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
     const playerSeat = oldRoom ? oldRoom.seats.find(s => s && s.playerId === socket.id) : null;
     const username = playerSeat ? playerSeat.playerName : 'Jugador';
+    const avatar = playerSeat ? playerSeat.avatar : '';
 
     if (oldRoom) {
         delete rooms[oldRoomId];
@@ -3369,7 +3373,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     }
 
     console.log(`[Práctica] Creando nueva partida para ${username}.`);
-    createAndStartPracticeGame(socket, username, io);
+    // >> MODIFICADO: Ahora pasamos un objeto con username y avatar
+    createAndStartPracticeGame(socket, { username: username, avatar: avatar }, io);
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
