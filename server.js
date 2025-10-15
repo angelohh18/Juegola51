@@ -2122,6 +2122,7 @@ function createAndStartPracticeGame(socket, username, io) {
     rooms[roomId] = newRoom;
 
     // --- REGISTRAMOS LA NUEVA SALA CREADA ---
+    const lowerCaseUsername = username.toLowerCase(); // << AÑADE ESTA LÍNEA
     practiceGameRegistry[lowerCaseUsername] = roomId;
     console.log(`[REGISTRO DE PRÁCTICA] Sala nueva ${roomId} registrada para el usuario '${username}'.`);
 
