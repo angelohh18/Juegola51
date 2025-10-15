@@ -733,15 +733,7 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        // ▼▼▼ AÑADE ESTA LÍNEA CRÍTICA AL PRINCIPIO DE TODO ▼▼▼
-        socket.off('gameStarted'); 
-        // ▲▲▲ FIN DE LA LÍNEA CRÍTICA ▲▲▲
-        
         console.log('🎯 INICIANDO NUEVA PARTIDA DE PRÁCTICA - Limpieza completa del cliente...');
-        
-        // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
-        alert("DEBUG: Clic en 'Jugar Práctica'. Se limpiará el cliente y se solicitará una nueva partida.");
-        // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
         
         // ▼▼▼ RESTAURA ESTE BLOQUE DE LIMPIEZA ORIGINAL ▼▼▼
         console.log('🧹 Limpiando TODAS las variables del cliente antes de nueva práctica...');
@@ -2209,11 +2201,6 @@ function showRoomsOverview() {
 
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
-    
-    // ▼▼▼ AÑADE ESTAS LÍNEAS AQUÍ ▼▼▼
-    alert(`DEBUG: Entrando en 'gameStarted'. ¿Es una partida de práctica? ${initialState.isPractice}. ID de sala: ${initialState.roomId || `practice-${socket.id}`}`);
-    console.warn(`[DEBUG] INICIO 'gameStarted' - Estado anterior de 'currentGameSettings':`, currentGameSettings);
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
     
     // CORRECCIÓN CLAVE: Si es una partida de práctica, inicializamos manualmente
     // las configuraciones que las mesas reales inicializan por otra vía.
