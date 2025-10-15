@@ -1896,10 +1896,14 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 
 // ▼▼▼ AÑADE ESTA NUEVA FUNCIÓN COMPLETA EN server.js ▼▼▼
 function cleanupPracticeGame(roomId, io, reason) {
+    console.error(`🚨 [LIMPIEZA] INICIANDO cleanupPracticeGame para roomId: ${roomId}, razón: ${reason}`);
+    
     const room = rooms[roomId];
+    console.error(`🚨 [LIMPIEZA] Sala encontrada:`, room ? 'SÍ' : 'NO');
 
     // Comprobación de seguridad: solo actuar si la sala existe y es de práctica.
     if (!room || !room.isPractice) {
+        console.error(`🚨 [LIMPIEZA] SALIDA TEMPRANA - Sala no existe o no es de práctica. room: ${!!room}, isPractice: ${room?.isPractice}`);
         return;
     }
 
@@ -1912,6 +1916,8 @@ function cleanupPracticeGame(roomId, io, reason) {
         clearInterval(turnTimers[roomId].intervalId);
         delete turnTimers[roomId];
         console.log(`[LIMPIEZA DEFINITIVA] Temporizador para la sala ${roomId} detenido y eliminado.`);
+    } else {
+        console.error(`🚨 [LIMPIEZA] No había temporizador para ${roomId}`);
     }
 
     // 2. Eliminar la sala completamente del objeto 'rooms' en memoria. ¡Este es el paso más crucial!
@@ -1920,6 +1926,7 @@ function cleanupPracticeGame(roomId, io, reason) {
 
     // 3. (Opcional pero recomendado) Notificar a todos en el lobby que la lista de mesas ha cambiado.
     broadcastRoomListUpdate(io);
+    console.error(`🚨 [LIMPIEZA] COMPLETADA para ${roomId}`);
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
@@ -2461,10 +2468,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('requestPracticeGame', (username) => {
+    console.error(`🚨 [SERVIDOR] EVENTO 'requestPracticeGame' RECIBIDO del socket ${socket.id} para usuario: ${username}`);
+    
     // --- INICIO DEL MECANISMO DE SEGURIDAD ---
     // Esto asegura que si una sala de práctica anterior con el mismo ID de socket
     // no se borró, se elimine a la fuerza ANTES de crear una nueva.
     const existingRoomId = `practice-${socket.id}`;
+    console.error(`🚨 [SERVIDOR] Verificando sala existente: ${existingRoomId}`);
+    console.error(`🚨 [SERVIDOR] Sala existe:`, rooms[existingRoomId] ? 'SÍ' : 'NO');
+    
     if (rooms[existingRoomId]) {
         console.log(`[SEGURIDAD] Se encontró una sala de práctica antigua (${existingRoomId}). Eliminándola antes de crear una nueva.`);
         
@@ -2476,9 +2488,11 @@ io.on('connection', (socket) => {
         }
         
         delete rooms[existingRoomId];
+        console.error(`🚨 [SERVIDOR] Sala antigua eliminada: ${existingRoomId}`);
     }
     // --- FIN DEL MECANISMO DE SEGURIDAD ---
 
+    console.error(`🚨 [SERVIDOR] LLAMANDO a createAndStartPracticeGame`);
     createAndStartPracticeGame(socket, username, io);
   });
 
@@ -3433,8 +3447,13 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
+    console.error(`🚨 [SERVIDOR] EVENTO 'leaveGame' RECIBIDO del socket ${socket.id}`);
+    console.error(`🚨 [SERVIDOR] Datos recibidos:`, JSON.stringify(data));
+    
     let { roomId } = data;
     const originalRoomIdFromClient = roomId;
+
+    console.error(`🚨 [SERVIDOR] ID original del cliente: ${originalRoomIdFromClient}`);
 
     // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
     // Si el ID que nos llega del cliente empieza con "practice-", lo consideramos
@@ -3447,6 +3466,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     }
     // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
 
+    console.error(`🚨 [SERVIDOR] ID final a usar: ${roomId}`);
     console.log(`[leaveGame] Procesando salida. ID original: ${originalRoomIdFromClient}, ID a usar: ${roomId}`);
 
     if (roomId) {
@@ -3461,6 +3481,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         broadcastUserListUpdate(io);
     }
     
+    console.error(`🚨 [SERVIDOR] LLAMANDO a handlePlayerDeparture con roomId: ${roomId}`);
     // Llamamos a la lógica de limpieza con el ID corregido y fiable.
     handlePlayerDeparture(roomId, socket.id, io);
   });
