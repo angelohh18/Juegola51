@@ -796,11 +796,11 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        console.log(`🧹 [CLIENTE] Iniciando nueva partida de práctica`);
+        console.log(`🎮 [CLIENTE] Iniciando nueva partida de práctica`);
         resetUIAndState();
         const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
-        console.log(`🧹 [CLIENTE] Nueva partida solicitada`);
+        console.log(`🎮 [CLIENTE] Nueva partida solicitada`);
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -2609,15 +2609,15 @@ function updatePlayersView(seats, inGame = false) {
         const roomIdToLeave = currentGameSettings ? currentGameSettings.roomId : null;
 
         if (roomIdToLeave) {
-            console.log(`🧹 [CLIENTE] Saliendo de la sala ${roomIdToLeave}`);
+            console.log(`🚪 [CLIENTE] Saliendo de la sala ${roomIdToLeave}`);
             socket.emit('leaveGame', { roomId: roomIdToLeave });
         } else {
-            console.log(`🧹 [CLIENTE] Sin ID de sala, limpieza solo local`);
+            console.log(`🚪 [CLIENTE] Sin ID de sala, limpieza solo local`);
         }
 
         resetUIAndState();
         showLobbyView();
-        console.log(`🧹 [CLIENTE] Limpieza completada`);
+        console.log(`🚪 [CLIENTE] Volviendo al lobby`);
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 

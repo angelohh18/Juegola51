@@ -462,62 +462,7 @@ let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
 let practiceGameRegistry = {}; // Rastreará: { "username": "practice-roomId" }
 
-// ▼▼▼ FUNCIÓN DE LIMPIEZA SEGURA ▼▼▼
-function safeCleanupPracticeGames(io, reason = "Limpieza segura") {
-    console.log(`🧹 [LIMPIEZA SEGURA] Iniciando limpieza de partidas de práctica. Razón: ${reason}`);
-    
-    let cleanedCount = 0;
-    
-    try {
-        // 1. Eliminar solo salas de práctica que existan
-        Object.keys(rooms).forEach(roomId => {
-            if (roomId.startsWith('practice-') && rooms[roomId]) {
-                console.log(`🧹 [LIMPIEZA SEGURA] Eliminando sala: ${roomId}`);
-                
-                // Limpiar temporizadores de forma segura
-                if (turnTimers[roomId]) {
-                    try {
-                        clearTimeout(turnTimers[roomId].timerId);
-                        clearInterval(turnTimers[roomId].intervalId);
-                        delete turnTimers[roomId];
-                    } catch (err) {
-                        console.warn(`[LIMPIEZA SEGURA] Error limpiando temporizador ${roomId}:`, err.message);
-                    }
-                }
-                
-                // Eliminar sala de forma segura
-                try {
-                    delete rooms[roomId];
-                    cleanedCount++;
-                } catch (err) {
-                    console.warn(`[LIMPIEZA SEGURA] Error eliminando sala ${roomId}:`, err.message);
-                }
-            }
-        });
-        
-        // 2. Limpiar registro de forma segura
-        try {
-            practiceGameRegistry = {};
-        } catch (err) {
-            console.warn(`[LIMPIEZA SEGURA] Error limpiando registro:`, err.message);
-        }
-        
-        // 3. Notificar actualización del lobby de forma segura
-        try {
-            if (io && typeof broadcastRoomListUpdate === 'function') {
-                broadcastRoomListUpdate(io);
-            }
-        } catch (err) {
-            console.warn(`[LIMPIEZA SEGURA] Error notificando lobby:`, err.message);
-        }
-        
-        console.log(`🧹 [LIMPIEZA SEGURA] ✅ COMPLETADA. ${cleanedCount} salas eliminadas.`);
-        
-    } catch (err) {
-        console.error(`[LIMPIEZA SEGURA] Error durante limpieza:`, err.message);
-    }
-}
-// ▲▲▲ FIN DE LA FUNCIÓN SEGURA ▲▲▲
+// Función de limpieza eliminada para simplificar
 
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
@@ -2129,12 +2074,19 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
-    // --- LIMPIEZA SEGURA ANTES DE CREAR ---
-    console.log(`🧹 [NUEVA PARTIDA] Aplicando limpieza segura antes de crear partida para ${username}`);
-    safeCleanupPracticeGames(io, `Nueva partida solicitada por ${username}`);
-    // --- FIN: LIMPIEZA SEGURA ---
-
     const roomId = `practice-${socket.id}`;
+
+    // --- LIMPIEZA BÁSICA ANTES DE CREAR ---
+    if (rooms[roomId]) {
+      console.log(`🧹 [NUEVA PARTIDA] Limpiando sala existente: ${roomId}`);
+      if (turnTimers[roomId]) {
+        clearTimeout(turnTimers[roomId].timerId);
+        clearInterval(turnTimers[roomId].intervalId);
+        delete turnTimers[roomId];
+      }
+      delete rooms[roomId];
+    }
+    // --- FIN: LIMPIEZA BÁSICA ---
 
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -2219,10 +2171,19 @@ io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
 
-  // --- LIMPIEZA SEGURA AL CONECTAR ---
-  console.log(`🧹 [CONEXIÓN] Aplicando limpieza segura al conectar socket ${socket.id}`);
-  safeCleanupPracticeGames(io, `Nueva conexión: ${socket.id}`);
-  // --- FIN: LIMPIEZA SEGURA ---
+  // --- LIMPIEZA BÁSICA AL CONECTAR ---
+  // Solo limpiar la sala específica del socket que se conecta
+  const potentialRoomId = `practice-${socket.id}`;
+  if (rooms[potentialRoomId]) {
+    console.log(`🧹 [CONEXIÓN] Limpiando sala específica: ${potentialRoomId}`);
+    if (turnTimers[potentialRoomId]) {
+      clearTimeout(turnTimers[potentialRoomId].timerId);
+      clearInterval(turnTimers[potentialRoomId].intervalId);
+      delete turnTimers[potentialRoomId];
+    }
+    delete rooms[potentialRoomId];
+  }
+  // --- FIN: LIMPIEZA BÁSICA ---
 
   // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
   socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
