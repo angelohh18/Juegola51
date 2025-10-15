@@ -1295,6 +1295,7 @@ body.game-active {
     background: var(--casino-burgundy-felt); /* Fondo de fieltro borgoña */
     box-shadow: inset 0 0 25px rgba(0,0,0,0.8); /* Sombra interior para efecto 3D */
     transition: background 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    contain: layout paint; /* Aísla el renderizado de los melds */
 }
 .center-area.drop-zone {
   background: #8e3642; /* Borgoña más claro al arrastrar */
@@ -1344,6 +1345,17 @@ body.game-active {
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     will-change: transform, opacity, outline;
+    -webkit-backface-visibility: hidden; /* Fuerza GPU en iOS */
+    backface-visibility: hidden; /* Fuerza GPU en todos los navegadores */
+    -webkit-transform: translateZ(0); /* Aceleración GPU para iOS Safari */
+    transform: translateZ(0); /* Aceleración GPU estándar */
+}
+
+.card img {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 .card.selected { outline:4px solid var(--casino-gold); transform:translateY(-20px); } 
@@ -1379,6 +1391,9 @@ body.game-active {
     align-items:center;
     cursor:default;
     transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out, opacity 0.3s ease-in-out;
+    contain: paint; /* Aísla el repintado de cada grupo de cartas */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 .meld-group.drop-zone {
     box-shadow: inset 0 0 15px #fffb00;
@@ -1401,7 +1416,12 @@ body.game-active {
 
 .piles-container { display:flex; gap:22px; justify-content:center; margin-top:8px; }
 .pile { 
-    width:70px; height:100px; border-radius:10px; border:3px solid var(--casino-gold); display:flex; align-items:center; justify-content:center; background: var(--casino-dark-panel); color: var(--casino-gold); cursor:pointer; 
+    width:70px; height:100px; border-radius:10px; border:3px solid var(--casino-gold); display:flex; align-items:center; justify-content:center; background: var(--casino-dark-panel); color: var(--casino-gold); cursor:pointer;
+    contain: paint; /* Aísla el repintado del descarte */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 #deck {
     background-image: url('https://deckofcardsapi.com/static/img/back.png');
