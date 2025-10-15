@@ -2833,6 +2833,11 @@ function updatePlayersView(seats, inGame = false) {
         const fragmentForNewCards = document.createDocumentFragment();
     
         newHandState.forEach((card, newIndex) => {
+            // ▼▼▼ CORRECCIÓN DE ERROR ▼▼▼
+            // Esta línea evita que el código se rompa si la mano contiene un elemento 'undefined'.
+            if (!card) return; 
+            // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+
             let cardNode = existingCardsMap.get(card.id);
     
             if (cardNode) {
@@ -3058,8 +3063,8 @@ function updatePlayersView(seats, inGame = false) {
         human.addEventListener('dragover', (e) => { e.preventDefault(); });
         human.addEventListener('drop', handleDrop);
     
-        renderDiscard();
-        renderMelds();
+        // No llamamos a renderDiscard/renderMelds aquí para evitar bucles.
+        // La llamada original que causó este render se encargará de llamarlos si es necesario.
         updateActionButtons();
         updateDebugInfo();
     }
@@ -3079,75 +3084,137 @@ function updatePlayersView(seats, inGame = false) {
         renderHands();
     }
     function renderDiscard() {
-      const pile = document.getElementById('discard');
-      pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
-      pile.ondragleave = () => pile.classList.remove('drop-zone');
-      pile.ondrop = (e) => {
-        if (isWaitingForNextTurn) return;
-        e.preventDefault(); pile.classList.remove('drop-zone');
-        try {
-            const indices = JSON.parse(e.dataTransfer.getData('application/json'));
-            if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
-            if (canDiscardByDrag()) discardCardByIndex(indices[0]);
-        } catch(err) { console.error("Error en drop de descarte:", err); }
-      };
-      if (discardPile.length > 0) {
-        const top = discardPile[discardPile.length-1];
-        pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
-      } else { pile.innerHTML = 'Descarte<br>Vacío'; }
+        const pile = document.getElementById('discard');
+
+        // Asignamos los listeners de drag & drop una sola vez.
+        pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
+        pile.ondragleave = () => pile.classList.remove('drop-zone');
+        pile.ondrop = (e) => {
+            if (isWaitingForNextTurn) return;
+            e.preventDefault(); pile.classList.remove('drop-zone');
+            try {
+                const indices = JSON.parse(e.dataTransfer.getData('application/json'));
+                if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+                if (canDiscardByDrag()) discardCardByIndex(indices[0]);
+            } catch(err) { console.error("Error en drop de descarte:", err); }
+        };
+
+        const topCard = discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
+
+        if (topCard) {
+            // Si hay una carta, verificamos si ya existe el elemento imagen.
+            let wrapper = pile.querySelector('.card-image-wrapper');
+            if (!wrapper) {
+                // Si no existe, lo creamos. Esto solo pasa una vez.
+                pile.innerHTML = `<div class="card-image-wrapper"><img src="" alt="" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
+                wrapper = pile.querySelector('.card-image-wrapper');
+            }
+            const img = wrapper.querySelector('img');
+            const newImageUrl = getCardImageUrl(topCard);
+            // Solo actualizamos el 'src' si ha cambiado, la operación más eficiente.
+            if (img.src !== newImageUrl) {
+                img.src = newImageUrl;
+                img.alt = `${topCard.value} of ${getSuitName(topCard.suit)}`;
+            }
+        } else {
+            // Si la pila está vacía, simplemente actualizamos el texto.
+            pile.innerHTML = 'Descarte<br>Vacío';
+        }
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        display.innerHTML = '';
-        
-        // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
         const combinedMelds = [...allMelds, ...turnMelds];
 
-        combinedMelds.forEach(meld => {
-            const g = document.createElement('div');
-            g.className = 'meld-group';
+        // 1. Mapear los grupos de jugadas que ya existen en el DOM
+        const existingMeldNodes = new Map();
+        display.querySelectorAll('.meld-group').forEach(node => {
+            if (node.dataset.meldId) {
+                existingMeldNodes.set(node.dataset.meldId, node);
+            }
+        });
 
-            // Añadimos una clase especial si la combinación es temporal para poder darle un estilo diferente
-            if (turnMelds.includes(meld)) {
-                g.classList.add('temporary-meld');
+        const meldsInState = new Set();
+
+        // 2. Recorrer las jugadas que deberían estar y sincronizarlas con el DOM
+        combinedMelds.forEach((meld, meldIndex) => {
+            // ▼▼▼ CORRECCIÓN DE ERROR ▼▼▼
+            // Nos aseguramos de que la jugada y sus cartas sean válidas antes de procesar
+            if (!meld || !meld.cards) return;
+            // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+
+            const meldId = meld.cards.map(c => c.id).join('-');
+            meldsInState.add(meldId);
+
+            let groupNode = existingMeldNodes.get(meldId);
+
+            if (!groupNode) {
+                // A. El grupo de jugada NO EXISTE, lo creamos desde cero.
+                groupNode = document.createElement('div');
+                groupNode.className = 'meld-group';
+                groupNode.dataset.meldId = meldId;
+
+                if (turnMelds.includes(meld)) {
+                    groupNode.classList.add('temporary-meld');
+                }
+
+                const permanentIndex = allMelds.indexOf(meld);
+                if (permanentIndex !== -1) {
+                    groupNode.dataset.meldIndex = permanentIndex;
+                    groupNode.ondragover = (e) => { e.preventDefault(); groupNode.classList.add('drop-zone'); };
+                    groupNode.ondragleave = () => groupNode.classList.remove('drop-zone');
+                    groupNode.ondrop = (e) => {
+                        if (isWaitingForNextTurn) return;
+                        e.preventDefault(); groupNode.classList.remove('drop-zone');
+                        try {
+                            const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
+                            if (cardIndices.length === 1) attemptAddCardToMeld(cardIndices[0], permanentIndex);
+                            else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+                        } catch(err) { console.error("Error al añadir carta a combinación:", err); }
+                    };
+                    const handleMeldGroupClick = (event) => {
+                        event.preventDefault();
+                        if (currentPlayer !== 0 || !gameStarted) return;
+                        const selected = document.querySelectorAll('#human-hand .card.selected');
+                        if (selected.length === 1) {
+                            attemptAddCardToMeld(parseInt(selected[0].dataset.index), permanentIndex);
+                        }
+                    };
+                    groupNode.addEventListener('click', handleMeldGroupClick);
+                    groupNode.addEventListener('touchend', handleMeldGroupClick);
+                }
+                display.appendChild(groupNode);
             }
 
-            // El 'drop' para añadir cartas solo debe funcionar en combinaciones permanentes
-            const permanentIndex = allMelds.indexOf(meld);
-            if (permanentIndex !== -1) {
-                g.dataset.meldIndex = permanentIndex;
-        g.ondragover = (e) => { e.preventDefault(); g.classList.add('drop-zone'); };
-        g.ondragleave = () => g.classList.remove('drop-zone');
-        g.ondrop = (e) => {
-            if (isWaitingForNextTurn) return;
-            e.preventDefault(); g.classList.remove('drop-zone');
-            try {
-                const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
-                        if (cardIndices.length === 1) attemptAddCardToMeld(cardIndices[0], permanentIndex);
-                else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
-            } catch(err) { console.error("Error al añadir carta a combinación:", err); }
-        };
-        const handleMeldGroupClick = (event) => {
-            event.preventDefault();
-            if (currentPlayer !== 0 || !gameStarted) return;
-            const selected = document.querySelectorAll('#human-hand .card.selected');
-            if (selected.length === 1) {
-                        attemptAddCardToMeld(parseInt(selected[0].dataset.index), permanentIndex);
+            // B. Sincronizar las CARTAS dentro del grupo (existente o nuevo)
+            const existingCardNodes = new Map();
+            groupNode.querySelectorAll('.card').forEach(node => {
+                if (node.dataset.cardId) existingCardNodes.set(node.dataset.cardId, node);
+            });
+
+            meld.cards.forEach(card => {
+                if (existingCardNodes.has(card.id)) {
+                    // La carta ya existe, la movemos al final para asegurar el orden
+                    groupNode.appendChild(existingCardNodes.get(card.id));
+                    existingCardNodes.delete(card.id);
+                } else {
+                    // La carta es nueva en este grupo, la creamos
+                    const cardNode = document.createElement('div');
+                    cardNode.className = 'card';
+                    cardNode.dataset.cardId = card.id;
+                    cardNode.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${card.value} of ${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+                    groupNode.appendChild(cardNode);
+                }
+            });
+
+            // Eliminar cartas que ya no pertenecen a este grupo
+            existingCardNodes.forEach(node => node.remove());
+        });
+
+        // 3. Eliminar los grupos de jugadas que ya no existen en el estado del juego
+        existingMeldNodes.forEach((node, meldId) => {
+            if (!meldsInState.has(meldId)) {
+                node.remove();
             }
-        };
-        g.addEventListener('click', handleMeldGroupClick);
-        // ▼▼▼ LÍNEA AÑADIDA PARA COMPATIBILIDAD MÓVIL ▼▼▼
-        g.addEventListener('touchend', handleMeldGroupClick);
-            }
-            
-        for (let c of meld.cards) {
-                const cd = document.createElement('div');
-                cd.className = `card`;
-            cd.dataset.cardId = c.id;
-            cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
-            g.appendChild(cd);
-        }
-        display.appendChild(g);
         });
     }
     // ▼▼▼ REEMPLAZA TU FUNCIÓN animateCardMovement ENTERA CON ESTA VERSIÓN CORREGIDA ▼▼▼
