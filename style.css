@@ -6,12 +6,12 @@
 body, html {
     margin: 0; padding: 0; height: 100%;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #211e18; /* Cambiado de gradiente a sÃ³lido */
+    background: #211e18; /* Cambiado de gradiente a sólido */
     color: #e0d3b6;
     overflow: hidden; /* Prevenir movimiento de layout al arrastrar elementos */
 }
 
-/* TipografÃ­a fluida para responsividad */
+/* Tipografía fluida para responsividad */
 html {
     font-size: clamp(12px, 1.5vw, 16px);
 }
@@ -25,7 +25,7 @@ html {
     align-items: center;
     justify-content: center;
     z-index: 9999;
-    padding: 0; /* CORREGIDO: Padding ajustado para mejor escala en mÃ³viles */
+    padding: 0; /* CORREGIDO: Padding ajustado para mejor escala en móviles */
 }
 
 /* Contenedor principal con borde dorado sutil - CORREGIDO */
@@ -38,7 +38,7 @@ html {
     inset 0 0 15px #c5a56a55;
     width: 1100px; /* Ancho fijo para emular escritorio */
     max-width: 1100px; /* Asegurar ancho fijo */
-    height: 700px; /* Alto fijo para mantener proporciÃ³n y evitar distorsiÃ³n al escalar */
+    height: 700px; /* Alto fijo para mantener proporción y evitar distorsión al escalar */
     max-height: 95vh; /* Salvaguarda para que no se salga de pantallas con aspect ratio extremo */
     display: flex;
     flex-direction: column;
@@ -67,7 +67,7 @@ html {
 /* Panel usuario */
 .user-panel {
     flex: 1 1 220px; /* Permite flexibilidad manteniendo la base */
-    min-width: 180px; /* Ancho mÃ­nimo para evitar colapso */
+    min-width: 180px; /* Ancho mínimo para evitar colapso */
     background: #e0d3b6;
     border-radius: 15px;
     box-shadow:
@@ -125,7 +125,7 @@ html {
     perspective: 1000px;
 }
 .panel-title .card::before, .panel-title .card::after {
-    content: 'ðŸ‚ ';
+    content: '🂠';
     font-family: 'Segoe UI Symbol', sans-serif;
     color: #6D2932;
     position: absolute;
@@ -198,7 +198,7 @@ html {
     word-wrap: break-word;
 }
 .user-panel .credits {
-    background: #c5a56a; /* Cambiado de gradiente a sÃ³lido */
+    background: #c5a56a; /* Cambiado de gradiente a sólido */
     border-radius: 10px;
     padding: 12px;
     font-weight: 900;
@@ -210,7 +210,7 @@ html {
 .button {
     display: block;
     width: 100%;
-    background: #6D2932; /* Cambiado de gradiente a sÃ³lido */
+    background: #6D2932; /* Cambiado de gradiente a sólido */
     color: #e0d3b6;
     font-weight: 700;
     padding: 12px 0;
@@ -224,7 +224,7 @@ html {
     transition: background 0.3s ease;
 }
 .button.orange {
-    background: #c5a56a; /* Cambiado de gradiente a sÃ³lido */
+    background: #c5a56a; /* Cambiado de gradiente a sólido */
     color: #211e18;
     box-shadow: 0 2px 5px rgba(197,165,106,0.5);
 }
@@ -236,10 +236,10 @@ html {
     background: #58141f;
 }
 .button:hover {
-    background: #58141f; /* Cambiado de gradiente a sÃ³lido */
+    background: #58141f; /* Cambiado de gradiente a sólido */
 }
 .button.orange:hover {
-    background: #9d7b40; /* Cambiado de gradiente a sÃ³lido */
+    background: #9d7b40; /* Cambiado de gradiente a sólido */
 }
 .user-panel .user-actions {
     margin-top: auto;
@@ -248,7 +248,7 @@ html {
 /* Panel mesas */
 .tables-panel {
     flex: 2 1 40%; /* Mayor peso en crecimiento, pero puede encogerse */
-    min-width: 240px; /* Ancho mÃ­nimo para coherencia */
+    min-width: 240px; /* Ancho mínimo para coherencia */
     background: #211e18;
     border-radius: 20px;
     box-shadow:
@@ -260,7 +260,7 @@ html {
     font-weight: 700;
     font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Columnas de mesa mÃ¡s flexibles */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Columnas de mesa más flexibles */
     gap: 18px;
 }
 .tables-panel::-webkit-scrollbar {
@@ -275,7 +275,7 @@ html {
     border-radius: 10px;
 }
 .table-item { /* Renombrado de .table a .table-item para evitar conflicto */
-    background: #6d2932; /* Cambiado de gradiente a sÃ³lido */
+    background: #6d2932; /* Cambiado de gradiente a sólido */
     border-radius: 18px;
     padding: 15px;
     box-shadow:
@@ -310,7 +310,7 @@ html {
     gap: 8px;
 }
 .table-item .play-button {
-    background: #c5a56a; /* Cambiado de gradiente a sÃ³lido */
+    background: #c5a56a; /* Cambiado de gradiente a sólido */
     border-radius: 10px;
     padding: 8px;
     width: 100%;
@@ -324,7 +324,7 @@ html {
     transition: background 0.3s ease;
 }
 .table-item .play-button:hover {
-    background: #9d7b40; /* Cambiado de gradiente a sÃ³lido */
+    background: #9d7b40; /* Cambiado de gradiente a sólido */
 }
 .table-item .play-button:disabled {
     background: #6d2932; /* Color actualizado */
@@ -332,7 +332,7 @@ html {
     cursor: not-allowed;
     box-shadow: none;
 
-    /* LÃNEA AÃ‘ADIDA: Esta es la soluciÃ³n definitiva */
+    /* LÍNEA AÑADIDA: Esta es la solución definitiva */
     pointer-events: auto !important;
 }
 
@@ -340,7 +340,7 @@ html {
 /* Panel chat */
 .chat-panel {
     flex: 1 1 320px; /* Permite flexibilidad manteniendo la base */
-    min-width: 250px; /* Ancho mÃ­nimo */
+    min-width: 250px; /* Ancho mínimo */
     background: #e0d3b6;
     border-radius: 20px;
     box-shadow:
@@ -420,7 +420,7 @@ html {
 .chat-input button:hover {
     background: #9d7b40;
 }
-/* Estilos para la notificaciÃ³n del chat */
+/* Estilos para la notificación del chat */
 #chat-toggle-btn {
     position: relative;
 }
@@ -441,7 +441,7 @@ html {
     border: 2px solid var(--casino-dark-panel);
 }
 
-/* CORRECCIÃ“N: Estilos generales para todos los modales */
+/* CORRECCIÓN: Estilos generales para todos los modales */
 #login-modal .modal-content,
 #register-modal .modal-content,
 #credit-modal .modal-content,
@@ -462,7 +462,7 @@ html {
     color: #e0d3b6;
     font-weight: 700;
     font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
-    position: relative; /* <-- AÃ‘ADIDO */
+    position: relative; /* <-- AÑADIDO */
 }
 
 #login-modal .modal-content h3,
@@ -527,7 +527,7 @@ html {
     padding: 12px;
     border-radius: 15px;
     border: none;
-    background: #c5a56a; /* Cambiado de gradiente a sÃ³lido */
+    background: #c5a56a; /* Cambiado de gradiente a sólido */
     color: #211e18;
     font-weight: 700;
     cursor: pointer;
@@ -545,7 +545,7 @@ html {
 #insufficient-credits-modal .modal-content button:hover,
 #functions-modal .modal-content button:hover,
 #bot-info-modal .modal-content button:hover {
-    background: #9d7b40; /* Cambiado de gradiente a sÃ³lido */
+    background: #9d7b40; /* Cambiado de gradiente a sólido */
 }
 
 #login-modal .modal-content button.secondary,
@@ -586,24 +586,24 @@ html {
 #avatar-crop-modal { z-index: 10006; }
 #credit-modal { z-index: 10001; }
 
-/* â–¼â–¼â–¼ NUEVOS MODALES â–¼â–¼â–¼ */
+/* ▼▼▼ NUEVOS MODALES ▼▼▼ */
 #forgot-password-modal { z-index: 10007; }
 #change-password-modal { z-index: 10008; }
-/* â–²â–²â–² FIN NUEVOS MODALES â–²â–²â–² */
+/* ▲▲▲ FIN NUEVOS MODALES ▲▲▲ */
 
-/* --- INICIO: Estilos para el modal de informaciÃ³n PWA --- */
+/* --- INICIO: Estilos para el modal de información PWA --- */
 
 #pwa-install-modal {
-    z-index: 10010; /* Z-index especÃ­fico que tenÃ­a */
+    z-index: 10010; /* Z-index específico que tenía */
 }
 
 #pwa-install-modal .modal-content {
-    max-width: 500px; /* Un ancho mÃ¡ximo adecuado para el texto */
+    max-width: 500px; /* Un ancho máximo adecuado para el texto */
     text-align: left; /* Alineamos el texto a la izquierda para mejor legibilidad */
 }
 
 #pwa-install-modal h3 {
-    text-align: center; /* Centramos solo el tÃ­tulo principal */
+    text-align: center; /* Centramos solo el título principal */
 }
 
 #pwa-install-modal .pwa-subtitle {
@@ -629,14 +629,14 @@ html {
 }
 
 #pwa-install-modal button {
-    width: 100%; /* Hacemos que el botÃ³n ocupe todo el ancho como en los otros modales */
+    width: 100%; /* Hacemos que el botón ocupe todo el ancho como en los otros modales */
 }
 
-/* --- FIN: Estilos para el modal de informaciÃ³n PWA --- */
+/* --- FIN: Estilos para el modal de información PWA --- */
 
 #register-modal .modal-content {
-    width: 360px; /* Ancho especÃ­fico del modal de registro */
-    max-height: 85vh;      /* Limita la altura mÃ¡xima al 85% de la pantalla */
+    width: 360px; /* Ancho específico del modal de registro */
+    max-height: 85vh;      /* Limita la altura máxima al 85% de la pantalla */
     overflow-y: auto;      /* Permite scroll vertical cuando el contenido excede la altura */
 }
 
@@ -674,8 +674,8 @@ html {
 #functions-modal .modal-content,
 #bot-info-modal .modal-content {
     width: 90vw; /* Usa ancho de viewport */
-    max-width: 550px; /* Ancho mÃ¡ximo reducido */
-    max-height: 85vh; /* Alto mÃ¡ximo para evitar desbordamiento vertical */
+    max-width: 550px; /* Ancho máximo reducido */
+    max-height: 85vh; /* Alto máximo para evitar desbordamiento vertical */
     overflow-y: auto; /* Scroll dentro del contenido */
     padding: clamp(15px, 3vw, 25px); /* Padding fluido */
     text-align: left;
@@ -685,12 +685,12 @@ html {
 #rules-modal .modal-content::-webkit-scrollbar-track { background: #6d2932; border-radius: 10px; }
 #rules-modal .modal-content::-webkit-scrollbar-thumb { background: #c5a56a; border-radius: 10px; }
 
-/* --- INICIO: Estilos para el modal de CrÃ©ditos con Scroll --- */
+/* --- INICIO: Estilos para el modal de Créditos con Scroll --- */
 #credit-modal .modal-content {
     width: 90vw; /* Usamos un ancho relativo para adaptarse mejor */
-    max-width: 500px; /* Pero con un mÃ¡ximo para no ser demasiado grande en PC */
-    max-height: 85vh; /* Limitamos la altura mÃ¡xima al 85% de la pantalla */
-    overflow-y: auto; /* AÃ‘ADE EL SCROLL VERTICAL SÃ“LO SI ES NECESARIO */
+    max-width: 500px; /* Pero con un máximo para no ser demasiado grande en PC */
+    max-height: 85vh; /* Limitamos la altura máxima al 85% de la pantalla */
+    overflow-y: auto; /* AÑADE EL SCROLL VERTICAL SÓLO SI ES NECESARIO */
     text-align: left; /* Alineamos el texto a la izquierda para mejor lectura */
     line-height: 1.6;
 }
@@ -707,13 +707,13 @@ html {
     background: #c5a56a;
     border-radius: 10px;
 }
-/* --- FIN: Estilos para el modal de CrÃ©ditos con Scroll --- */
+/* --- FIN: Estilos para el modal de Créditos con Scroll --- */
 
 #rules-modal .modal-content h3,
 #pwa-install-modal .modal-content h3,
 #functions-modal .modal-content h3,
 #bot-info-modal .modal-content h3 {
-    font-size: clamp(1.4rem, 4vw, 1.8rem); /* TipografÃ­a fluida */
+    font-size: clamp(1.4rem, 4vw, 1.8rem); /* Tipografía fluida */
     color: #c5a56a;
     border-bottom: 1px solid #c5a56a;
     padding-bottom: 10px;
@@ -723,7 +723,7 @@ html {
 #pwa-install-modal .modal-content .pwa-subtitle,
 #functions-modal .modal-content h4,
 #bot-info-modal .modal-content h4 {
-    font-size: clamp(1rem, 3vw, 1.2rem); /* TipografÃ­a fluida */
+    font-size: clamp(1rem, 3vw, 1.2rem); /* Tipografía fluida */
     color: #c5a56a;
     margin-top: 20px;
     margin-bottom: 10px;
@@ -757,7 +757,7 @@ html {
 #rules-modal .modal-content .example,
 #functions-modal .modal-content .example,
 #bot-info-modal .modal-content .example {
-    background: #3a3a2a; /* <-- LÃNEA MODIFICADA */
+    background: #3a3a2a; /* <-- LÍNEA MODIFICADA */
     border-left: 3px solid #c5a56a;
     padding: 10px;
     margin-top: 10px;
@@ -859,7 +859,7 @@ html {
 #crop-image-preview {
     width: 100%;
     height: 100%;
-    display: block; /* CORRECCIÃ“N: Asegura que la imagen se comporte como un bloque */
+    display: block; /* CORRECCIÓN: Asegura que la imagen se comporte como un bloque */
     pointer-events: none; /* Para que los eventos de arrastre pasen al contenedor */
 }
 .crop-controls {
@@ -898,9 +898,9 @@ html {
     }
 }
 
-/* â–¼â–¼â–¼ MEDIA QUERIES COMPLETAS PARA PANEL DE USUARIO â–¼â–¼â–¼ */
+/* ▼▼▼ MEDIA QUERIES COMPLETAS PARA PANEL DE USUARIO ▼▼▼ */
 
-/* Tablets grandes y laptops pequeÃ±as */
+/* Tablets grandes y laptops pequeñas */
 @media (max-width: 1200px) and (orientation: landscape) {
     .user-panel {
         padding: 15px;
@@ -987,19 +987,19 @@ html {
         padding: 10px;
     }
     .user-panel {
-        min-width: 160px; /* Reducir ancho mÃ­nimo */
+        min-width: 160px; /* Reducir ancho mínimo */
         flex-basis: 160px;
     }
     .tables-panel {
-        min-width: 0; /* Permitir que se encoja mÃ¡s */
+        min-width: 0; /* Permitir que se encoja más */
     }
     .chat-panel {
-        min-width: 200px; /* Reducir ancho mÃ­nimo */
+        min-width: 200px; /* Reducir ancho mínimo */
         flex-basis: 220px;
     }
     .user-panel .panel-title {
-        font-size: 1.5rem;      /* Nuevo ajuste aÃºn mÃ¡s pequeÃ±o */
-        transform: scale(0.8);    /* Nuevo ajuste aÃºn mÃ¡s pequeÃ±o */
+        font-size: 1.5rem;      /* Nuevo ajuste aún más pequeño */
+        transform: scale(0.8);    /* Nuevo ajuste aún más pequeño */
     }
     .user-panel .avatar-container, .user-panel .avatar {
         width: 70px;            /* Reducido de 80px */
@@ -1039,7 +1039,7 @@ html {
     }
 }
 
-/* â–¼â–¼â–¼ INICIO: ESTILOS PARA LA LISTA DE JUGADORES CONECTADOS â–¼â–¼â–¼ */
+/* ▼▼▼ INICIO: ESTILOS PARA LA LISTA DE JUGADORES CONECTADOS ▼▼▼ */
 .online-users {
     padding: 0 15px 10px 15px;
     border-bottom: 2px solid #c5a56a;
@@ -1056,7 +1056,7 @@ html {
     list-style: none;
     padding: 0;
     margin: 0;
-    max-height: 120px; /* Altura mÃ¡xima antes de activar el scroll */
+    max-height: 120px; /* Altura máxima antes de activar el scroll */
     overflow-y: auto;
     font-size: 0.85rem;
 }
@@ -1089,7 +1089,7 @@ html {
 .status-playing {
     color: #E67E22; /* Naranja oscuro para 'Jugando' (mejor contraste) */
 }
-/* â–²â–²â–² FIN: ESTILOS PARA LA LISTA DE JUGADORES â–²â–²â–² */
+/* ▲▲▲ FIN: ESTILOS PARA LA LISTA DE JUGADORES ▲▲▲ */
 
 /* --- FIN DE ESTILOS DE LOBBY.HTML --- */
 
@@ -1132,14 +1132,14 @@ html {
 /* --- INICIO DE ESTILOS DE INDEX.HTML --- */
 /* Paleta de Colores de Casino */
 :root {
-    --casino-bg: #3a3a2a; /* MarrÃ³n oscuro del fondo */
+    --casino-bg: #3a3a2a; /* Marrón oscuro del fondo */
     --casino-gold: #c5a56a; /* Dorado/Mostaza para bordes y acentos */
     --casino-tan: #e0d3b6; /* Beige claro para texto y brillos */
-    --casino-dark-panel: #211e18; /* MarrÃ³n casi negro para paneles */
-    --casino-burgundy-felt: #6D2932; /* Rojo borgoÃ±a para la zona de juego */
+    --casino-dark-panel: #211e18; /* Marrón casi negro para paneles */
+    --casino-burgundy-felt: #6D2932; /* Rojo borgoña para la zona de juego */
     
-    /* â–¼â–¼ VARIABLE DE AJUSTE PARA LA MESA DE JUEGO â–¼â–¼ */
-    --game-size-adjustment: 0px; /* AjÃºstalo para crear un pequeÃ±o margen si es necesario */
+    /* ▼▼ VARIABLE DE AJUSTE PARA LA MESA DE JUEGO ▼▼ */
+    --game-size-adjustment: 0px; /* Ajústalo para crear un pequeño margen si es necesario */
 }
 
 #game-container * { 
@@ -1151,21 +1151,21 @@ html {
     user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
 }
 
-/* * >> AÃ‘ADE ESTA NUEVA REGLA AQUÃ <<
- * Esta es la correcciÃ³n principal. Previene el scroll en TODA la pÃ¡gina
- * Ãºnicamente cuando el juego estÃ¡ activo, eliminando el conflicto.
+/* * >> AÑADE ESTA NUEVA REGLA AQUÍ <<
+ * Esta es la corrección principal. Previene el scroll en TODA la página
+ * únicamente cuando el juego está activo, eliminando el conflicto.
  */
 body.game-active {
     touch-action: none;
 }
 
 #game-container {
-    position: relative; /* <-- AÃ‘ADE ESTA LÃNEA */
+    position: relative; /* <-- AÑADE ESTA LÍNEA */
     height: 100%;
     width: 100%;
     overflow: hidden; /* Evita el scroll en el cuerpo principal */
     background: radial-gradient(circle, #4a4a3a, var(--casino-bg));
-    font-family: 'Georgia', serif; /* Fuente mÃ¡s elegante */
+    font-family: 'Georgia', serif; /* Fuente más elegante */
     color: var(--casino-tan);
     min-height:100vh;
 }
@@ -1180,7 +1180,7 @@ body.game-active {
 #game-container header h1 { color: var(--casino-gold); font-size:2.2rem; margin:0; text-shadow: 1px 1px 3px #000; }
 #table {
     width: 100vw;
-    height: calc(100svh - var(--game-size-adjustment)); /* Usa svh para descontar barras del navegador mÃ³vil */
+    height: calc(100svh - var(--game-size-adjustment)); /* Usa svh para descontar barras del navegador móvil */
     margin: 0;
     border: none;
     outline: none;
@@ -1240,7 +1240,7 @@ body.game-active {
     justify-content: center;
     align-items: center;
     overflow-x: hidden; /* <-- CAMBIO 1: Ocultamos el scroll nativo */
-    touch-action: none; /* <-- ESTA ES LA CORRECCIÃ“N DEFINITIVA */
+    touch-action: none; /* <-- ESTA ES LA CORRECCIÓN DEFINITIVA */
     padding: 12px;
     min-height: 165px; 
     background: rgba(0,0,0,0.2);
@@ -1251,7 +1251,7 @@ body.game-active {
     max-width: 70%;
 }
 .info-bot {
-    position: relative; /* <-- AÃ‘ADE ESTA LÃNEA */
+    position: relative; /* <-- AÑADE ESTA LÍNEA */
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1260,7 +1260,7 @@ body.game-active {
     border-radius: 8px;
     border: 2px solid var(--casino-gold);
     box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
-    transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out; /* TransiciÃ³n suave */
+    transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out; /* Transición suave */
 }
 
 
@@ -1281,22 +1281,22 @@ body.game-active {
 .player-name { color: var(--casino-tan); font-weight:bold; margin-bottom: 4px; }
 
 .human-info {
-    transform: scale(0.95); /* Hacemos el contenedor un poco mÃ¡s pequeÃ±o */
+    transform: scale(0.95); /* Hacemos el contenedor un poco más pequeño */
 }
 
 .center-area {
-    /* position: relative; */ /* <-- LÃNEA ELIMINADA O COMENTADA */
+    /* position: relative; */ /* <-- LÍNEA ELIMINADA O COMENTADA */
     position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
     width:98%; height:60%; 
     border: 3px solid #000; /* Borde oscuro para acentuar el interior */
     outline: 2px solid var(--casino-gold); /* Borde dorado exterior */
     border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; align-items:center;
-    background: var(--casino-burgundy-felt); /* Fondo de fieltro borgoÃ±a */
+    background: var(--casino-burgundy-felt); /* Fondo de fieltro borgoña */
     box-shadow: inset 0 0 25px rgba(0,0,0,0.8); /* Sombra interior para efecto 3D */
     transition: background 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 .center-area.drop-zone {
-  background: #8e3642; /* BorgoÃ±a mÃ¡s claro al arrastrar */
+  background: #8e3642; /* Borgoña más claro al arrastrar */
   box-shadow: inset 0 0 25px #fffb00;
 }
 
@@ -1474,10 +1474,10 @@ body.game-active {
   opacity: 0.85;
 }
 .drag-clone-visual {
-  transform: scale(1.05) rotate(2deg); /* InclinaciÃ³n sutil al levantar */
-  box-shadow: 0 12px 28px rgba(0,0,0,0.35); /* Sombra un poco mÃ¡s pronunciada */
+  transform: scale(1.05) rotate(2deg); /* Inclinación sutil al levantar */
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35); /* Sombra un poco más pronunciada */
   border-radius: 8px;
-  transition: transform 0.1s ease-out; /* AnimaciÃ³n suave al iniciar el arrastre */
+  transition: transform 0.1s ease-out; /* Animación suave al iniciar el arrastre */
 }
 
 #game-container .meld-group .card {
@@ -1499,15 +1499,15 @@ body.game-active {
 }
 .top-controls-wrapper {
     display: grid;
-    grid-template-columns: auto auto; /* Dos columnas de ancho automÃ¡tico */
+    grid-template-columns: auto auto; /* Dos columnas de ancho automático */
     row-gap: 4px; /* Mantiene el espacio vertical */
-    column-gap: 2px; /* Reduce el espacio horizontal para juntar mÃ¡s los botones */
+    column-gap: 2px; /* Reduce el espacio horizontal para juntar más los botones */
     justify-items: end; /* Alinea los botones a la derecha de su celda */
 }
-/* AÃ‘ADE ESTA NUEVA REGLA */
+/* AÑADE ESTA NUEVA REGLA */
 #chat-toggle-btn {
-    grid-column: 2; /* Posiciona este botÃ³n en la columna 2 */
-    grid-row: 2;    /* Posiciona este botÃ³n en la fila 2 */
+    grid-column: 2; /* Posiciona este botón en la columna 2 */
+    grid-row: 2;    /* Posiciona este botón en la fila 2 */
 }
 .top-controls-wrapper button {
     margin: 0;
@@ -1613,7 +1613,7 @@ body.game-active {
   padding: 3px 6px; border-radius: 4px; cursor: pointer;
 }
 
-/* --- INICIO: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÃ“N --- */
+/* --- INICIO: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÓN --- */
 .animated-card-container {
     position: fixed;
     pointer-events: none;
@@ -1626,7 +1626,7 @@ body.game-active {
     background-position: center;
     border: 3px solid var(--casino-gold);
 }
-/* --- FIN: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÃ“N --- */
+/* --- FIN: ESTILOS PARA EL NUEVO SISTEMA DE ANIMACIÓN --- */
 
 @keyframes card-glow-strong {
     0%, 100% {
@@ -1645,7 +1645,7 @@ body.game-active {
     animation: card-glow-strong 3s ease-out;
 }
 
-/* INICIO: Estilos de animaciÃ³n de barajado */
+/* INICIO: Estilos de animación de barajado */
 .shuffling-animation-container {
     position: absolute;
     inset: 0;
@@ -1679,11 +1679,11 @@ body.game-active {
     50% { transform: translate(0, -50px) rotate(0deg); }
     75% { transform: translate(80px, 30px) rotate(15deg); }
 }
-/* FIN: Estilos de animaciÃ³n de barajado */
+/* FIN: Estilos de animación de barajado */
 
 /* Bloque eliminado - era el causante del problema de escalado */
 
-/* Regla adaptativa para dispositivos mÃ³viles */
+/* Regla adaptativa para dispositivos móviles */
 @media (max-width: 1400px) and (orientation: landscape) {
     #game-container { -webkit-text-size-adjust: 100%; }
     #game-container header { 
@@ -1697,7 +1697,7 @@ body.game-active {
     
     #table {
         width: 100vw;
-        height: calc(100svh - 5px); /* <-- LÃNEA MODIFICADA */
+        height: calc(100svh - 5px); /* <-- LÍNEA MODIFICADA */
         max-width: none;
         margin: 0;
         border-width: 0;      /* Cambiado de 0.6vw a 0 */
@@ -1885,19 +1885,19 @@ body.game-active {
     .top-controls-wrapper {
         gap: 0.5vw;
     }
-    /* Selector modificado para incluir TODOS los botones y reducir su tamaÃ±o */
+    /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
     .top-controls-wrapper button {
         padding: 0.35vw 0.7vw;  /* Reducido */
         font-size: 0.85vw;      /* Reducido */
         border-radius: 0.5vw;
     }
     
-    /* --- INICIO: Ajustes de tamaÃ±o para el Bote en mÃ³viles --- */
+    /* --- INICIO: Ajustes de tamaño para el Bote en móviles --- */
     #game-pot-container {
         padding: 4px 10px; /* Reducido */
         min-width: 85px;   /* Reducido */
-        top: 10px;         /* MÃ¡s pegado a la esquina */
-        left: 10px;        /* MÃ¡s pegado a la esquina */
+        top: 10px;         /* Más pegado a la esquina */
+        left: 10px;        /* Más pegado a la esquina */
     }
     .pot-title {
         font-size: 0.7rem; /* Reducido */
@@ -1905,7 +1905,7 @@ body.game-active {
     .pot-value {
         font-size: 1.3rem; /* Reducido */
     }
-    /* --- FIN: Ajustes de tamaÃ±o para el Bote --- */
+    /* --- FIN: Ajustes de tamaño para el Bote --- */
     
     #chat-window {
         width: 28vw;
@@ -1963,7 +1963,7 @@ body.game-active {
 }
 
 @media (max-width: 767px) and (orientation: landscape) {
-    /* -- INICIO: REGLAS COMPLETAS PARA MÃ“VILES PEQUEÃ‘OS -- */
+    /* -- INICIO: REGLAS COMPLETAS PARA MÓVILES PEQUEÑOS -- */
 
     /* Oculta el header y ajusta la tabla principal a pantalla completa */
     #game-container header {
@@ -1975,30 +1975,30 @@ body.game-active {
         height: 100vh;
     }
 
-    /* Ajusta el Ã¡rea de jugadores superior */
+    /* Ajusta el área de jugadores superior */
     .player-area.top {
         top: 1vw;
         gap: 1.5vw; /* Un poco menos de espacio entre oponentes */
     }
 
-    /* Define el tamaÃ±o de las cartas en las combinaciones (melds) */
+    /* Define el tamaño de las cartas en las combinaciones (melds) */
     #game-container .meld-group .card {
         width: 4.2vw;
         height: 6.3vw;
     }
     #game-container .meld-group .card:not(:first-child) {
-        margin-left: -2.2vw; /* Un poco mÃ¡s superpuestas */
+        margin-left: -2.2vw; /* Un poco más superpuestas */
     }
 
     /* --- ESTAS SON LAS REGLAS IMPORTANTES QUE FALTABAN O ERAN INCORRECTAS --- */
 
-    /* Redefine el tamaÃ±o de las cartas principales en la mano */
+    /* Redefine el tamaño de las cartas principales en la mano */
     .card { 
-        width: 7vw;   /* Ligeramente mÃ¡s grandes para mejor visibilidad */
+        width: 7vw;   /* Ligeramente más grandes para mejor visibilidad */
         height: 10.5vw;
     }
 
-    /* Ajusta la superposiciÃ³n de las cartas en la mano */
+    /* Ajusta la superposición de las cartas en la mano */
     .hand.human .card:not(:first-child) { 
         margin-left: -3.8vw;
     }
@@ -2008,19 +2008,19 @@ body.game-active {
         transform: translateY(-1.5vw);
     }
 
-    /* Asegura que el Ã¡rea de juego inferior se comporte correctamente */
+    /* Asegura que el área de juego inferior se comporte correctamente */
     .player-area.bottom {
         gap: 1.5vw;
     }
 
-    /* Reduce el tamaÃ±o de los botones de acciÃ³n como solicitaste */
+    /* Reduce el tamaño de los botones de acción como solicitaste */
     .player-actions button {
         padding: 0.35vw 0.6vw;
-        font-size: 0.9vw; /* Ligeramente mÃ¡s grande para legibilidad */
+        font-size: 0.9vw; /* Ligeramente más grande para legibilidad */
         border-radius: 0.5vw;
     }
 
-    /* Selector unificado y tamaÃ±o reducido para mÃ³viles pequeÃ±os */
+    /* Selector unificado y tamaño reducido para móviles pequeños */
     .top-controls-wrapper button {
         padding: 0.35vw 0.7vw; /* Reducido */
         font-size: 0.95vw;     /* Reducido */
@@ -2040,7 +2040,7 @@ body.game-active {
 /* --- FIN DE ESTILOS DE INDEX.HTML --- */
 
 
-/* AÃ±adir a tu archivo CSS */
+/* Añadir a tu archivo CSS */
 .meld-group.temporary-meld {
     box-shadow: 0 0 15px rgba(255, 235, 59, 0.8);
     border: 2px solid #FFEB3B;
@@ -2071,7 +2071,7 @@ body.game-active {
 }
 /* --- FIN: Estilos para jugador en espera --- */
 
-/* --- INICIO: Estilos para asiento vacÃ­o y botÃ³n de sentarse --- */
+/* --- INICIO: Estilos para asiento vacío y botón de sentarse --- */
 .info-bot.empty-seat {
     border-style: dashed;
     display: flex;
@@ -2092,7 +2092,7 @@ body.game-active {
     margin-bottom: 10px;
 }
 
-/* REGLA ACTUALIZADA PARA EL ESTILO DEL BOTÃ“N */
+/* REGLA ACTUALIZADA PARA EL ESTILO DEL BOTÓN */
 .sit-down-btn {
     padding: 5px 10px;
     border-radius: 8px;
@@ -2105,8 +2105,8 @@ body.game-active {
     box-shadow: 0 2px 5px rgba(0,0,0,0.4);
     text-shadow: 1px 1px 0px rgba(255,255,255,0.2);
     transition: all 0.1s ease-in-out;
-    margin-top: 4px; /* PequeÃ±o margen superior */
-    width: auto; /* Ancho automÃ¡tico basado en el contenido */
+    margin-top: 4px; /* Pequeño margen superior */
+    width: auto; /* Ancho automático basado en el contenido */
 }
 
 .sit-down-btn:hover {
@@ -2123,13 +2123,13 @@ body.game-active {
     transform: none;
     box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
 }
-/* --- FIN: Estilos para asiento vacÃ­o y botÃ³n de sentarse --- */
+/* --- FIN: Estilos para asiento vacío y botón de sentarse --- */
 
 #btn-back-to-lobby-ingame {
     margin: 0px;
 }
 
-/* --- INICIO: AnimaciÃ³n para resaltar carta aÃ±adida --- */
+/* --- INICIO: Animación para resaltar carta añadida --- */
 @keyframes highlight-added-card {
     0%, 100% {
         transform: scale(1);
@@ -2137,35 +2137,35 @@ body.game-active {
     }
     50% {
         transform: scale(1.25); /* Hacemos que la carta "salte" visualmente */
-        box-shadow: 0 0 25px 10px #6bff6b, 0 0 10px white; /* Brillo verde y blanco de Ã©xito */
+        box-shadow: 0 0 25px 10px #6bff6b, 0 0 10px white; /* Brillo verde y blanco de éxito */
     }
 }
 
 .card.highlight-add {
     position: relative; /* Necesario para que z-index y transform funcionen correctamente */
-    z-index: 100; /* Asegura que la carta se vea por encima de las demÃ¡s */
-    animation: highlight-added-card 4s ease-in-out; /* DuraciÃ³n aumentada a 4 segundos */
+    z-index: 100; /* Asegura que la carta se vea por encima de las demás */
+    animation: highlight-added-card 4s ease-in-out; /* Duración aumentada a 4 segundos */
 }
-/* --- FIN: AnimaciÃ³n para resaltar carta aÃ±adida --- */
+/* --- FIN: Animación para resaltar carta añadida --- */
 
-/* --- INICIO: ESTILOS Y ANIMACIÃ“N DEL BOTE (VERSIÃ“N ELEGANTE) --- */
+/* --- INICIO: ESTILOS Y ANIMACIÓN DEL BOTE (VERSIÓN ELEGANTE) --- */
 #game-pot-container {
     position: absolute;
     top: 15px;
     left: 15px;
     z-index: 10;
-    background: rgba(0, 0, 0, 0.5); /* MÃ¡s sutil */
+    background: rgba(0, 0, 0, 0.5); /* Más sutil */
     border: 1px solid var(--casino-gold);
     border-radius: 8px; /* Menos redondeado */
-    padding: 5px 12px;  /* MÃ¡s pequeÃ±o */
+    padding: 5px 12px;  /* Más pequeño */
     text-align: center;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    min-width: 100px; /* MÃ¡s compacto */
+    min-width: 100px; /* Más compacto */
 }
 
 .pot-title {
     color: var(--casino-gold);
-    font-size: 0.8rem; /* MÃ¡s pequeÃ±o */
+    font-size: 0.8rem; /* Más pequeño */
     font-weight: bold;
     letter-spacing: 1px;
     margin-bottom: 2px; /* Menos espacio */
@@ -2174,13 +2174,13 @@ body.game-active {
 
 .pot-value {
     color: #6bff6b;
-    font-size: 1.5rem; /* MÃ¡s pequeÃ±o */
+    font-size: 1.5rem; /* Más pequeño */
     font-weight: 700;
-    text-shadow: 0 0 5px #6bff6b; /* Sombra mÃ¡s sutil */
-    transition: transform 0.2s ease-out; /* Para la animaciÃ³n de pulso */
+    text-shadow: 0 0 5px #6bff6b; /* Sombra más sutil */
+    transition: transform 0.2s ease-out; /* Para la animación de pulso */
 }
 
-/* --- INICIO: Estilos para el modal de reinicio de prÃ¡ctica --- */
+/* --- INICIO: Estilos para el modal de reinicio de práctica --- */
 #practice-restart-modal .button-group {
     display: flex;
     flex-direction: column;
@@ -2189,32 +2189,32 @@ body.game-active {
 }
 /* --- FIN: Estilos --- */
 
-/* Nueva animaciÃ³n de pulso para cuando el bote aumenta */
+/* Nueva animación de pulso para cuando el bote aumenta */
 @keyframes pot-pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.2); }
 }
 
-/* Clase que activa la animaciÃ³n en el NÃšMERO, no en todo el contenedor */
+/* Clase que activa la animación en el NÚMERO, no en todo el contenedor */
 .pot-value.pot-updated {
     animation: pot-pulse 0.6s ease-out;
 }
-/* --- FIN: ESTILOS Y ANIMACIÃ“N DEL BOTE --- */
+/* --- FIN: ESTILOS Y ANIMACIÓN DEL BOTE --- */
 
-/* â–¼â–¼â–¼ AÃ‘ADE ESTE BLOQUE COMPLETO AL FINAL DE TU style.css â–¼â–¼â–¼ */
+/* ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE TU style.css ▼▼▼ */
 
-/* Estilos especÃ­ficos para el tÃ­tulo 'La 51' DENTRO de los modales */
+/* Estilos específicos para el título 'La 51' DENTRO de los modales */
 #login-modal .panel-title,
 #register-modal .panel-title {
   /* 1. Centrado y espaciado */
   width: fit-content; /* Hace que el contenedor se ajuste al contenido */
-  margin: 0 auto 25px auto; /* Centra horizontalmente y aÃ±ade mÃ¡s espacio abajo */
+  margin: 0 auto 25px auto; /* Centra horizontalmente y añade más espacio abajo */
 
   /* 2. Nuevo color de fondo para que resalte */
-  background: #6D2932; /* Usamos el color borgoÃ±a del tapete */
+  background: #6D2932; /* Usamos el color borgoña del tapete */
 
-  /* 3. Aumentamos el tamaÃ±o general (tÃ­tulo y cartas) */
-  transform: scale(1.2); /* Lo hace un 20% mÃ¡s grande */
+  /* 3. Aumentamos el tamaño general (título y cartas) */
+  transform: scale(1.2); /* Lo hace un 20% más grande */
 
   /* --- Estilos base copiados del original para mantener la consistencia --- */
   font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
@@ -2230,15 +2230,15 @@ body.game-active {
   box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.4);
 }
 
-/* â–¼â–¼â–¼ ESTILOS CORREGIDOS PARA EL BOTÃ“N DE GUÃA DE FUNCIONES â–¼â–¼â–¼ */
+/* ▼▼▼ ESTILOS CORREGIDOS PARA EL BOTÓN DE GUÍA DE FUNCIONES ▼▼▼ */
 #btn-show-functions {
     grid-column: 1; /* Lo posiciona en la primera columna */
     grid-row: 2;    /* Lo posiciona en la segunda fila, debajo de Reglas */
-    margin: 0;      /* Quitamos mÃ¡rgenes innecesarios */
+    margin: 0;      /* Quitamos márgenes innecesarios */
 }
-/* â–²â–²â–² FIN DEL BLOQUE CSS â–²â–²â–² */
+/* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
 
-/* â–¼â–¼â–¼ ESTILOS PARA EL BOTÃ“N DE CERRAR MODALES â–¼â–¼â–¼ */
+/* ▼▼▼ ESTILOS PARA EL BOTÓN DE CERRAR MODALES ▼▼▼ */
 .close-modal-btn {
     position: absolute;
     top: 10px;
@@ -2254,7 +2254,7 @@ body.game-active {
     transform: scale(1.2);
 }
 
-/* â–¼â–¼â–¼ ESTILOS PARA MODAL DE CAMBIAR CONTRASEÃ‘A â–¼â–¼â–¼ */
+/* ▼▼▼ ESTILOS PARA MODAL DE CAMBIAR CONTRASEÑA ▼▼▼ */
 #change-password-modal .error,
 #change-password-modal .success {
     display: none;
@@ -2263,10 +2263,10 @@ body.game-active {
     font-weight: 900;
 }
 #change-password-modal .success {
-    color: #6bff6b; /* Verde para Ã©xito */
+    color: #6bff6b; /* Verde para éxito */
 }
 
-/* Estilos especÃ­ficos para que se vean como el modal de reglas */
+/* Estilos específicos para que se vean como el modal de reglas */
 #change-password-modal .modal-content h3,
 #forgot-password-modal .modal-content h3 {
     font-size: clamp(1.4rem, 4vw, 1.8rem);
@@ -2336,9 +2336,9 @@ body.game-active {
     background: #58141f;
 }
 
-/* â–²â–²â–² FIN ESTILOS MODAL CAMBIAR CONTRASEÃ‘A â–²â–²â–² */
+/* ▲▲▲ FIN ESTILOS MODAL CAMBIAR CONTRASEÑA ▲▲▲ */
 
-/* â–¼â–¼â–¼ ESTILOS PARA BOTONES SECUNDARIOS DE NUEVOS MODALES â–¼â–¼â–¼ */
+/* ▼▼▼ ESTILOS PARA BOTONES SECUNDARIOS DE NUEVOS MODALES ▼▼▼ */
 /* Estilo para los botones secundarios en los nuevos modales */
 #forgot-password-modal .secondary,
 #pwa-install-modal #btn-close-pwa-modal {
@@ -2350,11 +2350,11 @@ body.game-active {
 #pwa-install-modal #btn-close-pwa-modal:hover {
     background: #58141f;
 }
-/* â–²â–²â–² FIN ESTILOS BOTONES SECUNDARIOS â–²â–²â–² */
+/* ▲▲▲ FIN ESTILOS BOTONES SECUNDARIOS ▲▲▲ */
 
-/* â–¼â–¼â–¼ MEDIA QUERIES ADICIONALES PARA PANEL DE USUARIO â–¼â–¼â–¼ */
+/* ▼▼▼ MEDIA QUERIES ADICIONALES PARA PANEL DE USUARIO ▼▼▼ */
 
-/* MÃ³viles grandes */
+/* Móviles grandes */
 @media (max-width: 900px) and (orientation: landscape) {
     .user-panel {
         padding: 8px;
@@ -2392,7 +2392,7 @@ body.game-active {
     }
 }
 
-/* MÃ³viles pequeÃ±os */
+/* Móviles pequeños */
 @media (max-width: 600px) and (orientation: landscape) {
     .user-panel {
         padding: 4px;
@@ -2431,7 +2431,7 @@ body.game-active {
     }
 }
 
-/* MÃ³viles muy pequeÃ±os */
+/* Móviles muy pequeños */
 @media (max-width: 480px) and (orientation: landscape) {
     .user-panel {
         padding: 3px;
@@ -2470,9 +2470,9 @@ body.game-active {
     }
 }
 
-/* â–²â–²â–² FIN MEDIA QUERIES ADICIONALES â–²â–²â–² */
+/* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
 
-/* â–¼â–¼â–¼ ANIMACIÃ“N PULSANTE ORIGINAL DEL TEMPORIZADOR â–¼â–¼â–¼ */
+/* ▼▼▼ ANIMACIÓN PULSANTE ORIGINAL DEL TEMPORIZADOR ▼▼▼ */
 
 @keyframes pulsing-glow {
   0% {
@@ -2493,7 +2493,7 @@ body.game-active {
   animation: pulsing-glow 1.8s infinite ease-in-out;
 }
 
-/* Estilos para el contador numÃ©rico */
+/* Estilos para el contador numérico */
 .timer-countdown {
   position: absolute;
   top: -9px;
@@ -2512,16 +2512,16 @@ body.game-active {
   justify-content: center;
   line-height: 1;
   z-index: 10;
-  transition: background-color 0.5s ease, border-color 0.5s ease; /* <-- AÃ‘ADE ESTA LÃNEA */
+  transition: background-color 0.5s ease, border-color 0.5s ease; /* <-- AÑADE ESTA LÍNEA */
 }
 
 .timer-countdown:empty {
   display: none;
 }
 
-/* â–²â–²â–² FIN DE LA ANIMACIÃ“N PULSANTE ORIGINAL â–²â–²â–² */
+/* ▲▲▲ FIN DE LA ANIMACIÓN PULSANTE ORIGINAL ▲▲▲ */
 
-/* â–¼â–¼â–¼ COLORES DINÃMICOS DEL TEMPORIZADOR â–¼â–¼â–¼ */
+/* ▼▼▼ COLORES DINÁMICOS DEL TEMPORIZADOR ▼▼▼ */
 .timer-countdown.timer-green {
     background-color: #28a745; /* Verde */
     border-color: #90ee90;
@@ -2534,6 +2534,6 @@ body.game-active {
     background-color: #dc3545; /* Rojo */
     border-color: #f8d7da;
 }
-/* â–²â–²â–² FIN DE LOS COLORES DINÃMICOS â–²â–²â–² */
+/* ▲▲▲ FIN DE LOS COLORES DINÁMICOS ▲▲▲ */
 
-/* â–²â–²â–² FIN DEL BLOQUE CSS â–²â–²â–² */
+/* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
