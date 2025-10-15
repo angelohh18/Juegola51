@@ -1249,7 +1249,7 @@ body.game-active {
     width: auto;
     flex-grow: 1;
     max-width: 70%;
-    transform: translateZ(0); /* <-- OPTIMIZACIÓN GPU: Fuerza aceleración por hardware */
+    contain: layout paint; /* <-- SOLUCIÓN DEFINITIVA: Aísla el renderizado del contenedor */
 }
 .info-bot {
     position: relative; /* <-- AÑADE ESTA LÍNEA */
