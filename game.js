@@ -2602,7 +2602,7 @@ function updatePlayersView(seats, inGame = false) {
         if (currentGameSettings && currentGameSettings.roomId) {
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
-        resetUIAndState(); // <--- Llamada a la nueva función
+        resetUIAndState(); // <--- Llamada a la nueva función de reseteo total
         showLobbyView();
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
