@@ -459,6 +459,9 @@ let rooms = {}; // Estado de las mesas se mantiene en memoria
 let connectedUsers = {}; // Objeto para rastrear usuarios activos
 let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 
+// ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+let practiceGameRegistry = {}; // Rastreará: { "username": "practice-roomId" }
+
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
 const LOBBY_CHAT_HISTORY_LIMIT = 50; // Guardaremos los últimos 50 mensajes
@@ -1942,15 +1945,22 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     // --- LÓGICA CLAVE PARA MESAS DE PRÁCTICA ---
     // Si la sala es de práctica, la tratamos como un abandono que debe ser destruido.
     if (room.isPractice) {
-        console.error(`🚨 [SERVIDOR] FALTA POR ABANDONO EN MESA DE PRÁCTICA.`);
-        console.error(`🚨 [SERVIDOR] Jugador ${leavingPlayerId} ha abandonado la sala ${roomId}.`);
+        const humanPlayerSeat = room.seats.find(s => s && !s.isBot);
+        const username = humanPlayerSeat ? humanPlayerSeat.playerName.toLowerCase() : null;
 
-        // Usamos la función de limpieza que ya tienes, que es la correcta.
+        console.log(`🚨 [SERVIDOR] FALTA POR ABANDONO EN MESA DE PRÁCTICA.`);
+        console.log(`🚨 [SERVIDOR] Jugador ${leavingPlayerId} (usuario: ${username || 'N/A'}) ha abandonado la sala ${roomId}.`);
+
         cleanupPracticeGame(roomId, io, "Jugador abandonó la partida");
 
-        // AÑADIMOS EL LOG DE CONFIRMACIÓN EXPLÍCITO QUE PEDISTE.
-        console.error(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} Y TODOS SUS DATOS HAN SIDO ELIMINADOS.`);
-        return; // Detenemos la ejecución aquí; no hay más nada que hacer.
+        // --- LIMPIEZA DEL REGISTRO ---
+        if (username && practiceGameRegistry[username] === roomId) {
+            delete practiceGameRegistry[username];
+            console.log(`[REGISTRO DE PRÁCTICA] ✅ Entrada para '${username}' eliminada del registro.`);
+        }
+
+        console.log(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} DESTRUIDA.`);
+        return;
     }
     // --- FIN DE LA LÓGICA PARA MESAS DE PRÁCTICA ---
 
@@ -2062,47 +2072,22 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
-    const roomId = `practice-${socket.id}`;
+    // --- INICIO: LÓGICA DE LIMPIEZA "NUCLEAR" BASADA EN USERNAME ---
+    const lowerCaseUsername = username.toLowerCase();
+    const oldRoomId = practiceGameRegistry[lowerCaseUsername];
 
-    // --- SOLUCIÓN INTELIGENTE: ELIMINAR SOLO LAS SALAS DEL MISMO JUGADOR ---
-    console.warn(`[LIMPIEZA INTELIGENTE] Eliminando salas de práctica del jugador ${socket.id} antes de crear una nueva.`);
-    
-    // 1. Eliminar la sala específica del jugador actual
-    if (rooms[roomId]) {
-        console.warn(`[LIMPIEZA INTELIGENTE] Eliminando sala específica: ${roomId}`);
-        
-        if (turnTimers[roomId]) {
-            clearTimeout(turnTimers[roomId].timerId);
-            clearInterval(turnTimers[roomId].intervalId);
-            delete turnTimers[roomId];
-        }
-        
-        delete rooms[roomId];
+    if (oldRoomId && rooms[oldRoomId]) {
+        console.warn(`[REGISTRO DE PRÁCTICA] Se encontró una sala antigua (${oldRoomId}) para el usuario '${username}'.`);
+        console.warn(`[REGISTRO DE PRÁCTICA] Destruyendo sala antigua ANTES de crear la nueva...`);
+
+        // Usamos la función de limpieza existente para asegurar que todo se borre.
+        cleanupPracticeGame(oldRoomId, io, `Nueva partida solicitada por ${username}`);
+
+        console.warn(`[REGISTRO DE PRÁCTICA] ✅ Sala antigua ${oldRoomId} destruida.`);
     }
-    
-    // 2. Buscar y eliminar CUALQUIER sala de práctica que tenga este socket.id en sus asientos
-    Object.keys(rooms).forEach(existingRoomId => {
-        if (existingRoomId.startsWith('practice-') && rooms[existingRoomId]) {
-            const room = rooms[existingRoomId];
-            // Verificar si este socket.id está en algún asiento de esta sala
-            const hasThisSocket = room.seats.some(seat => seat && seat.playerId === socket.id);
-            
-            if (hasThisSocket) {
-                console.warn(`[LIMPIEZA INTELIGENTE] Eliminando sala huérfana del jugador: ${existingRoomId}`);
-                
-                if (turnTimers[existingRoomId]) {
-                    clearTimeout(turnTimers[existingRoomId].timerId);
-                    clearInterval(turnTimers[existingRoomId].intervalId);
-                    delete turnTimers[existingRoomId];
-                }
-                
-                delete rooms[existingRoomId];
-            }
-        }
-    });
-    
-    console.warn(`[LIMPIEZA INTELIGENTE] ✅ Salas del jugador ${socket.id} eliminadas.`);
-    // --- FIN: SOLUCIÓN INTELIGENTE ---
+    // --- FIN: LÓGICA DE LIMPIEZA "NUCLEAR" ---
+
+    const roomId = `practice-${socket.id}`;
 
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -2136,6 +2121,11 @@ function createAndStartPracticeGame(socket, username, io) {
     newRoom.currentPlayerId = startingPlayerId;
 
     rooms[roomId] = newRoom;
+
+    // --- REGISTRAMOS LA NUEVA SALA CREADA ---
+    practiceGameRegistry[lowerCaseUsername] = roomId;
+    console.log(`[REGISTRO DE PRÁCTICA] Sala nueva ${roomId} registrada para el usuario '${username}'.`);
+
     socket.join(roomId);
     socket.currentRoomId = roomId;
 

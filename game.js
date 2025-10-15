@@ -2607,14 +2607,13 @@ function updatePlayersView(seats, inGame = false) {
         const roomIdToLeave = currentGameSettings ? currentGameSettings.roomId : null;
 
         if (roomIdToLeave) {
-            // Log definitivo que confirma la acción desde el cliente.
-            console.error(`>> [CLIENTE] ACCIÓN COMPLETADA: Saliendo y notificando al servidor la destrucción de la sala: ${roomIdToLeave}`);
+            // Usamos console.log con un emoji para que sea claro pero no alarmante.
+            console.log(`✅ [CLIENTE] Saliendo de la sala. Notificando al servidor: ${roomIdToLeave}`);
             socket.emit('leaveGame', { roomId: roomIdToLeave });
         } else {
-            console.warn(">> [CLIENTE] goBackToLobby llamado sin un ID de sala. Se realizará solo limpieza local.");
+            console.warn("[CLIENTE] goBackToLobby llamado sin ID de sala. Limpieza solo local.");
         }
 
-        // El resto de la limpieza local se mantiene igual.
         resetUIAndState();
         showLobbyView();
     }
