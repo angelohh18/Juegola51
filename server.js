@@ -1896,6 +1896,17 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
     if (room && room.isPractice) {
         console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
+        
+        // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ ▼▼▼
+        // Detiene y limpia cualquier temporizador asociado a esta sala
+        if (turnTimers[roomId]) {
+            clearTimeout(turnTimers[roomId].timerId);
+            clearInterval(turnTimers[roomId].intervalId);
+            delete turnTimers[roomId];
+            console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y eliminado.`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
         delete rooms[roomId]; // Elimina la sala del servidor
         broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
         return; // Detiene la ejecución para no aplicar lógica de mesas reales
@@ -2412,6 +2423,17 @@ io.on('connection', (socket) => {
     const existingRoomId = `practice-${socket.id}`;
     if (rooms[existingRoomId]) {
         console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        
+        // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO AQUÍ ▼▼▼
+        // Detiene y limpia el temporizador de la sala antigua como medida de seguridad
+        if (turnTimers[existingRoomId]) {
+            clearTimeout(turnTimers[existingRoomId].timerId);
+            clearInterval(turnTimers[existingRoomId].intervalId);
+            delete turnTimers[existingRoomId];
+            console.log(`[Limpieza] Temporizador para la sala ${existingRoomId} detenido y eliminado.`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
         delete rooms[existingRoomId];
     }
     // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
