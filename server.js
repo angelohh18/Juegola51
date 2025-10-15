@@ -1927,6 +1927,7 @@ function cleanupPracticeGame(roomId, io, reason) {
 
     // 2. Eliminar la sala completamente del objeto 'rooms' en memoria. ¡Este es el paso más crucial!
     delete rooms[roomId];
+    console.error(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} DESTRUIDA Y ELIMINADA DE LA MEMORIA.`); // << AÑADE ESTA LÍNEA
     console.warn(`[LIMPIEZA DEFINITIVA] ✅ Sala ${roomId} eliminada del servidor.`);
 
     // 3. (Opcional pero recomendado) Notificar a todos en el lobby que la lista de mesas ha cambiado.
@@ -1947,6 +1948,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     // --- LÓGICA CLAVE PARA MESAS DE PRÁCTICA ---
     // Si la sala es de práctica, la tratamos como un abandono que debe ser destruido.
     if (room.isPractice) {
+        console.error(`🚨 [SERVIDOR] DETECTADO ABANDONO EN MESA DE PRÁCTICA. LLAMANDO A LIMPIEZA...`); // << AÑADE ESTA LÍNEA
         const humanPlayerSeat = room.seats.find(s => s && !s.isBot);
         const username = humanPlayerSeat ? humanPlayerSeat.playerName.toLowerCase() : null;
 
@@ -2499,32 +2501,21 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
+  // ▼▼▼ REEMPLAZA TU LISTENER 'requestPracticeGame' ENTERO CON ESTE ▼▼▼
   socket.on('requestPracticeGame', (username) => {
     console.error(`🚨 [SERVIDOR] EVENTO 'requestPracticeGame' RECIBIDO del socket ${socket.id} para usuario: ${username}`);
 
-    // --- INICIO DEL MECANISMO DE SEGURIDAD ---
-    // Esto asegura que si una sala de práctica anterior con el mismo ID de socket
-    // no se borró, se elimine a la fuerza ANTES de crear una nueva.
+    // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+    // Forzamos la búsqueda y destrucción de CUALQUIER sala de práctica
+    // asociada a este socket ANTES de si quiera pensar en crear una nueva.
     const existingRoomId = `practice-${socket.id}`;
-    console.error(`🚨 [SERVIDOR] Verificando sala existente: ${existingRoomId}`);
-    console.error(`🚨 [SERVIDOR] Sala existe:`, rooms[existingRoomId] ? 'SÍ' : 'NO');
-
     if (rooms[existingRoomId]) {
-        console.log(`[SEGURIDAD] Se encontró una sala de práctica antigua (${existingRoomId}). Eliminándola antes de crear una nueva.`);
-
-        // Limpiamos también su temporizador por si quedó activo
-        if (turnTimers[existingRoomId]) {
-            clearTimeout(turnTimers[existingRoomId].timerId);
-            clearInterval(turnTimers[existingRoomId].intervalId);
-            delete turnTimers[existingRoomId];
-        }
-
-        delete rooms[existingRoomId];
-        console.error(`🚨 [SERVIDOR] Sala antigua eliminada: ${existingRoomId}`);
+        console.warn(`[SEGURIDAD MÁXIMA] Se encontró una sala de práctica fantasma (${existingRoomId}). Aniquilándola ahora.`);
+        cleanupPracticeGame(existingRoomId, io, "Limpieza forzada antes de crear nueva partida");
     }
-    // --- FIN DEL MECANISMO DE SEGURIDAD ---
+    // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
 
-    console.error(`🚨 [SERVIDOR] LLAMANDO a createAndStartPracticeGame`);
+    // Después de asegurar que todo está limpio, procedemos a crear la nueva partida.
     createAndStartPracticeGame(socket, username, io);
   });
 
@@ -3479,6 +3470,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
+    console.error(`🚨 [SERVIDOR] EVENTO 'leaveGame' RECIBIDO del socket ${socket.id}`); // << AÑADE ESTA LÍNEA
     let { roomId } = data;
 
     // --- INICIO DE LA CORRECCIÓN DE FIABILIDAD ---
