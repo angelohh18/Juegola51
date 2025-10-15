@@ -1409,30 +1409,17 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
   return scores[0].card;
 }
 
-// ▼▼▼ REEMPLAZA LA FUNCIÓN botPlay ENTERA EN SERVER.JS CON ESTA VERSIÓN ▼▼▼
+// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN botPlay ▼▼▼
 async function botPlay(room, botPlayerId, io) {
-    // ▼▼▼ VERIFICACIÓN CRÍTICA: LA SALA DEBE EXISTIR ▼▼▼
-    // Si la sala fue eliminada (ej. jugador salió de práctica), detenemos al bot.
-    if (!room || !room.roomId || !rooms[room.roomId]) {
-        console.log(`[BOT DETENIDO] La sala ya no existe. Bot ${botPlayerId} se detiene.`);
+    // --- ESTA ES LA CORRECCIÓN CLAVE ---
+    // Ahora no solo comprobamos si una sala existe en el ID, sino si es
+    // la MISMA instancia de sala con la que se inició este turno de bot.
+    // Si la sala ha sido reemplazada (ej: por una nueva partida), el bot se detiene.
+    if (!room || !room.roomId || rooms[room.roomId] !== room) {
+        console.log(`[BOT DETENIDO] La sala ha sido reemplazada o ya no existe. Bot ${botPlayerId} se detiene.`);
         return;
     }
-
-    // VERIFICACIÓN ADICIONAL: Si es una sala de práctica y no tiene jugador humano, la destruimos.
-    if (room.isPractice) {
-        const humanPlayer = room.seats.find(s => s && !s.isBot);
-        if (!humanPlayer) {
-            console.log(`[BOT DETENIDO] Sala de práctica sin jugador humano. Eliminando sala ${room.roomId}.`);
-            delete rooms[room.roomId];
-            if (turnTimers[room.roomId]) {
-                clearTimeout(turnTimers[room.roomId].timerId);
-                clearInterval(turnTimers[room.roomId].intervalId);
-                delete turnTimers[room.roomId];
-            }
-            return;
-        }
-    }
-    // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
+    // --- FIN DE LA CORRECCIÓN ---
 
     const botSeat = room.seats.find(s => s.playerId === botPlayerId);
     if (!botSeat || !botSeat.active) return;
