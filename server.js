@@ -3390,7 +3390,6 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AL FINAL ▼▼▼
   socket.on('requestPracticeRematch', (data) => {
-    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTE BLOQUE ▼▼▼
     const oldRoomId = data.roomId;
     const oldRoom = rooms[oldRoomId];
 
@@ -3399,14 +3398,22 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     const avatar = playerSeat ? playerSeat.avatar : '';
 
     if (oldRoom) {
+        // ▼▼▼ BLOQUE DE CORRECCIÓN AÑADIDO ▼▼▼
+        // Aniquilamos el temporizador "zombie" de la partida anterior.
+        if (turnTimers[oldRoomId]) {
+            clearTimeout(turnTimers[oldRoomId].timerId);
+            clearInterval(turnTimers[oldRoomId].intervalId);
+            delete turnTimers[oldRoomId];
+            console.error(`[TIMER ZOMBIE] Temporizador de práctica ${oldRoomId} destruido.`);
+        }
+        // ▲▲▲ FIN DEL BLOQUE DE CORRECCIÓN ▲▲▲
+
         delete rooms[oldRoomId];
         console.log(`[Práctica] Sala anterior ${oldRoomId} eliminada.`);
     }
 
     console.log(`[Práctica] Creando nueva partida para ${username}.`);
-    // >> MODIFICADO: Ahora pasamos un objeto con username y avatar
     createAndStartPracticeGame(socket, { username: username, avatar: avatar }, io);
-    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
