@@ -157,84 +157,10 @@ function showBotInfoModalOnce() {
 
 const socket = io(window.location.origin, { autoConnect: false });
 
-// ▼▼▼ VIGILANTE DE ANIMACIONES ▼▼▼
-let activeAnimations = [];
-// ▲▲▲ FIN DEL VIGILANTE ▲▲▲
-
-// ▼▼▼ CACHE PARA EVITAR RE-RENDERS INNECESARIOS ▼▼▼
-let lastRenderedDiscardId = null;
-let lastRenderedMeldsString = '';
-let lastRenderedHandIds = []; // Para renderizado incremental de la mano
-// ▲▲▲ FIN DEL CACHE ▲▲▲
-
 let spectatorMode = 'wantsToPlay'; // Variable global para controlar el modo espectador
 let clientExchangeRates = {}; // Para guardar las tasas
 let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
-let selectedCards = new Set(); // Variable global para cartas seleccionadas
 
-// Función global para resetear completamente el estado y UI
-    function resetUIAndState() {
-        // --- ALERTA EN EL CLIENTE ---
-        console.warn('⚠️ ALERTA CLIENTE: Se ha llamado a resetUIAndState(). Limpiando toda la interfaz y estado del juego.');
-
-        // 1. Resetear variables de estado del juego
-        gameStarted = false;
-        players = [];
-        orderedSeats = [];
-        deck = [];
-        discardPile = [];
-        currentPlayer = 0;
-        allMelds = [];
-        turnMelds = [];
-        isWaitingForNextTurn = false;
-        hasDrawn = false;
-        drewFromDiscard = false;
-        discardCardUsed = null;
-        mustDiscard = false;
-        isDrawing = false;
-        currentGameSettings = {}; // Reiniciar a objeto vacío
-
-        // 2. Limpiar estructuras de datos
-        if (selectedCards) selectedCards.clear();
-        activeAnimations = [];
-        lastRenderedDiscardId = null;
-        lastRenderedMeldsString = '';
-        lastRenderedHandIds = [];
-
-        // 3. Limpiar el DOM de la mesa de juego
-        document.getElementById('human-hand').innerHTML = '';
-        document.getElementById('melds-display').innerHTML = '';
-        document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
-        document.getElementById('start-game-btn').style.display = 'none';
-        document.querySelector('#game-pot-container .pot-value').textContent = '0';
-
-        // 4. Limpiar los 4 asientos de jugador (muy importante)
-        for (let i = 0; i < 4; i++) {
-            const playerInfoEl = document.getElementById(`info-player${i}`);
-            if (playerInfoEl) {
-                playerInfoEl.classList.remove('current-turn-glow', 'empty-seat', 'player-waiting');
-                playerInfoEl.style.visibility = 'visible';
-                playerInfoEl.querySelector('.player-name').textContent = "Asiento Vacío";
-                playerInfoEl.querySelector('.player-avatar').src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-                playerInfoEl.querySelector('.card-counter').textContent = '';
-                const timerEl = playerInfoEl.querySelector('.timer-countdown');
-                if(timerEl) timerEl.textContent = '';
-            }
-        }
-
-        // 5. Ocultar todos los overlays de juego
-        ['victory-overlay', 'elimination-overlay', 'practice-restart-modal', 'practice-victory-modal', 'ready-overlay', 'confirm-leave-modal'].forEach(hideOverlay);
-
-        // 6. Desvincular listeners de las pilas para evitar duplicados
-        const deckEl = document.getElementById('deck');
-        const discardEl = document.getElementById('discard');
-        const newDeckEl = deckEl.cloneNode(true);
-        const newDiscardEl = discardEl.cloneNode(true);
-        deckEl.parentNode.replaceChild(newDeckEl, deckEl);
-        discardEl.parentNode.replaceChild(newDiscardEl, discardEl);
-
-        console.warn('✅ ALERTA CLIENTE: Reseteo de UI completo.');
-    }
 
 // Variables globales para el estado del usuario (migración segura)
 let currentUser = {
@@ -566,36 +492,10 @@ function showPwaInstallModal() {
             reader.onload = function(evt) {
                 // Llamamos al modal de recorte y le decimos qué hacer cuando se guarde
                 openCropModal(evt.target.result, (croppedDataUrl) => {
-                    // Lógica existente (actualización visual inmediata)
-                    userAvatarEl.src = croppedDataUrl;
-                    currentUser.userAvatar = croppedDataUrl;
-                    localStorage.setItem('userAvatar', croppedDataUrl);
-                    
-                    // --- INICIO DE LA MODIFICACIÓN ---
-                    // Enviamos el nuevo avatar al servidor para guardarlo en la BD
-                    fetch('/update-avatar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: currentUser.username, // Usamos el nombre del usuario logueado
-                            avatarUrl: croppedDataUrl
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Avatar guardado permanentemente en la base de datos.');
-                            showToast('Avatar actualizado con éxito.', 2500);
-                        } else {
-                            console.error('Error del servidor al guardar el avatar:', data.message);
-                            showToast('Error al guardar el avatar.', 3000);
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Error de red al actualizar el avatar:', err);
-                        showToast('Error de red. No se pudo guardar el avatar.', 3000);
-                    });
-                    // --- FIN DE LA MODIFICACIÓN ---
+                    userAvatarEl.src = croppedDataUrl; // Actualiza el avatar del lobby
+                    currentUser.userAvatar = croppedDataUrl; // Actualiza la variable global
+                    localStorage.setItem('userAvatar', croppedDataUrl); // Guarda en localStorage
+                    showToast('Avatar actualizado con éxito.', 2500);
                 });
             };
             reader.readAsDataURL(file);
@@ -796,11 +696,8 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        console.log(`🎮 [CLIENTE] Iniciando nueva partida de práctica`);
-        resetUIAndState();
         const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
-        console.log(`🎮 [CLIENTE] Nueva partida solicitada`);
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -1450,88 +1347,74 @@ function showRoomsOverview() {
         modal.style.display = 'flex';
     });
 
-    // ▼▼▼ VERSIÓN DEFINITIVA DE 'turnChanged' CON ESPERA CORRECTA ▼▼▼
-    socket.on('turnChanged', async (data) => {
-        // 1. Ya no esperamos aquí. El await se mueve más abajo.
-        // await Promise.all(activeAnimations); <--- LÍNEA ELIMINADA
-
-        console.log("EVENTO SERVIDOR: 'turnChanged' recibido. Procesando...");
+    // Versión definitiva de 'turnChanged'
+    socket.on('turnChanged', (data) => {
         console.log('Server broadcast: El turno ha cambiado.', data);
 
+        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES AL CAMBIAR TURNO ▼▼▼
         document.querySelectorAll('.timer-countdown').forEach(el => {
             el.textContent = '';
         });
-
+        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+    
+        // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
         isWaitingForNextTurn = false;
         
-        // --- INICIO DE LA CORRECCIÓN CLAVE ---
-        
-        // 2. Creamos una "promesa de animación" que por defecto se resuelve al instante.
-        let animationToWaitFor = Promise.resolve();
-
-        // 3. Si hay una animación de descarte de oponente, la iniciamos Y la asignamos a nuestra promesa.
+        // --- INICIO: Bloque para animar el descarte de oponentes ---
         if (data.discardingPlayerId && data.discardingPlayerId !== socket.id && data.discardedCard) {
             const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.discardingPlayerId);
             if (playerViewIndex !== -1) {
                 const startElement = document.getElementById(`info-player${playerViewIndex}`);
                 const endElement = document.getElementById('discard');
                 if (startElement && endElement) {
-                    // Asignamos la animación a nuestra variable.
-                    animationToWaitFor = animateCardMovement({
+                    animateCardMovement({
                         cardsData: [data.discardedCard],
                         startElement,
                         endElement,
                         isBack: false,
-                        duration: 900
+                        duration: 900 // <-- CAMBIA 600 POR 900
                     });
                 }
             }
         }
+        // --- FIN: Bloque para animar el descarte ---
         
-        // 4. AHORA SÍ: Esperamos a que la animación termine (si es que hubo una).
-        await animationToWaitFor;
-        
-        // --- FIN DE LA CORRECCIÓN CLAVE ---
-        
-        // 5. El resto de la lógica se ejecuta DESPUÉS de la animación, eliminando el parpadeo.
-        console.log("Redibujando la mesa POST-animación...");
-
         allMelds = data.newMelds || [];
         turnMelds = [];
         discardPile = data.newDiscardPile;
 
+        // 2. Si el descarte fue mío, AHORA es cuando se elimina la carta de la mano.
         const humanPlayer = players[0];
-        let needsHandRerender = false; // Nueva variable para controlar el re-render
-        
         if (data.discardingPlayerId === socket.id && humanPlayer && data.discardedCard) {
             const cardIndex = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
             if (cardIndex !== -1) {
                 humanPlayer.hand.splice(cardIndex, 1);
-                needsHandRerender = true; // SOLO re-renderizamos si nuestra mano cambió
             }
             selectedCards.clear();
         }
 
+        // 3. Se determina el siguiente jugador.
         const newCurrentPlayerIndex = orderedSeats.findIndex(s => s && s.playerId === data.nextPlayerId);
         if (newCurrentPlayerIndex !== -1) {
             currentPlayer = newCurrentPlayerIndex;
         }
         
+        // 4. Se resetean los estados del turno.
         hasDrawn = false;
         mustDiscard = false;
         
+        // 5. Se actualizan los contadores de cartas.
         if (data.playerHandCounts) {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // OPTIMIZACIÓN CLAVE: Solo re-renderizar la mano si cambió
-        if (needsHandRerender) {
-            renderHands();
-        }
+        // 6. Se renderiza TODA la interfaz con el nuevo estado oficial.
+        renderHands();
         renderDiscard();
         updateTurnIndicator();
         updateActionButtons();
-
+    
+        // 7. Se muestra la notificación de turno.
         const newCurrentPlayerSeat = orderedSeats[currentPlayer];
         if (newCurrentPlayerSeat) {
             if (newCurrentPlayerSeat.playerId === socket.id) {
@@ -1541,7 +1424,6 @@ function showRoomsOverview() {
             }
         }
     });
-    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
 
     socket.on('cardDrawn', async (data) => {
         console.log("Carta recibida del servidor:", data.card);
@@ -1616,14 +1498,7 @@ function showRoomsOverview() {
         }
     });
 
-    socket.on('meldUpdate', async (data) => { // <-- MODIFICADO: Añadido 'async'
-        // ▼▼▼ ESPERAR A QUE TERMINEN LAS ANIMACIONES ▼▼▼
-        await Promise.all(activeAnimations);
-        // ▲▲▲ FIN DE LA ESPERA ▲▲▲
-
-        // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
-        console.log("EVENTO SERVIDOR: 'meldUpdate' recibido. Redibujando la mesa...");
-        // ▲▲▲ FIN DEL LOG ▲▲▲
+    socket.on('meldUpdate', (data) => {
         console.log("Actualización de jugada recibida del servidor:", data);
 
         // Sincronizamos el estado oficial del servidor en nuestras variables locales
@@ -2097,7 +1972,7 @@ function showRoomsOverview() {
     let isWaitingForNextTurn = false;
     let isAnimatingLocalMeld = false; // <<-- AÑADE ESTA LÍNEA
     let practiceGameEndedByFault = false; // <<-- AÑADE ESTA LÍNEA
-    let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, isDrawing;
+    let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, selectedCards, isDrawing;
 
     // ▼▼▼ PEGA EL BLOQUE COMPLETO AQUÍ ▼▼▼
     // Configuración de los botones del modal de reinicio de práctica (Ubicación corregida)
@@ -2183,47 +2058,72 @@ function showRoomsOverview() {
 
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
-    // --- INICIO DE LA CORRECCIÓN CLAVE ---
+    
+    // CORRECCIÓN CLAVE: Si es una partida de práctica, inicializamos manualmente
+    // las configuraciones que las mesas reales inicializan por otra vía.
     if (initialState.isPractice) {
-        // Antes, el cliente construía su propio ID. Ahora, usa el que el servidor le ha enviado.
-        // Esto garantiza una sincronización perfecta.
+        
+        // 1. Creamos el objeto de configuración que estaba ausente y causaba el error.
         currentGameSettings = {
             isPractice: true,
-            roomId: initialState.roomId, // <-- USA EL ID DEL SERVIDOR
-            settings: { username: 'Práctica', bet: 0, penalty: 0 }
+            roomId: `practice-${socket.id}`,
+            settings: {
+                username: 'Práctica', // Nombre placeholder para la mesa
+                bet: 0,
+                penalty: 0
+            }
         };
-        // El resto de la lógica de inicialización para la práctica
+
+        // 2. Ahora que la configuración existe, podemos mostrar la vista y activar los botones sin errores.
         document.body.classList.add('game-active');
         document.getElementById('lobby-overlay').style.display = 'none';
         document.getElementById('game-container').style.display = 'block';
         setupChat();
         setupInGameLeaveButton();
+        
+        // ▼▼▼ AÑADIR ESTA LÍNEA PARA MOSTRAR EL MODAL EN PRÁCTICA ▼▼▼
         showFunctionsModalOnce();
     }
-    // --- FIN DE LA CORRECCIÓN CLAVE ---
+
+    // El resto del código es el que ya tenías y es correcto para AMBOS tipos de partida.
     document.querySelector('.player-actions').style.display = 'flex';
+    resetClientGameState();
     console.log("Servidor ha iniciado la partida. Recibiendo estado:", initialState);
+    
     document.getElementById('btn-start-rematch').style.display = 'none';
     hideOverlay('victory-overlay');
     hideOverlay('ready-overlay');
     document.getElementById('start-game-btn').style.display = 'none';
+    
     gameStarted = true;
     allMelds = initialState.melds || [];
     turnMelds = [];
     selectedCards = new Set();
     isDrawing = false;
+    
     updatePlayersView(initialState.seats, true);
+    
+    // ▼▼▼ CORRECCIÓN ▼▼▼
+    // Asignamos la mano directamente al jugador local, que la lógica de la UI 
+    // siempre posiciona en el índice 0 del array 'players'.
     if (players[0]) {
         players[0].hand = initialState.hand;
     }
+    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+    
     discardPile = initialState.discardPile;
+    
     const startingPlayer = initialState.seats.find(sp => sp && sp.playerId === initialState.currentPlayerId);
     if (startingPlayer) {
         currentPlayer = orderedSeats.findIndex(s => s && s.playerId === startingPlayer.playerId);
     } else {
         currentPlayer = 0;
     }
-    const myPlayerData = players[0];
+    
+    // ▼▼▼ CORRECCIÓN ▼▼▼
+    // Reemplazamos la referencia a 'myPlayerData' por 'players[0]', que es la correcta.
+    const myPlayerData = players[0]; // Definimos la variable para que el código sea más legible.
+    // El primer jugador puede tener 15 o 16 cartas al inicio (16 si es el que empieza)
     if (myPlayerData && myPlayerData.hand && (myPlayerData.hand.length === 15 || myPlayerData.hand.length === 16)) {
         hasDrawn = true;
         mustDiscard = true;
@@ -2232,11 +2132,15 @@ socket.on('gameStarted', (initialState) => {
         hasDrawn = false;
         mustDiscard = false;
     }
+    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+
     if (initialState.playerHandCounts) {
         updatePlayerHandCounts(initialState.playerHandCounts);
     }
+
     setupPileTouchInteractions();
     setupMeldDropZone();
+    
     animateDealing(initialState).then(() => {
         renderHands();
         updateTurnIndicator();
@@ -2258,10 +2162,64 @@ socket.on('gameStarted', (initialState) => {
         renderGameControls();
     });
     
+    function resetClientGameState() {
+        console.log('CLIENTE: Reseteando estado del juego para nueva partida.');
+
+        // ▼▼▼ LIMPIEZA DE TEMPORIZADORES VISUALES ▼▼▼
+        document.querySelectorAll('.timer-countdown').forEach(el => {
+            el.textContent = '';
+        });
+        // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+
+        gameStarted = false;
+        players = [];
+        orderedSeats = []; // <<-- ESTA ES LA LÍNEA QUE FALTABA Y SOLUCIONA TODO
+        deck = [];
+        discardPile = [];
+        currentPlayer = 0;
+        allMelds = [];
+        turnMelds = [];
+        unreadMessages = 0;
+        isWaitingForNextTurn = false;
+
+        hasDrawn = false;
+        drewFromDiscard = false;
+        discardCardUsed = null;
+        mustDiscard = false;
+        drewFromDeckToWin = false;
+        isDrawing = false;
+        if (selectedCards) selectedCards.clear();
+
+        // El resto del código de limpieza que ya tenías
+        document.getElementById('human-hand').innerHTML = '';
+        document.getElementById('melds-display').innerHTML = '';
+        document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
+        document.getElementById('start-game-btn').style.display = 'none';
+
+        hideOverlay('victory-overlay');
+
+        const deckEl = document.getElementById('deck');
+        const discardEl = document.getElementById('discard');
+        if (deckEl) deckEl.onclick = null;
+        if (discardEl) discardEl.onclick = null;
+
+        for (let i = 0; i < 4; i++) {
+            const playerInfoEl = document.getElementById(`info-player${i}`);
+            if (playerInfoEl) {
+                playerInfoEl.classList.remove('current-turn-glow');
+                const playerNameEl = playerInfoEl.querySelector('.player-name');
+                const playerAvatarEl = playerInfoEl.querySelector('.player-avatar');
+                const playerCounterEl = playerInfoEl.querySelector('.card-counter');
+                playerNameEl.textContent = "Asiento Vacío";
+                playerAvatarEl.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                playerCounterEl.textContent = '';
+            }
+        }
+    }
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     
     window.initializeGame = function(settings) {
-        resetUIAndState(); // Usar la nueva función unificada
+        resetClientGameState(); // Esta línea ya la tenías, déjala como está
         currentGameSettings = settings;
         
         // ▼▼▼ AÑADE ESTE BLOQUE JUSTO AL PRINCIPIO DE la función initializeGame ▼▼▼
@@ -2606,18 +2564,29 @@ function updatePlayersView(seats, inGame = false) {
 
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
-        const roomIdToLeave = currentGameSettings ? currentGameSettings.roomId : null;
-
-        if (roomIdToLeave) {
-            console.log(`🚪 [CLIENTE] Saliendo de la sala ${roomIdToLeave}`);
-            socket.emit('leaveGame', { roomId: roomIdToLeave });
-        } else {
-            console.log(`🚪 [CLIENTE] Sin ID de sala, limpieza solo local`);
+        if (currentGameSettings && currentGameSettings.roomId) {
+            console.log('Notificando al servidor la salida de la sala para limpieza...');
+            socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
 
-        resetUIAndState();
+        // --- EL BLOQUE DE "NUEVA IDENTIDAD" HA SIDO ELIMINADO ---
+        // Ya no se genera un nuevo userId cada vez. La identidad del jugador
+        // se mantiene estable desde que inicia sesión hasta que la cierra.
+
+        // Limpiamos las variables de la partida anterior
+        resetClientGameState();
+        currentGameSettings = null; // Limpiar configuración de la partida anterior
+
+        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
+        // Reseteamos visualmente el bote al salir de la partida
+        const potValueEl = document.querySelector('#game-pot-container .pot-value');
+        if (potValueEl) {
+            potValueEl.textContent = '0';
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+        
+        // Mostramos la vista del lobby
         showLobbyView();
-        console.log(`🚪 [CLIENTE] Volviendo al lobby`);
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
@@ -2747,7 +2716,7 @@ function updatePlayersView(seats, inGame = false) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     function renderSpectatorListForHost() { }
-    // ▼▼▼ VERSIÓN MEJORADA DE discardCardByIndex ▼▼▼
+    // Versión definitiva de discardCardByIndex
     async function discardCardByIndex(index) {
         if (isWaitingForNextTurn) return;
         const p = players[0];
@@ -2755,17 +2724,25 @@ function updatePlayersView(seats, inGame = false) {
 
         const cardToDiscard = p.hand[index];
 
-        // Bloqueamos la UI para prevenir más acciones.
-        isWaitingForNextTurn = true;
-        updateActionButtons();
-
-        // Ya no manipulamos el DOM aquí. Solo enviamos el evento al servidor.
-        // La nueva función renderHands() se encargará de la actualización visual
-        // cuando llegue la confirmación del servidor ('turnChanged').
+        // 1. Emitir la acción al servidor.
         socket.emit('accionDescartar', { 
             roomId: currentGameSettings.roomId, 
             card: cardToDiscard 
         });
+
+        // 2. Bloquear la UI y animar.
+        isWaitingForNextTurn = true;
+        updateActionButtons();
+
+        const cardEl = document.querySelector(`#human-hand .card[data-index='${index}']`);
+        const discardEl = document.getElementById('discard');
+        if (cardEl && discardEl) {
+            // La animación ahora es solo un efecto visual, no esperamos a que termine.
+            animateCardMovement({ cardsData: [cardToDiscard], startElement: cardEl, endElement: discardEl });
+        }
+
+        // IMPORTANTE: No se modifica la mano ni se renderiza nada aquí.
+        // Solo esperamos la respuesta del servidor.
     }
     
     function updatePlayerHandCounts(playerHandCounts) {
@@ -2836,258 +2813,291 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        const humanPlayer = players[0];
+        human.innerHTML = '';
+        const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
+        // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
+        // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
-            human.innerHTML = '';
-            lastRenderedHandIds = [];
+            // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
+            renderDiscard();
+            renderMelds();
+            updateActionButtons();
+            updateDebugInfo();
             return;
         }
+      
+      const fragment = document.createDocumentFragment();
+      humanPlayer.hand.forEach((card, idx) => {
+        // << --- REEMPLAZA EL CONTENIDO DEL BUCLE forEach CON ESTO --- >>
 
-        const currentHandIds = humanPlayer.hand.map(c => c.id);
-        const handsAreEqual = JSON.stringify(currentHandIds) === JSON.stringify(lastRenderedHandIds);
-
-        // --- OPTIMIZACIÓN MÁXIMA ---
-        // Si la mano es idéntica (solo cambió la selección), solo actualizamos las clases CSS.
-        // Esto es súper rápido y no produce ningún parpadeo.
-        if (handsAreEqual) {
-            const existingCards = human.querySelectorAll('.card');
-            existingCards.forEach((cardEl, idx) => {
-                const card = humanPlayer.hand[idx];
-                if (card && selectedCards.has(card.id)) {
-                    cardEl.classList.add('selected');
-                } else {
-                    cardEl.classList.remove('selected');
-                }
-            });
-            updateActionButtons(); // Actualizamos los botones por si cambió la selección
-            return; // Salimos para evitar el trabajo pesado
+        const d = document.createElement('div');
+        d.className = 'card';
+        if (selectedCards.has(card.id)) {
+            d.classList.add('selected');
         }
-        
-        // --- INICIO DE LA NUEVA LÓGICA DE RECONCILIACIÓN ---
+        d.setAttribute('draggable', true);
+        d.dataset.index = idx;
+        d.dataset.cardId = card.id;
+        d.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
 
-        // 1. Mapeamos los elementos del DOM que ya existen para poder reutilizarlos.
-        const existingCardElements = new Map();
-        human.querySelectorAll('.card').forEach(el => {
-            existingCardElements.set(el.dataset.cardId, el);
-        });
+        let longPressTimer;
 
-        const fragment = document.createDocumentFragment();
+        // --- Lógica Original de Arrastre (Funciona en PC y Móvil) ---
 
-        // 2. Iteramos sobre el NUEVO estado de la mano y decidimos qué hacer con cada carta.
-        humanPlayer.hand.forEach((card, idx) => {
-            let cardEl = existingCardElements.get(card.id);
+        const startDrag = (e) => {
+            // Determina qué cartas se están arrastrando (una o un grupo seleccionado)
+            const selectedElements = document.querySelectorAll('#human-hand .card.selected');
+            const isGroupDrag = selectedElements.length > 1 && d.classList.contains('selected');
+            let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [idx];
+            const dataToTransfer = JSON.stringify(indicesToDrag);
 
-            if (cardEl) {
-                // A. La carta ya existe en el DOM: La reutilizamos.
-                existingCardElements.delete(card.id); // La marcamos como procesada.
-            } else {
-                // B. La carta no existe (es nueva): La creamos desde cero.
-                // ▼▼▼ TODA TU LÓGICA DE CREACIÓN ORIGINAL ESTÁ AQUÍ, INTACTA ▼▼▼
-                cardEl = document.createElement('div');
-                cardEl.className = 'card';
-                cardEl.setAttribute('draggable', true);
-                cardEl.dataset.cardId = card.id;
-                cardEl.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
-
-                let longPressTimer;
-
-                const startDrag = (e) => {
-                    const selectedElements = document.querySelectorAll('#human-hand .card.selected');
-                    const isGroupDrag = selectedElements.length > 1 && cardEl.classList.contains('selected');
-                    let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [parseInt(cardEl.dataset.index)];
-                    const dataToTransfer = JSON.stringify(indicesToDrag);
-
-                    if (e.type === 'dragstart') {
-                        e.dataTransfer.setData('application/json', dataToTransfer);
-                        let dragImageContainer = document.createElement('div');
-                        dragImageContainer.style.position = 'absolute';
-                        dragImageContainer.style.left = '-1000px';
-                        if (isGroupDrag) {
-                            dragImageContainer.style.display = 'flex';
-                            selectedElements.forEach((selectedCard, index) => {
-                                const clone = selectedCard.cloneNode(true);
-                                clone.classList.remove('selected');
-                                if (index > 0) clone.style.marginLeft = '-35px';
-                                dragImageContainer.appendChild(clone);
-                            });
-                        } else {
-                            const clone = cardEl.cloneNode(true);
-                            clone.classList.remove('selected');
-                            dragImageContainer.appendChild(clone);
-                        }
-                        document.body.appendChild(dragImageContainer);
-                        e.dataTransfer.setDragImage(dragImageContainer, 35, 52.5);
-                        setTimeout(() => document.body.removeChild(dragImageContainer), 0);
-                    }
-
-                    setTimeout(() => {
-                        indicesToDrag.forEach(i => {
-                            const draggedEl = document.querySelector(`#human-hand .card[data-index='${i}']`);
-                            if (draggedEl) draggedEl.classList.add('dragging');
-                        });
-                    }, 0);
-
-                    return dataToTransfer;
-                };
-
-                const endDrag = () => {
-                    clearTimeout(longPressTimer);
-                    document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
-                };
-
-                const handleTouchDrag = (initialTouch, dragData) => {
-                    const cloneContainer = document.getElementById('drag-clone-container');
-                    cloneContainer.innerHTML = '';
-                    const indices = JSON.parse(dragData);
-                    const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
-                    const dragImage = document.createElement('div');
-                    dragImage.className = 'drag-clone-visual';
-                    dragImage.style.display = 'flex';
-                    selectedElements.forEach((el, i) => {
-                        if (!el) return;
-                        const clone = el.cloneNode(true);
-                        clone.classList.remove('selected', 'dragging');
-                        clone.style.transform = '';
-                        if (i > 0) clone.style.marginLeft = `-${clone.offsetWidth / 2}px`;
-                        dragImage.appendChild(clone);
+            // Para el arrastre en PC, se usa dataTransfer
+            if (e.type === 'dragstart') {
+                e.dataTransfer.setData('application/json', dataToTransfer);
+                
+                // Crea una imagen customizada para el arrastre de grupo en PC
+                let dragImageContainer = document.createElement('div');
+                dragImageContainer.style.position = 'absolute';
+                dragImageContainer.style.left = '-1000px'; // Fuera de la pantalla
+                if (isGroupDrag) {
+                    dragImageContainer.style.display = 'flex';
+                    selectedElements.forEach((selectedCard, index) => {
+                        const clone = selectedCard.cloneNode(true);
+                        clone.classList.remove('selected');
+                        if (index > 0) clone.style.marginLeft = '-35px'; // Superponer
+                        dragImageContainer.appendChild(clone);
                     });
-                    cloneContainer.appendChild(dragImage);
-                    const offsetX = dragImage.offsetWidth / 2;
-                    const offsetY = dragImage.offsetHeight / 2;
-                    const updatePosition = (touch) => {
-                        cloneContainer.style.transform = `translate(${touch.clientX - offsetX}px, ${touch.clientY - offsetY}px)`;
-                    };
-                    updatePosition(initialTouch);
-                    let lastTarget = null;
-                    const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
-                    const onTouchMove = (e) => {
-                        e.preventDefault();
-                        const touch = e.touches[0];
-                        updatePosition(touch);
-                        cloneContainer.style.display = 'none';
-                        const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-                        cloneContainer.style.display = 'block';
-                        let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
-                        if (lastTarget && lastTarget !== currentTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
-                        if (currentTarget && currentTarget !== lastTarget) {
-                            let className = currentTarget.classList.contains('card') ? 'drag-over' : 'drop-zone';
-                            currentTarget.classList.add(className);
-                        }
-                        lastTarget = currentTarget;
-                    };
-                    const onTouchEnd = (e) => {
-                        document.removeEventListener('touchmove', onTouchMove);
-                        document.removeEventListener('touchend', onTouchEnd);
-                        cloneContainer.innerHTML = '';
-                        if (lastTarget) lastTarget.classList.remove('drag-over', 'drop-zone');
-                        document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
-                        try {
-                            const droppedIndices = JSON.parse(dragData);
-                            if (!lastTarget) return;
-                            if (lastTarget.classList.contains('card')) {
-                                const finalTouch = e.changedTouches[0];
-                                const rect = lastTarget.getBoundingClientRect();
-                                const midpoint = rect.left + rect.width / 2;
-                                let originalIndex = parseInt(lastTarget.dataset.index);
-                                let targetIndex = (finalTouch.clientX > midpoint) ? originalIndex + 1 : originalIndex;
-                                reorderHand(droppedIndices, targetIndex);
-                            } else if (lastTarget.id === 'human-hand') {
-                                const player = players[0];
-                                if (!player) return;
-                                const finalTouch = e.changedTouches[0];
-                                const firstCard = lastTarget.firstElementChild;
-                                const lastCard = lastTarget.lastElementChild;
-                                let targetIndex = player.hand.length;
-                                if (firstCard && lastCard) {
-                                    const firstCardRect = firstCard.getBoundingClientRect();
-                                    const lastCardRect = lastCard.getBoundingClientRect();
-                                    if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) targetIndex = 0;
-                                    else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) targetIndex = player.hand.length;
-                                }
-                                reorderHand(droppedIndices, targetIndex);
-                            } else if (lastTarget.id === 'discard') {
-                                if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
-                                if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
-                            } else if (lastTarget.classList.contains('center-area')) {
-                                if (droppedIndices.length >= 3) {
-                                    const p = players[0];
-                                    const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
-                                    if (cardIds.length === droppedIndices.length) socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
-                                } else showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
-                            } else if (lastTarget.classList.contains('meld-group')) {
-                                if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
-                                else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
-                            }
-                        } catch (err) { console.error("Error en touch end:", err); renderHands(); }
-                    };
-                    document.addEventListener('touchmove', onTouchMove, { passive: false });
-                    document.addEventListener('touchend', onTouchEnd);
-                };
+                } else {
+                    const clone = d.cloneNode(true);
+                    clone.classList.remove('selected');
+                    dragImageContainer.appendChild(clone);
+                }
+                document.body.appendChild(dragImageContainer);
+                e.dataTransfer.setDragImage(dragImageContainer, 35, 52.5);
+                setTimeout(() => document.body.removeChild(dragImageContainer), 0);
+            }
 
-                cardEl.addEventListener('click', () => {
-                    if (selectedCards.has(card.id)) {
-                        selectedCards.delete(card.id);
-                        cardEl.classList.remove('selected');
-                    } else {
-                        selectedCards.add(card.id);
-                        cardEl.classList.add('selected');
-                    }
-                    updateActionButtons();
+            // Añade la clase 'dragging' para el efecto visual
+            setTimeout(() => {
+                indicesToDrag.forEach(i => {
+                    const cardEl = document.querySelector(`#human-hand .card[data-index='${i}']`);
+                    if (cardEl) cardEl.classList.add('dragging');
                 });
-                cardEl.addEventListener('dragstart', startDrag);
-                cardEl.addEventListener('dragend', endDrag);
-                cardEl.addEventListener('touchstart', (e) => {
-                    longPressTimer = setTimeout(() => {
-                        e.preventDefault();
-                        const dragData = startDrag(e);
-                        handleTouchDrag(e.touches[0], dragData);
-                    }, 200);
-                }, { passive: false });
-                cardEl.addEventListener('touchend', () => clearTimeout(longPressTimer));
-                cardEl.addEventListener('touchcancel', () => clearTimeout(longPressTimer));
-                cardEl.addEventListener('dragover', (e) => { e.preventDefault(); cardEl.classList.add('drag-over'); });
-                cardEl.addEventListener('dragleave', () => cardEl.classList.remove('drag-over'));
-                cardEl.addEventListener('drop', handleDrop);
-                // ▲▲▲ FIN DE LA LÓGICA DE CREACIÓN ORIGINAL ▲▲▲
-            }
+            }, 0);
 
-            // 3. Actualizamos las propiedades que pueden cambiar en cada renderizado.
-            cardEl.dataset.index = idx; // El índice siempre se actualiza por si la mano se reordenó.
+            return dataToTransfer; // Devuelve los datos para el manejador táctil
+        };
+
+        const endDrag = () => {
+            clearTimeout(longPressTimer);
+            document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
+        };
+
+        // --- Lógica de Touch (Móvil) ---
+
+        // Esta es la función clave del archivo original que faltaba
+        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN Y EXTREMOS ▼▼▼
+        const handleTouchDrag = (initialTouch, dragData) => {
+            const cloneContainer = document.getElementById('drag-clone-container');
+            cloneContainer.innerHTML = '';
+
+            const indices = JSON.parse(dragData);
+            const selectedElements = indices.map(i => document.querySelector(`#human-hand .card[data-index='${i}']`));
+            
+            const dragImage = document.createElement('div');
+            dragImage.className = 'drag-clone-visual';
+            dragImage.style.display = 'flex';
+
+            selectedElements.forEach((el, i) => {
+                if (!el) return;
+                const clone = el.cloneNode(true);
+                clone.classList.remove('selected', 'dragging');
+                clone.style.transform = '';
+                if (i > 0) clone.style.marginLeft = `-${clone.offsetWidth / 2}px`;
+                dragImage.appendChild(clone);
+            });
+
+            cloneContainer.appendChild(dragImage);
+            const offsetX = dragImage.offsetWidth / 2;
+            const offsetY = dragImage.offsetHeight / 2;
+
+            const updatePosition = (touch) => {
+                cloneContainer.style.transform = `translate(${touch.clientX - offsetX}px, ${touch.clientY - offsetY}px)`;
+            };
+            updatePosition(initialTouch);
+
+            let lastTarget = null;
+            const dropTargets = [...document.querySelectorAll('#human-hand .card'), document.getElementById('human-hand'), document.getElementById('discard'), ...document.querySelectorAll('.meld-group'), document.querySelector('.center-area')];
+
+            const onTouchMove = (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                updatePosition(touch);
+
+                cloneContainer.style.display = 'none';
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                cloneContainer.style.display = 'block';
+                
+                let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
+
+                if (lastTarget && lastTarget !== currentTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone'); // Se elimina 'drop-zone-hand'
+                }
+                if (currentTarget && currentTarget !== lastTarget) {
+                    let className = 'drop-zone';
+                    if (currentTarget.classList.contains('card')) {
+                        className = 'drag-over';
+                    }
+                    // Ya no se necesita la clase 'drop-zone-hand'
+                    currentTarget.classList.add(className);
+                }
+                lastTarget = currentTarget;
+            };
+
+            const onTouchEnd = (e) => {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+                cloneContainer.innerHTML = '';
+                
+                if (lastTarget) {
+                    lastTarget.classList.remove('drag-over', 'drop-zone');
+                }
+                
+                document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
+
+                try {
+                    const droppedIndices = JSON.parse(dragData);
+                    if (!lastTarget) return;
+
+                    if (lastTarget.classList.contains('card')) {
+                        const finalTouch = e.changedTouches[0];
+                        const rect = lastTarget.getBoundingClientRect();
+                        const midpoint = rect.left + rect.width / 2;
+                        
+                        let originalIndex = parseInt(lastTarget.dataset.index);
+                        let targetIndex = originalIndex;
+
+                        if (finalTouch.clientX > midpoint) {
+                            targetIndex = originalIndex + 1;
+                        }
+                        reorderHand(droppedIndices, targetIndex);
+
+                    } 
+                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA MÓVIL ▼▼▼
+                    else if (lastTarget.id === 'human-hand') {
+                        const player = players[0];
+                        if (!player) return;
+
+                        const finalTouch = e.changedTouches[0];
+                        const firstCard = lastTarget.firstElementChild;
+                        const lastCard = lastTarget.lastElementChild;
+                        let targetIndex = player.hand.length;
+
+                        if (firstCard && lastCard) {
+                            const firstCardRect = firstCard.getBoundingClientRect();
+                            const lastCardRect = lastCard.getBoundingClientRect();
+
+                            if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
+                                targetIndex = 0;
+                            } else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                                targetIndex = player.hand.length;
+                            }
+                        }
+                        reorderHand(droppedIndices, targetIndex);
+                    } 
+                    // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
+                    else if (lastTarget.id === 'discard') {
+                        if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+                        if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
+                    } else if (lastTarget.classList.contains('center-area')) {
+                         if (droppedIndices.length >= 3) {
+                             const p = players[0];
+                             const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
+                             if (cardIds.length === droppedIndices.length) {
+                                 socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
+                             }
+                         } else {
+                             showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
+                         }
+                    } else if (lastTarget.classList.contains('meld-group')) {
+                        if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
+                        else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+                    }
+                } catch(err) {
+                    console.error("Error en touch end:", err);
+                    renderHands();
+                }
+            };
+            
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        };
+
+
+        // --- Asignación de Eventos (Como en el original) ---
+
+        d.addEventListener('click', () => {
             if (selectedCards.has(card.id)) {
-                cardEl.classList.add('selected');
+                selectedCards.delete(card.id);
+                d.classList.remove('selected');
             } else {
-                cardEl.classList.remove('selected');
+                selectedCards.add(card.id);
+                d.classList.add('selected');
             }
-
-            fragment.appendChild(cardEl);
+            updateActionButtons();
         });
 
-        // 4. Los elementos que quedaron en `existingCardElements` son los que se descartaron. Los eliminamos.
-        existingCardElements.forEach(elToRemove => {
-            // Hacemos una pequeña animación de salida para que sea suave.
-            elToRemove.style.opacity = '0';
-            elToRemove.style.transform = 'scale(0.8)';
-            setTimeout(() => elToRemove.remove(), 200);
+        // ▼▼▼ RESTAURADO: Drag & drop nativo para PC ▼▼▼
+        d.addEventListener('dragstart', startDrag);
+        d.addEventListener('dragend', endDrag);
+        // ▲▲▲ FIN RESTAURADO ▲▲▲
+
+        d.addEventListener('touchstart', (e) => {
+            // Iniciar un temporizador para el "toque largo"
+            longPressTimer = setTimeout(() => {
+                e.preventDefault(); // Previene scroll solo si es un toque largo
+                const dragData = startDrag(e);
+                handleTouchDrag(e.touches[0], dragData);
+            }, 200);
+        }, { passive: false });
+
+        d.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer); // Si el dedo se levanta rápido, es un clic, no un arrastre
+        });
+        d.addEventListener('touchcancel', () => {
+            clearTimeout(longPressTimer);
         });
 
-        // 5. Usamos `replaceChildren` que es mucho más eficiente que `innerHTML = ''`.
-        // Esto inserta todos los elementos reutilizados y nuevos en el orden correcto de una sola vez.
-        human.replaceChildren(fragment);
 
-        // 6. Finalmente, actualizamos el caché para la próxima vez.
-        lastRenderedHandIds = currentHandIds;
+        // Eventos de Drop (comunes para PC y Móvil simulado)
+        d.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            d.classList.add('drag-over');
+        });
+        d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
-        // Y nos aseguramos de que los listeners del contenedor de la mano sigan funcionando.
-        human.addEventListener('dragover', (e) => e.preventDefault());
-        human.addEventListener('drop', handleDrop);
+        // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA ▼▼▼
+        d.addEventListener('drop', handleDrop);
 
-        // Llamamos al resto de funciones de renderizado como antes.
-        renderDiscard();
-        renderMelds();
-        updateActionButtons();
-        updateDebugInfo();
-    }
+        fragment.appendChild(d);
+    });
+    
+    human.appendChild(fragment);
+
+    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
+    human.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Crucial para permitir el 'drop'.
+    });
+
+    human.addEventListener('drop', handleDrop);
+    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
+
+    renderDiscard();
+    renderMelds();
+    updateActionButtons();
+    updateDebugInfo();
+}
     function reorderHand(draggedIndices, targetDropIndex) {
         const player = players[0];
         if (!player || draggedIndices.includes(targetDropIndex)) {
@@ -3116,14 +3126,6 @@ function updatePlayersView(seats, inGame = false) {
             if (canDiscardByDrag()) discardCardByIndex(indices[0]);
         } catch(err) { console.error("Error en drop de descarte:", err); }
       };
-      
-      // OPTIMIZACIÓN: Solo actualizar si el descarte cambió
-      const currentDiscardId = discardPile.length > 0 ? discardPile[discardPile.length-1].id : null;
-      if (currentDiscardId === lastRenderedDiscardId) {
-        return; // No re-renderizar si no ha cambiado
-      }
-      lastRenderedDiscardId = currentDiscardId;
-      
       if (discardPile.length > 0) {
         const top = discardPile[discardPile.length-1];
         pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
@@ -3131,16 +3133,10 @@ function updatePlayersView(seats, inGame = false) {
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        
-        // OPTIMIZACIÓN: Solo re-renderizar si los melds cambiaron
-        const combinedMelds = [...allMelds, ...turnMelds];
-        const currentMeldsString = JSON.stringify(combinedMelds.map(m => m.cards.map(c => c.id)));
-        if (currentMeldsString === lastRenderedMeldsString) {
-            return; // No re-renderizar si no ha cambiado
-        }
-        lastRenderedMeldsString = currentMeldsString;
-        
         display.innerHTML = '';
+        
+        // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
+        const combinedMelds = [...allMelds, ...turnMelds];
 
         combinedMelds.forEach(meld => {
             const g = document.createElement('div');
@@ -3198,14 +3194,7 @@ function updatePlayersView(seats, inGame = false) {
         duration = 1200,
         rotation = 5
     }) {
-        // --- INICIO DE LA MODIFICACIÓN CLAVE ---
-        // Creamos la promesa y la registramos en nuestro vigilante global.
-        const animationPromise = new Promise(resolve => {
-            // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
-            const animationId = `anim-${Date.now()}`;
-            console.log(`[${animationId}] INICIO de animación.`);
-            // ▲▲▲ FIN DEL LOG ▲▲▲
-
+        return new Promise(resolve => {
             if (!startElement || !endElement) {
                 console.warn("Animación omitida: falta el elemento de inicio o fin.");
                 return resolve();
@@ -3220,6 +3209,9 @@ function updatePlayersView(seats, inGame = false) {
             const cardHeight = 135;
             const cardCount = cardsData.length || 1;
 
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Se utiliza un único bucle que empieza en i=0 para crear TODAS las cartas.
+            // Esto elimina cualquier código previo que creara la primera carta por separado.
             for (let i = 0; i < cardCount; i++) {
                 const cardData = cardsData[i];
                 const innerCard = document.createElement('div');
@@ -3235,12 +3227,14 @@ function updatePlayersView(seats, inGame = false) {
                     innerCard.innerHTML = `<img src="${getCardImageUrl(cardData)}" alt="${cardData.value}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
                 }
 
+                // Se aplica el margen de superposición solo a partir de la segunda carta (cuando i > 0).
                 if (i > 0) {
                     innerCard.style.marginLeft = `-${cardWidth / 2}px`;
                 }
 
                 animContainer.appendChild(innerCard);
             }
+            // --- FIN DE LA CORRECCIÓN ---
 
             const totalAnimWidth = cardWidth + (cardCount - 1) * (cardWidth / 2);
             animContainer.style.left = `${startRect.left + (startRect.width / 2) - (totalAnimWidth / 2)}px`;
@@ -3258,32 +3252,12 @@ function updatePlayersView(seats, inGame = false) {
             });
 
             setTimeout(() => {
-                animContainer.style.opacity = '0';
-                // ▼▼▼ LOG DE DIAGNÓSTICO ▼▼▼
-                console.log(`[${animationId}] FIN de animación. Resolviendo promesa.`);
-                // ▲▲▲ FIN DEL LOG ▲▲▲
+                if (animContainer.parentNode) {
+                    animContainer.remove();
+                }
                 resolve();
-
-                setTimeout(() => {
-                    if (animContainer.parentNode) {
-                        animContainer.remove();
-                    }
-                }, 100);
-
             }, duration);
         });
-
-        // La registramos en el vigilante
-        activeAnimations.push(animationPromise);
-
-        // Nos aseguramos de quitarla del vigilante cuando termine (incluso si falla)
-        animationPromise.finally(() => {
-            activeAnimations = activeAnimations.filter(p => p !== animationPromise);
-        });
-
-        // Devolvemos la promesa como siempre
-        return animationPromise;
-        // --- FIN DE LA MODIFICACIÓN CLAVE ---
     }
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function getSuitName(s) { if(s==='hearts')return'Corazones'; if(s==='diamonds')return'Diamantes'; if(s==='clubs')return'Tréboles'; if(s==='spades')return'Picas'; return ''; }

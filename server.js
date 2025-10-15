@@ -8,7 +8,7 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
-app.use(express.json({ limit: '5mb' })); // Aumentamos el límite para aceptar avatares más grandes
+app.use(express.json()); // <-- AÑADE ESTA LÍNEA (después de const app = express())
 
 // Middleware de logging para debug
 app.use((req, res, next) => {
@@ -459,11 +459,6 @@ let rooms = {}; // Estado de las mesas se mantiene en memoria
 let connectedUsers = {}; // Objeto para rastrear usuarios activos
 let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 
-// ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
-let practiceGameRegistry = {}; // Rastreará: { "username": "practice-roomId" }
-
-// Función de limpieza eliminada para simplificar
-
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
 const LOBBY_CHAT_HISTORY_LIMIT = 50; // Guardaremos los últimos 50 mensajes
@@ -611,37 +606,6 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });
     }
 });
-
-// ▼▼▼ AÑADE ESTE BLOQUE COMPLETO ▼▼▼
-app.post('/update-avatar', async (req, res) => {
-    const { username, avatarUrl } = req.body;
-
-    if (!username || !avatarUrl) {
-        return res.status(400).json({ success: false, message: 'Faltan datos para actualizar el avatar.' });
-    }
-
-    try {
-        // Actualizamos la base de datos
-        await pool.query(
-            'UPDATE users SET avatar_url = $1 WHERE username = $2',
-            [avatarUrl, username.toLowerCase()]
-        );
-        
-        // Opcional pero recomendado: Actualizar el estado en memoria si el usuario está conectado
-        const userId = 'user_' + username.toLowerCase();
-        if (users[userId]) {
-            users[userId].avatar_url = avatarUrl;
-        }
-
-        console.log(`✅ Avatar actualizado para el usuario: ${username}`);
-        res.status(200).json({ success: true, message: 'Avatar actualizado exitosamente.' });
-
-    } catch (error) {
-        console.error(`❌ Error al actualizar el avatar para ${username}:`, error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
-    }
-});
-// ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
 // RUTA DE ADMIN
 app.get('/admin', adminAuth, (req, res) => {
@@ -1031,20 +995,21 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
     // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
     if (room.isPractice) {
         const humanPlayer = room.seats.find(s => s && !s.isBot);
-        if (!humanPlayer) return;
+        if (!humanPlayer) return; // Si no hay humano, no hacemos nada
 
+        // ▼▼▼ REEMPLAZA ESTE BLOQUE 'if/else' CON EL NUEVO ▼▼▼
         if (winnerSeat.isBot) {
+            // Si gana un bot, ahora enviamos un evento CON el nombre del ganador.
+            console.log(`[Práctica] Un bot ha ganado. Notificando al jugador.`);
             io.to(humanPlayer.playerId).emit('practiceGameBotWin', { winnerName: winnerSeat.playerName });
         } else {
+            // Si gana el humano, el evento se mantiene igual.
+            console.log(`[Práctica] El jugador humano ha ganado. Enviando señal de victoria.`);
             io.to(humanPlayer.playerId).emit('practiceGameHumanWin');
         }
-
-        // --- CORRECCIÓN CLAVE ---
-        // Antes de terminar, llamamos a nuestra función para aniquilar la sala.
-        cleanupPracticeGame(room.roomId, io, "Partida finalizada (victoria/derrota)");
-        // --- FIN DE LA CORRECCIÓN ---
-        
-        return; // Ahora sí, detenemos la ejecución.
+        // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
+        // Detenemos la ejecución para no aplicar la lógica de mesas reales.
+        return;
     }
     // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
 
@@ -1196,15 +1161,6 @@ async function checkVictoryCondition(room, roomId, io) {
 }
 
 async function handlePlayerElimination(room, faultingPlayerId, faultData, io, forceLeave = false) { // <-- AÑADE forceLeave
-    // ▼▼▼ LIMPIEZA DEL TEMPORIZADOR ▼▼▼
-    if (turnTimers[room.roomId]) {
-        clearTimeout(turnTimers[room.roomId].timerId);
-        clearInterval(turnTimers[room.roomId].intervalId);
-        delete turnTimers[room.roomId];
-        console.log(`[Elimination] Temporizador de la sala ${room.roomId} detenido debido a una falta.`);
-    }
-    // ▲▲▲ FIN DEL BLOQUE DE LIMPIEZA ▲▲▲
-
     if (!room) return;
     const roomId = room.roomId;
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
@@ -1213,23 +1169,16 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
     const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
 
     if (room.isPractice) {
-        const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
-        const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
         console.log(`[Práctica] Falta cometida por ${playerSeat.playerName}.`);
         const humanPlayer = room.seats.find(s => s && !s.isBot);
         if (humanPlayer) {
             io.to(humanPlayer.playerId).emit('playerEliminated', {
                 playerId: faultingPlayerId,
                 playerName: playerSeat.playerName,
-                faultData: finalFaultData
+                faultData: finalFaultData // Enviamos el objeto completo
             });
             io.to(humanPlayer.playerId).emit('practiceGameFaultEnd');
         }
-        
-        // --- CORRECCIÓN CLAVE ---
-        cleanupPracticeGame(room.roomId, io, "Falta cometida");
-        // --- FIN DE LA CORRECCIÓN ---
-        
         return;
     }
 
@@ -1899,76 +1848,19 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 
 // Configuración de archivos estáticos ya definida arriba
 
-// ▼▼▼ AÑADE ESTA NUEVA FUNCIÓN COMPLETA EN server.js ▼▼▼
-function cleanupPracticeGame(roomId, io, reason) {
-    console.error(`🚨 [LIMPIEZA] INICIANDO cleanupPracticeGame para roomId: ${roomId}, razón: ${reason}`);
-    
-    const room = rooms[roomId];
-    console.error(`🚨 [LIMPIEZA] Sala encontrada:`, room ? 'SÍ' : 'NO');
-
-    // Comprobación de seguridad: solo actuar si la sala existe y es de práctica.
-    if (!room || !room.isPractice) {
-        console.error(`🚨 [LIMPIEZA] SALIDA TEMPRANA - Sala no existe o no es de práctica. room: ${!!room}, isPractice: ${room?.isPractice}`);
-        return;
-    }
-
-    // --- ALERTA EN EL SERVIDOR ---
-    console.warn(`[LIMPIEZA DEFINITIVA] Eliminando sala de práctica ${roomId}. Razón: ${reason}.`);
-
-    // 1. Detener y limpiar cualquier temporizador asociado para evitar fugas de memoria.
-    if (turnTimers[roomId]) {
-        clearTimeout(turnTimers[roomId].timerId);
-        clearInterval(turnTimers[roomId].intervalId);
-        delete turnTimers[roomId];
-        console.log(`[LIMPIEZA DEFINITIVA] Temporizador para la sala ${roomId} detenido y eliminado.`);
-    } else {
-        console.error(`🚨 [LIMPIEZA] No había temporizador para ${roomId}`);
-    }
-
-    // 2. Eliminar la sala completamente del objeto 'rooms' en memoria. ¡Este es el paso más crucial!
-    delete rooms[roomId];
-    console.error(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} DESTRUIDA Y ELIMINADA DE LA MEMORIA.`); // << AÑADE ESTA LÍNEA
-    console.warn(`[LIMPIEZA DEFINITIVA] ✅ Sala ${roomId} eliminada del servidor.`);
-
-    // 3. (Opcional pero recomendado) Notificar a todos en el lobby que la lista de mesas ha cambiado.
-    broadcastRoomListUpdate(io);
-    console.error(`🚨 [LIMPIEZA] COMPLETADA para ${roomId}`);
-}
-// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
-
+// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
 
-    if (!room) {
-        console.warn(`[handlePlayerDeparture] Intento de salida de una sala (${roomId}) que ya no existe. No se requiere ninguna acción.`);
-        return;
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    if (room && room.isPractice) {
+        console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
+        delete rooms[roomId]; // Elimina la sala del servidor
+        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
+        return; // Detiene la ejecución para no aplicar lógica de mesas reales
     }
-
-    // --- LÓGICA CLAVE PARA MESAS DE PRÁCTICA ---
-    // Si la sala es de práctica, la tratamos como un abandono que debe ser destruido.
-    if (room.isPractice) {
-        console.error(`🚨 [SERVIDOR] DETECTADO ABANDONO EN MESA DE PRÁCTICA. LLAMANDO A LIMPIEZA...`); // << AÑADE ESTA LÍNEA
-        const humanPlayerSeat = room.seats.find(s => s && !s.isBot);
-        const username = humanPlayerSeat ? humanPlayerSeat.playerName.toLowerCase() : null;
-
-        console.log(`🚨 [SERVIDOR] FALTA POR ABANDONO EN MESA DE PRÁCTICA.`);
-        console.log(`🚨 [SERVIDOR] Jugador ${leavingPlayerId} (usuario: ${username || 'N/A'}) ha abandonado la sala ${roomId}.`);
-
-        cleanupPracticeGame(roomId, io, "Jugador abandonó la partida");
-
-        // --- LIMPIEZA DEL REGISTRO ---
-        if (username && practiceGameRegistry[username] === roomId) {
-            delete practiceGameRegistry[username];
-            console.log(`[REGISTRO DE PRÁCTICA] ✅ Entrada para '${username}' eliminada del registro.`);
-        }
-
-        console.log(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} DESTRUIDA.`);
-        return;
-    }
-    // --- FIN DE LA LÓGICA PARA MESAS DE PRÁCTICA ---
-
-    console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala REAL ${roomId}.`);
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     if (!room) return;
 
@@ -1991,14 +1883,16 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     room.seats[seatIndex] = null;
 
     if (room.state === 'playing') {
+        // VALIDACIÓN CLAVE: Solo aplicamos lógica de abandono si el jugador estaba ACTIVO.
         if (leavingPlayerSeat.status !== 'waiting') {
+            // --- JUGADOR ACTIVO: Se aplica multa y se gestiona el turno ---
             console.log(`Jugador activo ${playerName} ha abandonado. Se aplica multa.`);
 
             const reason = `${playerName} ha abandonado la partida.`;
             io.to(roomId).emit('playerEliminated', {
                 playerId: leavingPlayerId,
                 playerName: playerName,
-                faultData: { reason: reason }
+                faultData: { reason: reason } // <-- CORRECCIÓN AQUÍ
             });
 
             if (leavingPlayerSeat && leavingPlayerSeat.userId) {
@@ -2011,10 +1905,15 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                     io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
                     io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
                     
+                    // <<-- INICIO DE LA CORRECCIÓN -->>
+                    // 1. Eliminamos 'await' para no bloquear el juego.
+                    //    La actualización se inicia en segundo plano.
                     updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency)
+                        // 2. Añadimos .catch para registrar cualquier error sin detener el servidor.
                         .catch(err => {
                             console.error(`[BG] Falla al actualizar créditos para ${leavingPlayerSeat.userId} en segundo plano:`, err);
                         });
+                    // <<-- FIN DE LA CORRECCIÓN -->>
                 }
             }
 
@@ -2024,11 +1923,13 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                 return;
             } else if (activePlayers.length > 1) {
                 if (room.currentPlayerId === leavingPlayerId) {
+                    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
                     if (turnTimers[room.roomId]) {
                         clearTimeout(turnTimers[room.roomId].timerId);
                         clearInterval(turnTimers[room.roomId].intervalId);
                         delete turnTimers[room.roomId];
                     }
+                    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
                     
                     resetTurnState(room);
                     let oldPlayerIndex = -1;
@@ -2060,6 +1961,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
                 }
             }
         } else {
+            // --- JUGADOR EN ESPERA: No hay multa, solo se notifica ---
             console.log(`Jugador ${playerName} ha salido mientras esperaba. No se aplica multa.`);
             io.to(roomId).emit('playerAbandoned', {
                 message: `${playerName} ha abandonado la mesa antes de empezar la partida.`
@@ -2077,19 +1979,6 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
-
-    // --- LIMPIEZA BÁSICA ANTES DE CREAR ---
-    if (rooms[roomId]) {
-      console.log(`🧹 [NUEVA PARTIDA] Limpiando sala existente: ${roomId}`);
-      if (turnTimers[roomId]) {
-        clearTimeout(turnTimers[roomId].timerId);
-        clearInterval(turnTimers[roomId].intervalId);
-        delete turnTimers[roomId];
-      }
-      delete rooms[roomId];
-    }
-    // --- FIN: LIMPIEZA BÁSICA ---
-
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
     const newRoom = {
@@ -2122,30 +2011,22 @@ function createAndStartPracticeGame(socket, username, io) {
     newRoom.currentPlayerId = startingPlayerId;
 
     rooms[roomId] = newRoom;
-
-    // --- REGISTRAMOS LA NUEVA SALA CREADA ---
-    const lowerCaseUsername = username.toLowerCase(); // << AÑADE ESTA LÍNEA
-    practiceGameRegistry[lowerCaseUsername] = roomId;
-    console.log(`[REGISTRO DE PRÁCTICA] Sala nueva ${roomId} registrada para el usuario '${username}'.`);
-
     socket.join(roomId);
-    socket.currentRoomId = roomId;
+    socket.currentRoomId = roomId; // Aseguramos que la sala actual se actualice
 
+    // ▼▼▼ AÑADE ESTE BLOQUE PARA ACTUALIZAR EL ESTADO ▼▼▼
     if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].status = 'Jugando en Mesa de Practica';
         broadcastUserListUpdate(io);
     }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     const playerHandCounts = {};
-    newRoom.seats.forEach(p => {
-        if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length;
+    newRoom.seats.forEach(p => { 
+        if(p) playerHandCounts[p.playerId] = newRoom.playerHands[p.playerId].length; 
     });
 
-    // --- INICIO: CORRECCIÓN DE SINCRONIZACIÓN ---
-    // Ahora el servidor le dice al cliente cuál es el ID de la sala.
-    // Esto evita que el cliente use un ID incorrecto o desactualizado.
     io.to(socket.id).emit('gameStarted', {
-        roomId: newRoom.roomId, // <-- SE AÑADE ESTA LÍNEA
         hand: newRoom.playerHands[socket.id],
         discardPile: newRoom.discardPile,
         seats: newRoom.seats,
@@ -2154,7 +2035,6 @@ function createAndStartPracticeGame(socket, username, io) {
         melds: newRoom.melds,
         isPractice: true
     });
-    // --- FIN: CORRECCIÓN DE SINCRONIZACIÓN ---
 }
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
@@ -2173,20 +2053,6 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
-
-  // --- LIMPIEZA BÁSICA AL CONECTAR ---
-  // Solo limpiar la sala específica del socket que se conecta
-  const potentialRoomId = `practice-${socket.id}`;
-  if (rooms[potentialRoomId]) {
-    console.log(`🧹 [CONEXIÓN] Limpiando sala específica: ${potentialRoomId}`);
-    if (turnTimers[potentialRoomId]) {
-      clearTimeout(turnTimers[potentialRoomId].timerId);
-      clearInterval(turnTimers[potentialRoomId].intervalId);
-      delete turnTimers[potentialRoomId];
-    }
-    delete rooms[potentialRoomId];
-  }
-  // --- FIN: LIMPIEZA BÁSICA ---
 
   // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
   socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
@@ -2501,21 +2367,15 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  // ▼▼▼ REEMPLAZA TU LISTENER 'requestPracticeGame' ENTERO CON ESTE ▼▼▼
   socket.on('requestPracticeGame', (username) => {
-    console.error(`🚨 [SERVIDOR] EVENTO 'requestPracticeGame' RECIBIDO del socket ${socket.id} para usuario: ${username}`);
-
-    // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-    // Forzamos la búsqueda y destrucción de CUALQUIER sala de práctica
-    // asociada a este socket ANTES de si quiera pensar en crear una nueva.
+    // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
     const existingRoomId = `practice-${socket.id}`;
     if (rooms[existingRoomId]) {
-        console.warn(`[SEGURIDAD MÁXIMA] Se encontró una sala de práctica fantasma (${existingRoomId}). Aniquilándola ahora.`);
-        cleanupPracticeGame(existingRoomId, io, "Limpieza forzada antes de crear nueva partida");
+        console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        delete rooms[existingRoomId];
     }
-    // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    // Después de asegurar que todo está limpio, procedemos a crear la nueva partida.
     createAndStartPracticeGame(socket, username, io);
   });
 
@@ -3215,7 +3075,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE CÓDIGO ORIGINAL ▼▼▼
+  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
   socket.on('disconnect', () => {
     console.log('❌ Un jugador se ha desconectado:', socket.id);
     const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
@@ -3470,31 +3330,26 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
-    console.error(`🚨 [SERVIDOR] EVENTO 'leaveGame' RECIBIDO del socket ${socket.id}`); // << AÑADE ESTA LÍNEA
-    let { roomId } = data;
+    const { roomId } = data;
 
-    // --- INICIO DE LA CORRECCIÓN DE FIABILIDAD ---
-    // Si el ID que llega del cliente parece de una partida de práctica, lo ignoramos
-    // y usamos el ID de la conexión actual, que es 100% fiable.
-    if (roomId && roomId.startsWith('practice-')) {
-        const reliableRoomId = `practice-${socket.id}`;
-        console.warn(`[CORRECCIÓN] Se detectó una salida de práctica. ID del cliente: ${roomId}. ID fiable: ${reliableRoomId}. Se usará el ID del servidor.`);
-        roomId = reliableRoomId; // Sobreescribimos el ID con el correcto.
-    }
-    // --- FIN DE LA CORRECCIÓN DE FIABILIDAD ---
-
+    // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
     if (roomId) {
         socket.leave(roomId);
+        console.log(`Socket ${socket.id} ha salido de la sala Socket.IO: ${roomId}`);
     }
 
+    // 2. (Línea existente) Limpiamos nuestra variable de seguimiento personalizada.
     delete socket.currentRoomId;
 
+    // ▼▼▼ CAMBIAR ESTADO DE VUELTA A "EN EL LOBBY" ▼▼▼
+    // Cambia el estado del usuario de vuelta a "En el Lobby"
     if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].status = 'En el Lobby';
         broadcastUserListUpdate(io);
     }
+    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
     
-    // Llamamos a la lógica de limpieza con el ID corregido.
+    // 3. (Línea existente) Ejecutamos la lógica para liberar el asiento y limpiar la mesa.
     handlePlayerDeparture(roomId, socket.id, io);
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
