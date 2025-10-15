@@ -3479,31 +3479,20 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
-    console.error(`🚨 [SERVIDOR] EVENTO 'leaveGame' RECIBIDO del socket ${socket.id}`);
-    console.error(`🚨 [SERVIDOR] Datos recibidos:`, JSON.stringify(data));
-    
     let { roomId } = data;
-    const originalRoomIdFromClient = roomId;
 
-    console.error(`🚨 [SERVIDOR] ID original del cliente: ${originalRoomIdFromClient}`);
-
-    // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-    // Si el ID que nos llega del cliente empieza con "practice-", lo consideramos
-    // poco fiable. En su lugar, reconstruimos el ID de práctica usando el ID
-    // de la conexión actual del socket, que SIEMPRE es correcto.
+    // --- INICIO DE LA CORRECCIÓN DE FIABILIDAD ---
+    // Si el ID que llega del cliente parece de una partida de práctica, lo ignoramos
+    // y usamos el ID de la conexión actual, que es 100% fiable.
     if (roomId && roomId.startsWith('practice-')) {
         const reliableRoomId = `practice-${socket.id}`;
-        console.warn(`[CORRECCIÓN] Se detectó una salida de partida de práctica. ID del cliente: ${roomId}. ID fiable del servidor: ${reliableRoomId}. Se usará el ID del servidor.`);
-        roomId = reliableRoomId; // Sobreescribimos el ID con el que es 100% seguro.
+        console.warn(`[CORRECCIÓN] Se detectó una salida de práctica. ID del cliente: ${roomId}. ID fiable: ${reliableRoomId}. Se usará el ID del servidor.`);
+        roomId = reliableRoomId; // Sobreescribimos el ID con el correcto.
     }
-    // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
-
-    console.error(`🚨 [SERVIDOR] ID final a usar: ${roomId}`);
-    console.log(`[leaveGame] Procesando salida. ID original: ${originalRoomIdFromClient}, ID a usar: ${roomId}`);
+    // --- FIN DE LA CORRECCIÓN DE FIABILIDAD ---
 
     if (roomId) {
         socket.leave(roomId);
-        console.log(`Socket ${socket.id} ha salido de la sala Socket.IO: ${roomId}`);
     }
 
     delete socket.currentRoomId;
@@ -3513,8 +3502,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         broadcastUserListUpdate(io);
     }
     
-    console.error(`🚨 [SERVIDOR] LLAMANDO a handlePlayerDeparture con roomId: ${roomId}`);
-    // Llamamos a la lógica de limpieza con el ID corregido y fiable.
+    // Llamamos a la lógica de limpieza con el ID corregido.
     handlePlayerDeparture(roomId, socket.id, io);
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
