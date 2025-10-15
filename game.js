@@ -2601,9 +2601,12 @@ function updatePlayersView(seats, inGame = false) {
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
         if (currentGameSettings && currentGameSettings.roomId) {
+            // --- ALERTA DE DEPURACIÓN ---
+            console.error('>> [CLIENTE] Intentando salir de la sala. ID que se enviará al servidor:', currentGameSettings.roomId);
+            // --- FIN DE LA ALERTA ---
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
-        resetUIAndState(); // <--- Llamada a la nueva función de reseteo total
+        resetUIAndState();
         showLobbyView();
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲

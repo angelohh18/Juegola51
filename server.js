@@ -1925,15 +1925,24 @@ function cleanupPracticeGame(roomId, io, reason) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
+    // --- ALERTA DE DEPURACIÓN 2 ---
+    console.error(`>> [SERVIDOR] Ejecutando handlePlayerDeparture para el ID: ${roomId}`);
+    // --- FIN DE LA ALERTA ---
+
     const room = rooms[roomId];
 
-    // --- CORRECCIÓN CLAVE ---
-    // Si la sala es de práctica, llamamos a nuestra función central y terminamos.
+    // --- ALERTA DE DEPURACIÓN 3 ---
+    if (!room) {
+        console.error(`>> [SERVIDOR] ¡FALLO CRÍTICO! No se encontró ninguna sala con el ID: ${roomId}. La sala no será eliminada.`);
+    } else {
+        console.error(`>> [SERVIDOR] Sala encontrada con ID: ${roomId}. Verificando si es de práctica... (esPractica = ${room.isPractice})`);
+    }
+    // --- FIN DE LA ALERTA ---
+
     if (room && room.isPractice) {
         cleanupPracticeGame(roomId, io, "Jugador salió al lobby");
         return;
     }
-    // --- FIN DE LA CORRECCIÓN ---
 
     if (!room) return;
 
@@ -3426,26 +3435,35 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ REEMPLAZA TU LISTENER socket.on('leaveGame',...) ENTERO CON ESTE ▼▼▼
   socket.on('leaveGame', (data) => {
-    const { roomId } = data;
+    let { roomId } = data;
+    const originalRoomIdFromClient = roomId;
 
-    // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
+    // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+    // Si el ID que nos llega del cliente empieza con "practice-", lo consideramos
+    // poco fiable. En su lugar, reconstruimos el ID de práctica usando el ID
+    // de la conexión actual del socket, que SIEMPRE es correcto.
+    if (roomId && roomId.startsWith('practice-')) {
+        const reliableRoomId = `practice-${socket.id}`;
+        console.warn(`[CORRECCIÓN] Se detectó una salida de partida de práctica. ID del cliente: ${roomId}. ID fiable del servidor: ${reliableRoomId}. Se usará el ID del servidor.`);
+        roomId = reliableRoomId; // Sobreescribimos el ID con el que es 100% seguro.
+    }
+    // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
+
+    console.log(`[leaveGame] Procesando salida. ID original: ${originalRoomIdFromClient}, ID a usar: ${roomId}`);
+
     if (roomId) {
         socket.leave(roomId);
         console.log(`Socket ${socket.id} ha salido de la sala Socket.IO: ${roomId}`);
     }
 
-    // 2. (Línea existente) Limpiamos nuestra variable de seguimiento personalizada.
     delete socket.currentRoomId;
 
-    // ▼▼▼ CAMBIAR ESTADO DE VUELTA A "EN EL LOBBY" ▼▼▼
-    // Cambia el estado del usuario de vuelta a "En el Lobby"
     if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].status = 'En el Lobby';
         broadcastUserListUpdate(io);
     }
-    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
     
-    // 3. (Línea existente) Ejecutamos la lógica para liberar el asiento y limpiar la mesa.
+    // Llamamos a la lógica de limpieza con el ID corregido y fiable.
     handlePlayerDeparture(roomId, socket.id, io);
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
