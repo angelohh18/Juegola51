@@ -796,11 +796,11 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        console.error(`💥 [CLIENTE] LIMPIEZA NUCLEAR: Iniciando nueva partida de práctica`);
-        resetUIAndState(); // <--- Llamada a la nueva función
+        console.log(`🧹 [CLIENTE] Iniciando nueva partida de práctica`);
+        resetUIAndState();
         const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
-        console.error(`💥 [CLIENTE] LIMPIEZA NUCLEAR: Nueva partida solicitada`);
+        console.log(`🧹 [CLIENTE] Nueva partida solicitada`);
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -2609,17 +2609,15 @@ function updatePlayersView(seats, inGame = false) {
         const roomIdToLeave = currentGameSettings ? currentGameSettings.roomId : null;
 
         if (roomIdToLeave) {
-            console.error(`💥 [CLIENTE] LIMPIEZA NUCLEAR: Saliendo de la sala ${roomIdToLeave}`);
+            console.log(`🧹 [CLIENTE] Saliendo de la sala ${roomIdToLeave}`);
             socket.emit('leaveGame', { roomId: roomIdToLeave });
         } else {
-            console.error(`💥 [CLIENTE] LIMPIEZA NUCLEAR: Sin ID de sala, limpieza solo local`);
+            console.log(`🧹 [CLIENTE] Sin ID de sala, limpieza solo local`);
         }
 
-        // --- LIMPIEZA NUCLEAR EN EL CLIENTE ---
-        console.error(`💥 [CLIENTE] APLICANDO LIMPIEZA NUCLEAR TOTAL DEL CLIENTE`);
         resetUIAndState();
         showLobbyView();
-        console.error(`💥 [CLIENTE] LIMPIEZA NUCLEAR COMPLETADA`);
+        console.log(`🧹 [CLIENTE] Limpieza completada`);
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 

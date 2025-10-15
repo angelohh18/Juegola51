@@ -462,39 +462,62 @@ let turnTimers = {}; // <-- AÑADE ESTA LÍNEA
 // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
 let practiceGameRegistry = {}; // Rastreará: { "username": "practice-roomId" }
 
-// ▼▼▼ FUNCIÓN NUCLEAR DE LIMPIEZA TOTAL ▼▼▼
-function nuclearCleanupAllPracticeGames(io, reason = "Limpieza nuclear") {
-    console.error(`💥 [LIMPIEZA NUCLEAR] INICIANDO eliminación de TODAS las partidas de práctica. Razón: ${reason}`);
+// ▼▼▼ FUNCIÓN DE LIMPIEZA SEGURA ▼▼▼
+function safeCleanupPracticeGames(io, reason = "Limpieza segura") {
+    console.log(`🧹 [LIMPIEZA SEGURA] Iniciando limpieza de partidas de práctica. Razón: ${reason}`);
     
     let cleanedCount = 0;
     
-    // 1. Eliminar TODAS las salas de práctica que existan
-    Object.keys(rooms).forEach(roomId => {
-        if (roomId.startsWith('practice-') && rooms[roomId]) {
-            console.error(`💥 [LIMPIEZA NUCLEAR] Eliminando sala: ${roomId}`);
-            
-            // Limpiar temporizadores
-            if (turnTimers[roomId]) {
-                clearTimeout(turnTimers[roomId].timerId);
-                clearInterval(turnTimers[roomId].intervalId);
-                delete turnTimers[roomId];
+    try {
+        // 1. Eliminar solo salas de práctica que existan
+        Object.keys(rooms).forEach(roomId => {
+            if (roomId.startsWith('practice-') && rooms[roomId]) {
+                console.log(`🧹 [LIMPIEZA SEGURA] Eliminando sala: ${roomId}`);
+                
+                // Limpiar temporizadores de forma segura
+                if (turnTimers[roomId]) {
+                    try {
+                        clearTimeout(turnTimers[roomId].timerId);
+                        clearInterval(turnTimers[roomId].intervalId);
+                        delete turnTimers[roomId];
+                    } catch (err) {
+                        console.warn(`[LIMPIEZA SEGURA] Error limpiando temporizador ${roomId}:`, err.message);
+                    }
+                }
+                
+                // Eliminar sala de forma segura
+                try {
+                    delete rooms[roomId];
+                    cleanedCount++;
+                } catch (err) {
+                    console.warn(`[LIMPIEZA SEGURA] Error eliminando sala ${roomId}:`, err.message);
+                }
             }
-            
-            // Eliminar sala
-            delete rooms[roomId];
-            cleanedCount++;
+        });
+        
+        // 2. Limpiar registro de forma segura
+        try {
+            practiceGameRegistry = {};
+        } catch (err) {
+            console.warn(`[LIMPIEZA SEGURA] Error limpiando registro:`, err.message);
         }
-    });
-    
-    // 2. Limpiar TODO el registro
-    practiceGameRegistry = {};
-    
-    // 3. Notificar actualización del lobby
-    broadcastRoomListUpdate(io);
-    
-    console.error(`💥 [LIMPIEZA NUCLEAR] ✅ COMPLETADA. ${cleanedCount} salas eliminadas. Registro limpiado.`);
+        
+        // 3. Notificar actualización del lobby de forma segura
+        try {
+            if (io && typeof broadcastRoomListUpdate === 'function') {
+                broadcastRoomListUpdate(io);
+            }
+        } catch (err) {
+            console.warn(`[LIMPIEZA SEGURA] Error notificando lobby:`, err.message);
+        }
+        
+        console.log(`🧹 [LIMPIEZA SEGURA] ✅ COMPLETADA. ${cleanedCount} salas eliminadas.`);
+        
+    } catch (err) {
+        console.error(`[LIMPIEZA SEGURA] Error durante limpieza:`, err.message);
+    }
 }
-// ▲▲▲ FIN DE LA FUNCIÓN NUCLEAR ▲▲▲
+// ▲▲▲ FIN DE LA FUNCIÓN SEGURA ▲▲▲
 
 // ▼▼▼ AÑADE ESTAS LÍNEAS AL INICIO, JUNTO A TUS OTRAS VARIABLES GLOBALES ▼▼▼
 let lobbyChatHistory = [];
@@ -2106,10 +2129,10 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, io) {
-    // --- LIMPIEZA NUCLEAR TOTAL ---
-    console.error(`💥 [NUEVA PARTIDA] Aplicando limpieza nuclear antes de crear partida para ${username}`);
-    nuclearCleanupAllPracticeGames(io, `Nueva partida solicitada por ${username}`);
-    // --- FIN: LIMPIEZA NUCLEAR TOTAL ---
+    // --- LIMPIEZA SEGURA ANTES DE CREAR ---
+    console.log(`🧹 [NUEVA PARTIDA] Aplicando limpieza segura antes de crear partida para ${username}`);
+    safeCleanupPracticeGames(io, `Nueva partida solicitada por ${username}`);
+    // --- FIN: LIMPIEZA SEGURA ---
 
     const roomId = `practice-${socket.id}`;
 
@@ -2196,10 +2219,10 @@ io.on('connection', (socket) => {
   console.log('✅ Un jugador se ha conectado:', socket.id);
   console.log('ESTADO ACTUAL DE LAS MESAS EN EL SERVIDOR:', rooms);
 
-  // --- LIMPIEZA NUCLEAR AL CONECTAR ---
-  console.error(`💥 [CONEXIÓN] Aplicando limpieza nuclear al conectar socket ${socket.id}`);
-  nuclearCleanupAllPracticeGames(io, `Nueva conexión: ${socket.id}`);
-  // --- FIN: LIMPIEZA NUCLEAR ---
+  // --- LIMPIEZA SEGURA AL CONECTAR ---
+  console.log(`🧹 [CONEXIÓN] Aplicando limpieza segura al conectar socket ${socket.id}`);
+  safeCleanupPracticeGames(io, `Nueva conexión: ${socket.id}`);
+  // --- FIN: LIMPIEZA SEGURA ---
 
   // ▼▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼▼
   socket.emit('lobbyChatHistory', lobbyChatHistory); // Envía el historial al nuevo cliente
