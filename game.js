@@ -173,67 +173,68 @@ let lastKnownRooms = []; // <-- AÑADE ESTA LÍNEA
 let selectedCards = new Set(); // Variable global para cartas seleccionadas
 
 // Función global para resetear completamente el estado y UI
-function resetUIAndState() {
-    console.warn('RESET DEFINITIVO: Limpiando TODO el estado y la UI del cliente.');
+    function resetUIAndState() {
+        // --- ALERTA EN EL CLIENTE ---
+        console.warn('⚠️ ALERTA CLIENTE: Se ha llamado a resetUIAndState(). Limpiando toda la interfaz y estado del juego.');
 
-    // 1. Resetear variables de estado del juego
-    gameStarted = false;
-    players = [];
-    orderedSeats = [];
-    deck = [];
-    discardPile = [];
-    currentPlayer = 0;
-    allMelds = [];
-    turnMelds = [];
-    isWaitingForNextTurn = false;
-    hasDrawn = false;
-    drewFromDiscard = false;
-    discardCardUsed = null;
-    mustDiscard = false;
-    isDrawing = false;
-    currentGameSettings = {}; // Reiniciar a objeto vacío
+        // 1. Resetear variables de estado del juego
+        gameStarted = false;
+        players = [];
+        orderedSeats = [];
+        deck = [];
+        discardPile = [];
+        currentPlayer = 0;
+        allMelds = [];
+        turnMelds = [];
+        isWaitingForNextTurn = false;
+        hasDrawn = false;
+        drewFromDiscard = false;
+        discardCardUsed = null;
+        mustDiscard = false;
+        isDrawing = false;
+        currentGameSettings = {}; // Reiniciar a objeto vacío
 
-    // 2. Limpiar estructuras de datos
-    if (selectedCards) selectedCards.clear();
-    activeAnimations = [];
-    lastRenderedDiscardId = null;
-    lastRenderedMeldsString = '';
-    lastRenderedHandIds = [];
+        // 2. Limpiar estructuras de datos
+        if (selectedCards) selectedCards.clear();
+        activeAnimations = [];
+        lastRenderedDiscardId = null;
+        lastRenderedMeldsString = '';
+        lastRenderedHandIds = [];
 
-    // 3. Limpiar el DOM de la mesa de juego
-    document.getElementById('human-hand').innerHTML = '';
-    document.getElementById('melds-display').innerHTML = '';
-    document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
-    document.getElementById('start-game-btn').style.display = 'none';
-    document.querySelector('#game-pot-container .pot-value').textContent = '0';
+        // 3. Limpiar el DOM de la mesa de juego
+        document.getElementById('human-hand').innerHTML = '';
+        document.getElementById('melds-display').innerHTML = '';
+        document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
+        document.getElementById('start-game-btn').style.display = 'none';
+        document.querySelector('#game-pot-container .pot-value').textContent = '0';
 
-    // 4. Limpiar los 4 asientos de jugador (muy importante)
-    for (let i = 0; i < 4; i++) {
-        const playerInfoEl = document.getElementById(`info-player${i}`);
-        if (playerInfoEl) {
-            playerInfoEl.classList.remove('current-turn-glow', 'empty-seat', 'player-waiting');
-            playerInfoEl.style.visibility = 'visible';
-            playerInfoEl.querySelector('.player-name').textContent = "Asiento Vacío";
-            playerInfoEl.querySelector('.player-avatar').src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-            playerInfoEl.querySelector('.card-counter').textContent = '';
-            const timerEl = playerInfoEl.querySelector('.timer-countdown');
-            if(timerEl) timerEl.textContent = '';
+        // 4. Limpiar los 4 asientos de jugador (muy importante)
+        for (let i = 0; i < 4; i++) {
+            const playerInfoEl = document.getElementById(`info-player${i}`);
+            if (playerInfoEl) {
+                playerInfoEl.classList.remove('current-turn-glow', 'empty-seat', 'player-waiting');
+                playerInfoEl.style.visibility = 'visible';
+                playerInfoEl.querySelector('.player-name').textContent = "Asiento Vacío";
+                playerInfoEl.querySelector('.player-avatar').src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                playerInfoEl.querySelector('.card-counter').textContent = '';
+                const timerEl = playerInfoEl.querySelector('.timer-countdown');
+                if(timerEl) timerEl.textContent = '';
+            }
         }
+
+        // 5. Ocultar todos los overlays de juego
+        ['victory-overlay', 'elimination-overlay', 'practice-restart-modal', 'practice-victory-modal', 'ready-overlay', 'confirm-leave-modal'].forEach(hideOverlay);
+
+        // 6. Desvincular listeners de las pilas para evitar duplicados
+        const deckEl = document.getElementById('deck');
+        const discardEl = document.getElementById('discard');
+        const newDeckEl = deckEl.cloneNode(true);
+        const newDiscardEl = discardEl.cloneNode(true);
+        deckEl.parentNode.replaceChild(newDeckEl, deckEl);
+        discardEl.parentNode.replaceChild(newDiscardEl, discardEl);
+
+        console.warn('✅ ALERTA CLIENTE: Reseteo de UI completo.');
     }
-
-    // 5. Ocultar todos los overlays de juego
-    ['victory-overlay', 'elimination-overlay', 'practice-restart-modal', 'practice-victory-modal', 'ready-overlay', 'confirm-leave-modal'].forEach(hideOverlay);
-
-    // 6. Desvincular listeners de las pilas para evitar duplicados
-    const deckEl = document.getElementById('deck');
-    const discardEl = document.getElementById('discard');
-    const newDeckEl = deckEl.cloneNode(true);
-    const newDiscardEl = discardEl.cloneNode(true);
-    deckEl.parentNode.replaceChild(newDeckEl, deckEl);
-    discardEl.parentNode.replaceChild(newDiscardEl, discardEl);
-
-    console.warn('✅ RESET DEFINITIVO COMPLETO.');
-}
 
 // Variables globales para el estado del usuario (migración segura)
 let currentUser = {

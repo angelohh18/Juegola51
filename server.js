@@ -1026,21 +1026,20 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
     // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
     if (room.isPractice) {
         const humanPlayer = room.seats.find(s => s && !s.isBot);
-        if (!humanPlayer) return; // Si no hay humano, no hacemos nada
+        if (!humanPlayer) return;
 
-        // ▼▼▼ REEMPLAZA ESTE BLOQUE 'if/else' CON EL NUEVO ▼▼▼
         if (winnerSeat.isBot) {
-            // Si gana un bot, ahora enviamos un evento CON el nombre del ganador.
-            console.log(`[Práctica] Un bot ha ganado. Notificando al jugador.`);
             io.to(humanPlayer.playerId).emit('practiceGameBotWin', { winnerName: winnerSeat.playerName });
         } else {
-            // Si gana el humano, el evento se mantiene igual.
-            console.log(`[Práctica] El jugador humano ha ganado. Enviando señal de victoria.`);
             io.to(humanPlayer.playerId).emit('practiceGameHumanWin');
         }
-        // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
-        // Detenemos la ejecución para no aplicar la lógica de mesas reales.
-        return;
+
+        // --- CORRECCIÓN CLAVE ---
+        // Antes de terminar, llamamos a nuestra función para aniquilar la sala.
+        cleanupPracticeGame(room.roomId, io, "Partida finalizada (victoria/derrota)");
+        // --- FIN DE LA CORRECCIÓN ---
+        
+        return; // Ahora sí, detenemos la ejecución.
     }
     // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
 
@@ -1209,16 +1208,23 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
     const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
 
     if (room.isPractice) {
+        const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
+        const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
         console.log(`[Práctica] Falta cometida por ${playerSeat.playerName}.`);
         const humanPlayer = room.seats.find(s => s && !s.isBot);
         if (humanPlayer) {
             io.to(humanPlayer.playerId).emit('playerEliminated', {
                 playerId: faultingPlayerId,
                 playerName: playerSeat.playerName,
-                faultData: finalFaultData // Enviamos el objeto completo
+                faultData: finalFaultData
             });
             io.to(humanPlayer.playerId).emit('practiceGameFaultEnd');
         }
+        
+        // --- CORRECCIÓN CLAVE ---
+        cleanupPracticeGame(room.roomId, io, "Falta cometida");
+        // --- FIN DE LA CORRECCIÓN ---
+        
         return;
     }
 
@@ -1888,36 +1894,46 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
 
 // Configuración de archivos estáticos ya definida arriba
 
-// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
+// ▼▼▼ AÑADE ESTA NUEVA FUNCIÓN COMPLETA EN server.js ▼▼▼
+function cleanupPracticeGame(roomId, io, reason) {
+    const room = rooms[roomId];
+
+    // Comprobación de seguridad: solo actuar si la sala existe y es de práctica.
+    if (!room || !room.isPractice) {
+        return;
+    }
+
+    // --- ALERTA EN EL SERVIDOR ---
+    console.warn(`[LIMPIEZA DEFINITIVA] Eliminando sala de práctica ${roomId}. Razón: ${reason}.`);
+
+    // 1. Detener y limpiar cualquier temporizador asociado para evitar fugas de memoria.
+    if (turnTimers[roomId]) {
+        clearTimeout(turnTimers[roomId].timerId);
+        clearInterval(turnTimers[roomId].intervalId);
+        delete turnTimers[roomId];
+        console.log(`[LIMPIEZA DEFINITIVA] Temporizador para la sala ${roomId} detenido y eliminado.`);
+    }
+
+    // 2. Eliminar la sala completamente del objeto 'rooms' en memoria. ¡Este es el paso más crucial!
+    delete rooms[roomId];
+    console.warn(`[LIMPIEZA DEFINITIVA] ✅ Sala ${roomId} eliminada del servidor.`);
+
+    // 3. (Opcional pero recomendado) Notificar a todos en el lobby que la lista de mesas ha cambiado.
+    broadcastRoomListUpdate(io);
+}
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
+
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
 
-    // --- INICIO DE LA CORRECCIÓN CLAVE ---
-    // Esta es la lógica más importante para tu problema.
-    // Si la sala existe y está marcada como 'isPractice', la eliminamos inmediatamente.
+    // --- CORRECCIÓN CLAVE ---
+    // Si la sala es de práctica, llamamos a nuestra función central y terminamos.
     if (room && room.isPractice) {
-        console.log(`[Práctica] El jugador humano ha salido. TERMINANDO COMPLETAMENTE la mesa de práctica ${roomId}.`);
-        
-        // 1. Detiene y limpia cualquier temporizador asociado a esta sala para evitar fugas de memoria.
-        if (turnTimers[roomId]) {
-            clearTimeout(turnTimers[roomId].timerId);
-            clearInterval(turnTimers[roomId].intervalId);
-            delete turnTimers[roomId];
-            console.log(`[Práctica] Temporizador para la sala ${roomId} detenido y eliminado.`);
-        }
-        
-        // 2. Elimina la sala completamente del objeto 'rooms' en memoria.
-        delete rooms[roomId];
-        console.log(`[Práctica] Sala ${roomId} eliminada del servidor.`);
-        
-        // 3. Notifica a todos en el lobby que la lista de mesas ha cambiado (la de práctica ya no existe).
-        broadcastRoomListUpdate(io);
-        
-        // 4. Detiene la ejecución aquí para no aplicar la lógica de las mesas reales.
-        return; 
+        cleanupPracticeGame(roomId, io, "Jugador salió al lobby");
+        return;
     }
-    // --- FIN DE LA CORRECCIÓN CLAVE ---
+    // --- FIN DE LA CORRECCIÓN ---
 
     if (!room) return;
 
