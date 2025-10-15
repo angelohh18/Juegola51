@@ -1180,7 +1180,7 @@ body.game-active {
 #game-container header h1 { color: var(--casino-gold); font-size:2.2rem; margin:0; text-shadow: 1px 1px 3px #000; }
 #table {
     width: 100vw;
-    height: calc(100svh - var(--game-size-adjustment)); /* Usa svh para descontar barras del navegador móvil */
+    height: 100%; /* <-- SOLUCIÓN DEFINITIVA: Altura estable del 100% del contenedor padre */
     margin: 0;
     border: none;
     outline: none;
@@ -1699,7 +1699,7 @@ body.game-active {
     
     #table {
         width: 100vw;
-        height: calc(100svh - 5px); /* <-- LÍNEA MODIFICADA */
+        height: 100%; /* <-- ALTURA ESTABLE */
         max-width: none;
         margin: 0;
         border-width: 0;      /* Cambiado de 0.6vw a 0 */
