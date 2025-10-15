@@ -2059,36 +2059,45 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
 
-    // --- SOLUCIÓN SIMPLE Y DIRECTA: ELIMINAR TODAS LAS SALAS DE PRÁCTICA ---
-    console.warn(`[LIMPIEZA TOTAL] Eliminando TODAS las salas de práctica antes de crear una nueva.`);
+    // --- SOLUCIÓN INTELIGENTE: ELIMINAR SOLO LAS SALAS DEL MISMO JUGADOR ---
+    console.warn(`[LIMPIEZA INTELIGENTE] Eliminando salas de práctica del jugador ${socket.id} antes de crear una nueva.`);
     
-    // Eliminar TODAS las salas que empiecen con "practice-"
+    // 1. Eliminar la sala específica del jugador actual
+    if (rooms[roomId]) {
+        console.warn(`[LIMPIEZA INTELIGENTE] Eliminando sala específica: ${roomId}`);
+        
+        if (turnTimers[roomId]) {
+            clearTimeout(turnTimers[roomId].timerId);
+            clearInterval(turnTimers[roomId].intervalId);
+            delete turnTimers[roomId];
+        }
+        
+        delete rooms[roomId];
+    }
+    
+    // 2. Buscar y eliminar CUALQUIER sala de práctica que tenga este socket.id en sus asientos
     Object.keys(rooms).forEach(existingRoomId => {
-        if (existingRoomId.startsWith('practice-')) {
-            console.warn(`[LIMPIEZA TOTAL] Eliminando sala de práctica: ${existingRoomId}`);
+        if (existingRoomId.startsWith('practice-') && rooms[existingRoomId]) {
+            const room = rooms[existingRoomId];
+            // Verificar si este socket.id está en algún asiento de esta sala
+            const hasThisSocket = room.seats.some(seat => seat && seat.playerId === socket.id);
             
-            // Limpiar temporizador si existe
-            if (turnTimers[existingRoomId]) {
-                clearTimeout(turnTimers[existingRoomId].timerId);
-                clearInterval(turnTimers[existingRoomId].intervalId);
-                delete turnTimers[existingRoomId];
+            if (hasThisSocket) {
+                console.warn(`[LIMPIEZA INTELIGENTE] Eliminando sala huérfana del jugador: ${existingRoomId}`);
+                
+                if (turnTimers[existingRoomId]) {
+                    clearTimeout(turnTimers[existingRoomId].timerId);
+                    clearInterval(turnTimers[existingRoomId].intervalId);
+                    delete turnTimers[existingRoomId];
+                }
+                
+                delete rooms[existingRoomId];
             }
-            
-            delete rooms[existingRoomId];
         }
     });
     
-    // También limpiar TODOS los temporizadores que empiecen con "practice-"
-    Object.keys(turnTimers).forEach(timerRoomId => {
-        if (timerRoomId.startsWith('practice-')) {
-            clearTimeout(turnTimers[timerRoomId].timerId);
-            clearInterval(turnTimers[timerRoomId].intervalId);
-            delete turnTimers[timerRoomId];
-        }
-    });
-    
-    console.warn(`[LIMPIEZA TOTAL] ✅ Todas las salas de práctica eliminadas.`);
-    // --- FIN: SOLUCIÓN SIMPLE Y DIRECTA ---
+    console.warn(`[LIMPIEZA INTELIGENTE] ✅ Salas del jugador ${socket.id} eliminadas.`);
+    // --- FIN: SOLUCIÓN INTELIGENTE ---
 
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
