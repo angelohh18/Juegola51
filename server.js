@@ -1932,24 +1932,29 @@ function cleanupPracticeGame(roomId, io, reason) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
-    // --- ALERTA DE DEPURACIÓN 2 ---
-    console.error(`>> [SERVIDOR] Ejecutando handlePlayerDeparture para el ID: ${roomId}`);
-    // --- FIN DE LA ALERTA ---
-
     const room = rooms[roomId];
 
-    // --- ALERTA DE DEPURACIÓN 3 ---
     if (!room) {
-        console.error(`>> [SERVIDOR] ¡FALLO CRÍTICO! No se encontró ninguna sala con el ID: ${roomId}. La sala no será eliminada.`);
-    } else {
-        console.error(`>> [SERVIDOR] Sala encontrada con ID: ${roomId}. Verificando si es de práctica... (esPractica = ${room.isPractice})`);
-    }
-    // --- FIN DE LA ALERTA ---
-
-    if (room && room.isPractice) {
-        cleanupPracticeGame(roomId, io, "Jugador salió al lobby");
+        console.warn(`[handlePlayerDeparture] Intento de salida de una sala (${roomId}) que ya no existe. No se requiere ninguna acción.`);
         return;
     }
+
+    // --- LÓGICA CLAVE PARA MESAS DE PRÁCTICA ---
+    // Si la sala es de práctica, la tratamos como un abandono que debe ser destruido.
+    if (room.isPractice) {
+        console.error(`🚨 [SERVIDOR] FALTA POR ABANDONO EN MESA DE PRÁCTICA.`);
+        console.error(`🚨 [SERVIDOR] Jugador ${leavingPlayerId} ha abandonado la sala ${roomId}.`);
+
+        // Usamos la función de limpieza que ya tienes, que es la correcta.
+        cleanupPracticeGame(roomId, io, "Jugador abandonó la partida");
+
+        // AÑADIMOS EL LOG DE CONFIRMACIÓN EXPLÍCITO QUE PEDISTE.
+        console.error(`🚨 [SERVIDOR] ✅ MESA DE PRÁCTICA ${roomId} Y TODOS SUS DATOS HAN SIDO ELIMINADOS.`);
+        return; // Detenemos la ejecución aquí; no hay más nada que hacer.
+    }
+    // --- FIN DE LA LÓGICA PARA MESAS DE PRÁCTICA ---
+
+    console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala REAL ${roomId}.`);
 
     if (!room) return;
 

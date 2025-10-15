@@ -2604,20 +2604,17 @@ function updatePlayersView(seats, inGame = false) {
 
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
     window.goBackToLobby = function() {
-        // Guardamos el ID de la sala en una variable local antes de hacer nada.
-        // Esto nos protege contra cualquier limpieza prematura del estado.
         const roomIdToLeave = currentGameSettings ? currentGameSettings.roomId : null;
 
         if (roomIdToLeave) {
-            // 1. Notificamos al servidor PRIMERO. Esta es la acción más importante.
-            console.error(`>> [CLIENTE] ✅ Saliendo de la sala. Notificando al servidor para la sala: ${roomIdToLeave}`);
+            // Log definitivo que confirma la acción desde el cliente.
+            console.error(`>> [CLIENTE] ACCIÓN COMPLETADA: Saliendo y notificando al servidor la destrucción de la sala: ${roomIdToLeave}`);
             socket.emit('leaveGame', { roomId: roomIdToLeave });
         } else {
-            // Si no hay roomId, no hay nada que notificar al servidor.
-            console.warn(">> [CLIENTE] goBackToLobby llamado sin un ID de sala activo. Solo se realizará limpieza local.");
+            console.warn(">> [CLIENTE] goBackToLobby llamado sin un ID de sala. Se realizará solo limpieza local.");
         }
 
-        // 2. AHORA, con la notificación ya en camino, procedemos a limpiar la UI localmente.
+        // El resto de la limpieza local se mantiene igual.
         resetUIAndState();
         showLobbyView();
     }
