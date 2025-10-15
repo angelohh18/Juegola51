@@ -733,19 +733,19 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
+        // --- ALERTA A: Confirma que el clic funciona ---
+        alert("DEBUG A: Clic en 'Jugar'. A continuación se limpiará el estado del cliente.");
         console.log('🎯 INICIANDO NUEVA PARTIDA DE PRÁCTICA - Limpieza completa del cliente...');
-        
-        // ▼▼▼ RESTAURA ESTE BLOQUE DE LIMPIEZA ORIGINAL ▼▼▼
-        console.log('🧹 Limpiando TODAS las variables del cliente antes de nueva práctica...');
-        
-        // 1. Limpiar variables de estado del juego
+
+        // Tu bloque de "limpieza agresiva" original (es correcto, se queda)
+        console.log('🧹 Limpiando TODAS las variables del cliente...');
         gameStarted = false;
         players = [];
         orderedSeats = [];
         deck = [];
         discardPile = [];
         currentPlayer = 0;
-        allMelds = [];
+        allMelds = []; // Variable clave a observar
         turnMelds = [];
         unreadMessages = 0;
         isWaitingForNextTurn = false;
@@ -755,34 +755,16 @@ function renderRoomsOverview(rooms = []) {
         mustDiscard = false;
         drewFromDeckToWin = false;
         isDrawing = false;
-        
-        // 2. Limpiar selección de cartas
         if (selectedCards) selectedCards.clear();
-        
-        // 3. Limpiar configuración de la partida
         currentGameSettings = null;
-        
-        // 4. Limpiar temporizadores activos
-        if (activeAnimations) {
-            activeAnimations = [];
-        }
-        
-        // 5. Limpiar caché de renderizado
+        if (activeAnimations) activeAnimations = [];
         lastRenderedDiscardId = null;
         lastRenderedMeldsString = '';
-        
-        // 6. Limpiar DOM completamente
         document.getElementById('human-hand').innerHTML = '';
         document.getElementById('melds-display').innerHTML = '';
         document.getElementById('discard').innerHTML = 'Descarte<br>Vacío';
         document.getElementById('start-game-btn').style.display = 'none';
-        
-        // 7. Limpiar temporizadores visuales
-        document.querySelectorAll('.timer-countdown').forEach(el => {
-            el.textContent = '';
-        });
-        
-        // 8. Limpiar información de jugadores
+        document.querySelectorAll('.timer-countdown').forEach(el => { el.textContent = ''; });
         for (let i = 0; i < 4; i++) {
             const playerInfoEl = document.getElementById(`info-player${i}`);
             if (playerInfoEl) {
@@ -795,30 +777,23 @@ function renderRoomsOverview(rooms = []) {
                 playerCounterEl.textContent = '';
             }
         }
-        
-        // 9. Limpiar bote visualmente
         const potValueEl = document.querySelector('#game-pot-container .pot-value');
-        if (potValueEl) {
-            potValueEl.textContent = '0';
-        }
-        
-        // 10. Ocultar overlays
+        if (potValueEl) potValueEl.textContent = '0';
         hideOverlay('victory-overlay');
         hideOverlay('elimination-overlay');
         hideOverlay('practice-restart-modal');
-        
-        // 11. Limpiar event listeners
         const deckEl = document.getElementById('deck');
         const discardEl = document.getElementById('discard');
         if (deckEl) deckEl.onclick = null;
         if (discardEl) discardEl.onclick = null;
-        
-        console.log('✅ Estado del cliente completamente limpiado antes de nueva práctica');
-        // FIN DE LA LIMPIEZA AGRESIVA
-        
+        console.log('✅ Estado del cliente completamente limpiado');
+
+        // --- ALERTA B: Confirma que la limpieza funcionó ---
+        alert(`DEBUG B: Limpieza finalizada.\n\nESTADO ACTUAL:\n- Juegos en mesa (allMelds): ${allMelds.length}\n- Cartas en descarte: ${discardPile.length}\n\nAhora se pedirá la nueva partida al servidor.`);
+        console.warn(`[DEBUG B] Estado después de la limpieza:`, { allMelds, discardPile, players, orderedSeats });
+
         const username = localStorage.getItem('username') || 'Jugador';
         socket.emit('requestPracticeGame', username);
-        // ▲▲▲ FIN DE LA RESTAURACIÓN ▲▲▲
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -2201,72 +2176,52 @@ function showRoomsOverview() {
 
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
-    
-    // CORRECCIÓN CLAVE: Si es una partida de práctica, inicializamos manualmente
-    // las configuraciones que las mesas reales inicializan por otra vía.
+    // --- ALERTA C: Muestra lo que envía el servidor ---
+    alert("DEBUG C: Recibido 'gameStarted' del servidor. Comprueba la consola para ver el 'initialState' que llegó.");
+    console.warn(`[DEBUG C] 'initialState' recibido del servidor:`, JSON.parse(JSON.stringify(initialState)));
+
+    // --- ALERTA D: Muestra el estado del cliente justo antes de dibujar la partida ---
+    alert(`DEBUG D: A punto de asignar el nuevo estado.\n\nESTADO ACTUAL DEL CLIENTE:\n- Juegos en mesa (allMelds): ${allMelds.length}\n- Cartas en descarte: ${discardPile.length}\n\nDespués de esta alerta, se dibujará la partida.`);
+    console.warn(`[DEBUG D] Estado del cliente ANTES de asignar el nuevo estado:`, { allMelds, discardPile, players, orderedSeats });
+
+    // Tu código original para iniciar la partida (es correcto, se queda)
     if (initialState.isPractice) {
-        
-        // 1. Creamos el objeto de configuración que estaba ausente y causaba el error.
         currentGameSettings = {
             isPractice: true,
             roomId: `practice-${socket.id}`,
-            settings: {
-                username: 'Práctica', // Nombre placeholder para la mesa
-                bet: 0,
-                penalty: 0
-            }
+            settings: { username: 'Práctica', bet: 0, penalty: 0 }
         };
-
-        // 2. Ahora que la configuración existe, podemos mostrar la vista y activar los botones sin errores.
         document.body.classList.add('game-active');
         document.getElementById('lobby-overlay').style.display = 'none';
         document.getElementById('game-container').style.display = 'block';
         setupChat();
         setupInGameLeaveButton();
-        
-        // ▼▼▼ AÑADIR ESTA LÍNEA PARA MOSTRAR EL MODAL EN PRÁCTICA ▼▼▼
         showFunctionsModalOnce();
     }
-
-    // El resto del código es el que ya tenías y es correcto para AMBOS tipos de partida.
     document.querySelector('.player-actions').style.display = 'flex';
     resetClientGameState();
     console.log("Servidor ha iniciado la partida. Recibiendo estado:", initialState);
-    
     document.getElementById('btn-start-rematch').style.display = 'none';
     hideOverlay('victory-overlay');
     hideOverlay('ready-overlay');
     document.getElementById('start-game-btn').style.display = 'none';
-    
     gameStarted = true;
     allMelds = initialState.melds || [];
     turnMelds = [];
     selectedCards = new Set();
     isDrawing = false;
-    
     updatePlayersView(initialState.seats, true);
-    
-    // ▼▼▼ CORRECCIÓN ▼▼▼
-    // Asignamos la mano directamente al jugador local, que la lógica de la UI 
-    // siempre posiciona en el índice 0 del array 'players'.
     if (players[0]) {
         players[0].hand = initialState.hand;
     }
-    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
-    
     discardPile = initialState.discardPile;
-    
     const startingPlayer = initialState.seats.find(sp => sp && sp.playerId === initialState.currentPlayerId);
     if (startingPlayer) {
         currentPlayer = orderedSeats.findIndex(s => s && s.playerId === startingPlayer.playerId);
     } else {
         currentPlayer = 0;
     }
-    
-    // ▼▼▼ CORRECCIÓN ▼▼▼
-    // Reemplazamos la referencia a 'myPlayerData' por 'players[0]', que es la correcta.
-    const myPlayerData = players[0]; // Definimos la variable para que el código sea más legible.
-    // El primer jugador puede tener 15 o 16 cartas al inicio (16 si es el que empieza)
+    const myPlayerData = players[0];
     if (myPlayerData && myPlayerData.hand && (myPlayerData.hand.length === 15 || myPlayerData.hand.length === 16)) {
         hasDrawn = true;
         mustDiscard = true;
@@ -2275,15 +2230,11 @@ socket.on('gameStarted', (initialState) => {
         hasDrawn = false;
         mustDiscard = false;
     }
-    // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
-
     if (initialState.playerHandCounts) {
         updatePlayerHandCounts(initialState.playerHandCounts);
     }
-
     setupPileTouchInteractions();
     setupMeldDropZone();
-    
     animateDealing(initialState).then(() => {
         renderHands();
         updateTurnIndicator();
