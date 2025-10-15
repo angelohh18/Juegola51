@@ -680,13 +680,18 @@ function resetTurnState(room) {
 function resetRoomForNewGame(room) {
     if (!room) return;
 
-    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
+    // ▼▼▼ ESTE ES EL BLOQUE CLAVE ▼▼▼
+    // Se asegura de que cualquier temporizador anterior sea destruido.
     if (turnTimers[room.roomId]) {
+        // Detiene el temporizador principal que cambia de fase.
         clearTimeout(turnTimers[room.roomId].timerId);
+        // Detiene el intervalo que actualiza el contador "tick-tock" cada segundo.
         clearInterval(turnTimers[room.roomId].intervalId);
+        // Elimina por completo la referencia a este temporizador.
         delete turnTimers[room.roomId];
+        console.error(`[TIMER RESET] Temporizador para la sala ${room.roomId} ha sido destruido.`);
     }
-    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+    // ▲▲▲ FIN DEL BLOQUE CLAVE ▲▲▲
 
     room.state = 'playing';
     room.melds = [];
