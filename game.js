@@ -1375,7 +1375,7 @@ function showRoomsOverview() {
 
         // --- Actualización de estado del juego (sin cambios) ---
         allMelds = data.newMelds || [];
-        turnMelds = [];
+        turnMelds = data.turnMelds || [];
         discardPile = data.newDiscardPile;
 
         // ▼▼▼ INICIO DE LA CORRECCIÓN: LÓGICA DE ELIMINACIÓN PRECISA ▼▼▼
