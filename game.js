@@ -2988,7 +2988,9 @@ function updatePlayersView(seats, inGame = false) {
 
     parent.replaceChild(newHuman, human); // 4. Reemplazamos el viejo por el nuevo de un solo golpe
 
-    renderDiscard();
+    // ▼▼▼ LÍNEA ELIMINADA PARA EVITAR PARPADEO ▼▼▼
+    // renderDiscard();
+    // ▲▲▲ FIN DE LA LÍNEA ELIMINADA ▲▲▲
     renderMelds();
     updateActionButtons();
     updateDebugInfo();
