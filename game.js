@@ -2704,9 +2704,7 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        const parent = human.parentNode; // 1. Obtenemos el contenedor padre
-        const newHuman = human.cloneNode(false); // 2. Creamos un nuevo 'human-hand' vacío en memoria
-
+        human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
@@ -2737,6 +2735,11 @@ function updatePlayersView(seats, inGame = false) {
         d.dataset.index = idx;
         d.dataset.cardId = card.id;
         d.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+
+        // Posicionar la carta correctamente
+        const cardWidth = 90;
+        const overlap = 45;
+        d.style.transform = `translateX(${idx * (cardWidth - overlap)}px)`;
 
         let longPressTimer;
 
@@ -2984,30 +2987,60 @@ function updatePlayersView(seats, inGame = false) {
         fragment.appendChild(d);
     });
     
-    newHuman.appendChild(fragment); // 3. Añadimos las cartas al NUEVO contenedor
-
-    parent.replaceChild(newHuman, human); // 4. Reemplazamos el viejo por el nuevo de un solo golpe
+    human.appendChild(fragment);
 
     renderDiscard();
     renderMelds();
     updateActionButtons();
     updateDebugInfo();
 }
-    function reorderHand(draggedIndices, targetDropIndex) {
-        const player = players[0];
-        if (!player || draggedIndices.includes(targetDropIndex)) {
-            renderHands();
-            return;
+// ▼▼▼ REEMPLAZA TU FUNCIÓN reorderHand ENTERA CON ESTA VERSIÓN ▼▼▼
+function reorderHand(draggedIndices, targetDropIndex) {
+    const player = players[0];
+    const hand = player.hand;
+    const handContainer = document.getElementById('human-hand');
+    if (!player || !handContainer) return;
+
+    // 1. CALCULAR EL NUEVO ORDEN EN MEMORIA (SIN TOCAR EL DOM)
+    const sortedDraggedIndices = [...draggedIndices].sort((a, b) => b - a);
+    const draggedCardsData = sortedDraggedIndices.map(index => hand[index]);
+    
+    // Eliminar las cartas arrastradas del array original
+    sortedDraggedIndices.forEach(index => hand.splice(index, 1));
+    
+    // Insertar las cartas en la nueva posición
+    hand.splice(targetDropIndex, 0, ...draggedCardsData.reverse());
+    
+    // 2. ANIMAR LAS CARTAS A SU NUEVA POSICIÓN (SIN REDIBUJAR)
+    const cardElements = Array.from(handContainer.children);
+    let totalWidth = 0;
+    const cardWidth = cardElements.length > 0 ? cardElements[0].offsetWidth : 90;
+    const overlap = 45; // El solapamiento negativo de las cartas
+
+    // Creamos un mapa del nuevo orden
+    const newOrderMap = new Map();
+    hand.forEach((cardData, index) => {
+        newOrderMap.set(cardData.id, index);
+    });
+
+    // Movemos cada carta a su nueva posición horizontal usando 'transform'
+    cardElements.forEach(cardElement => {
+        const cardId = cardElement.dataset.cardId;
+        const newIndex = newOrderMap.get(cardId);
+        
+        if (newIndex !== undefined) {
+            const newPositionX = newIndex * (cardWidth - overlap);
+            cardElement.style.transform = `translateX(${newPositionX}px)`;
+            // Reasignamos el data-index para futuras operaciones
+            cardElement.dataset.index = newIndex;
         }
-        const sortedDraggedIndices = [...draggedIndices].sort((a, b) => a - b);
-        const draggedCards = sortedDraggedIndices.map(index => player.hand[index]);
-        const remainingHand = player.hand.filter((_, index) => !sortedDraggedIndices.includes(index));
-        const itemsRemovedBeforeTarget = sortedDraggedIndices.filter(i => i < targetDropIndex).length;
-        remainingHand.splice(targetDropIndex - itemsRemovedBeforeTarget, 0, ...draggedCards);
-        player.hand = remainingHand;
-        selectedCards.clear();
-        renderHands();
-    }
+    });
+
+    // 3. LIMPIEZA
+    selectedCards.clear();
+    updateActionButtons(); // Actualiza los botones sin un redibujado completo
+}
+// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
     function renderDiscard() {
       const pile = document.getElementById('discard');
       pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
@@ -3028,8 +3061,7 @@ function updatePlayersView(seats, inGame = false) {
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        const parent = display.parentNode; // 1. Obtenemos el padre
-        const newDisplay = display.cloneNode(false); // 2. Creamos un nuevo contenedor en memoria
+        display.innerHTML = '';
         
         // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
         const combinedMelds = [...allMelds, ...turnMelds];
@@ -3078,10 +3110,8 @@ function updatePlayersView(seats, inGame = false) {
             cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
             g.appendChild(cd);
         }
-        newDisplay.appendChild(g); // 3. Añadimos los melds al NUEVO contenedor
+        display.appendChild(g);
         });
-
-        parent.replaceChild(newDisplay, display); // 4. Reemplazamos de un solo golpe
     }
     function animateCardMovement({
         cardsData = [],
