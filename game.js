@@ -2762,6 +2762,12 @@ function updatePlayersView(seats, inGame = false) {
         // La función 'startDrag' ahora lee la posición actual de la carta desde el propio elemento,
         // en lugar de usar una variable 'idx' que podría estar desactualizada.
         const startDrag = (e) => {
+            // Verificación de seguridad para evitar el error "Cannot read properties of null"
+            if (!e.currentTarget || !e.currentTarget.dataset) {
+                console.warn('startDrag: currentTarget o dataset es null/undefined');
+                return JSON.stringify([0]); // Fallback seguro
+            }
+            
             const currentIdx = parseInt(e.currentTarget.dataset.index);
             const selectedElements = document.querySelectorAll('#human-hand .card.selected');
             const isGroupDrag = selectedElements.length > 1 && e.currentTarget.classList.contains('selected');
