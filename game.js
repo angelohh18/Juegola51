@@ -3142,6 +3142,12 @@ function reorderHand(draggedIndices, targetDropIndex) {
         let longPressTimer;
 
         const startDrag = (e) => {
+            // Verificación de seguridad para evitar el error "Cannot read properties of null"
+            if (!e.currentTarget || !e.currentTarget.dataset) {
+                console.warn('startDrag: currentTarget o dataset es null/undefined');
+                return JSON.stringify([0]); // Fallback seguro
+            }
+            
             const currentIdx = parseInt(e.currentTarget.dataset.index);
             const selectedElements = document.querySelectorAll('#human-hand .card.selected');
             const isGroupDrag = selectedElements.length > 1 && e.currentTarget.classList.contains('selected');
