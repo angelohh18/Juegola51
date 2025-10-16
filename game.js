@@ -1,4 +1,5 @@
 // game.js (Archivo completo y actualizado)
+alert('🚀 GAME.JS VERSIÓN CON DEBUG CARGADA - v1.6.1');
 
 /**
  * Convierte una cantidad de una moneda a otra usando las tasas de cambio.
@@ -307,18 +308,27 @@ function showPwaInstallModal() {
 
     // ▼▼▼ AÑADE ESTE LISTENER COMPLETO ▼▼▼
     socket.on('potUpdated', (data) => {
+        alert('🔔 potUpdated recibido! Penalización: ' + data.isPenalty + ' Valor: ' + data.newPotValue);
         const potContainer = document.getElementById('game-pot-container');
-        if (!potContainer) return;
+        if (!potContainer) {
+            alert('❌ ERROR: No se encontró game-pot-container');
+            return;
+        }
 
         const potValueEl = potContainer.querySelector('.pot-value');
-        if (!potValueEl) return;
+        if (!potValueEl) {
+            alert('❌ ERROR: No se encontró pot-value');
+            return;
+        }
 
         potValueEl.textContent = data.newPotValue;
 
         if (data.isPenalty) {
+            alert('✅ Aplicando animación pot-updated');
             potValueEl.classList.add('pot-updated');
             setTimeout(() => {
                 potValueEl.classList.remove('pot-updated');
+                alert('✅ Animación pot-updated removida');
             }, 600);
         }
     });
@@ -1849,6 +1859,7 @@ function showRoomsOverview() {
 
     // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
     socket.on('deckShuffled', () => {
+        alert('📢 EVENTO deckShuffled RECIBIDO DEL SERVIDOR');
         // Al recibir la notificación del servidor, todos los clientes ejecutan la animación.
         animateShuffle();
     });
@@ -3401,12 +3412,15 @@ function updatePlayersView(seats, inGame = false) {
     */
     // ▲▲▲ FIN DE LA FUNCIÓN A ELIMINAR ▲▲▲
     async function animateShuffle() {
+      alert('🔀 INICIANDO ANIMACIÓN DE BARAJADO');
       return new Promise(resolve => {
         const centerArea = document.querySelector('.center-area');
         if (!centerArea) {
+          alert('❌ ERROR: No se encontró center-area para barajado');
           resolve();
           return;
         }
+        alert('✅ center-area encontrado, creando animación');
         showToast('Mazo vacío. Barajando el descarte...', 5000);
         const container = document.createElement('div');
         container.className = 'shuffling-animation-container';
@@ -3417,8 +3431,10 @@ function updatePlayersView(seats, inGame = false) {
           container.appendChild(card);
         }
         centerArea.appendChild(container);
+        alert('✅ Contenedor de barajado añadido al DOM');
         setTimeout(() => {
           container.remove();
+          alert('✅ Animación de barajado completada');
           resolve();
         }, 5000);
       });
