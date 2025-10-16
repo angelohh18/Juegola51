@@ -30,34 +30,13 @@ const pool = new Pool({
 });
 
 // Probar la conexión a la base de datos
-pool.query('SELECT NOW()', async (err, res) => { // <-- Añade async
+pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('❌ Error conectando a la base de datos:', err.stack);
-    console.log('🔄 Reintentando conexión en 5 segundos...');
-    setTimeout(() => {
-      pool.query('SELECT NOW()', async (retryErr, retryRes) => {
-        if (retryErr) {
-          console.error('❌ Error persistente conectando a la base de datos:', retryErr.message);
-          console.log('⚠️  Continuando sin base de datos...');
-          // Inicializar tasas de cambio por defecto
-          exchangeRates = {
-            'EUR': { 'USD': 1.05, 'COP': 4500 },
-            'USD': { 'EUR': 0.95, 'COP': 4200 },
-            'COP': { 'USD': 0.00024, 'EUR': 0.00022 }
-          };
-          console.log('✅ Servidor funcionando en modo sin base de datos');
-        } else {
-          console.log('✅ Conexión exitosa a la base de datos (reintento):', retryRes.rows[0]);
-          await initializeDatabase();
-          await loadExchangeRatesFromDB();
-        }
-      });
-    }, 5000);
   } else {
     console.log('✅ Conexión exitosa a la base de datos:', res.rows[0]);
     // Inicializar tablas después de conectar
-    await initializeDatabase(); // <-- Añade await
-    await loadExchangeRatesFromDB(); // <-- AÑADE ESTA LÍNEA
+    initializeDatabase();
   }
 });
 
@@ -113,18 +92,6 @@ async function initializeDatabase() {
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    // ▼▼▼ AÑADE ESTE BLOQUE DE CÓDIGO ▼▼▼
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS exchange_rates (
-        id SERIAL PRIMARY KEY,
-        from_currency VARCHAR(10) NOT NULL,
-        to_currency VARCHAR(10) NOT NULL,
-        rate DECIMAL(20, 10) NOT NULL,
-        UNIQUE(from_currency, to_currency)
-      )
-    `);
-    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     console.log('✅ Tablas de la base de datos REGENERADAS correctamente');
   } catch (error) {
@@ -224,59 +191,6 @@ async function updateUserPassword(username, newPassword) {
     return false;
   }
 }
-
-// ▼▼▼ AÑADE ESTAS DOS FUNCIONES COMPLETAS ▼▼▼
-
-async function loadExchangeRatesFromDB() {
-    try {
-        const result = await pool.query('SELECT from_currency, to_currency, rate FROM exchange_rates');
-        if (result.rows.length > 0) {
-            console.log('✅ Cargando tasas de cambio desde la base de datos...');
-            // Resetea el objeto en memoria
-            exchangeRates = {};
-            result.rows.forEach(row => {
-                if (!exchangeRates[row.from_currency]) {
-                    exchangeRates[row.from_currency] = {};
-                }
-                exchangeRates[row.from_currency][row.to_currency] = parseFloat(row.rate);
-            });
-        } else {
-            console.log('⚠️ No se encontraron tasas en la BD. Guardando valores por defecto.');
-            // Si la tabla está vacía, guarda las tasas iniciales que tienes en memoria.
-            await updateExchangeRatesInDB(exchangeRates);
-        }
-    } catch (error) {
-        console.error('❌ Error al cargar las tasas de cambio desde la BD:', error);
-    }
-}
-
-async function updateExchangeRatesInDB(ratesToSave) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        // Usamos ON CONFLICT para actualizar si la tasa ya existe (UPSERT)
-        for (const fromCurrency in ratesToSave) {
-            for (const toCurrency in ratesToSave[fromCurrency]) {
-                const rate = ratesToSave[fromCurrency][toCurrency];
-                await client.query(
-                    `INSERT INTO exchange_rates (from_currency, to_currency, rate)
-                     VALUES ($1, $2, $3)
-                     ON CONFLICT (from_currency, to_currency) DO UPDATE SET rate = EXCLUDED.rate`,
-                    [fromCurrency, toCurrency, rate]
-                );
-            }
-        }
-        await client.query('COMMIT');
-        console.log('✅ Tasas de cambio guardadas exitosamente en la base de datos.');
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Error guardando tasas de cambio en la BD:', error);
-    } finally {
-        client.release();
-    }
-}
-
-// ▲▲▲ FIN DE LAS DOS FUNCIONES A AÑADIR ▲▲▲
 // ▲▲▲ FIN DE LA FUNCIÓN ▲▲▲
 
 // ▼▼▼ FUNCIÓN PARA OBTENER DATOS COMPLETOS DE TODOS LOS USUARIOS ▼▼▼
@@ -385,32 +299,26 @@ function handleHostLeaving(room, leavingPlayerId, io) {
     }
 }
 
-// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN checkAndCleanRoom ▼▼▼
 function checkAndCleanRoom(roomId, io) {
     const room = rooms[roomId];
-
     if (!room) {
-        // Si la sala ya no existe (ej: dos eventos la limpiaron a la vez),
-        // aun así notificamos para asegurar que todos los clientes estén sincronizados.
-        return broadcastRoomListUpdate(io);
+        // Si la sala ya no existe, aun así notificamos a todos para que actualicen su lista.
+        broadcastRoomListUpdate(io);
+        return;
     }
 
     const playersInSeats = room.seats.filter(s => s !== null).length;
 
+    // UNA SALA ESTÁ VACÍA SI NO HAY NADIE EN LOS ASIENTOS.
     if (playersInSeats === 0) {
         console.log(`Mesa ${roomId} está completamente vacía. Eliminando...`);
         delete rooms[roomId];
-        
-        // CORRECCIÓN CLAVE: Después de eliminar, notificamos y terminamos la ejecución aquí.
-        // Esto garantiza que la lista SIN la sala eliminada se envíe inmediatamente.
-        return broadcastRoomListUpdate(io);
     }
 
-    // Si la sala NO se eliminó (porque aún tiene jugadores), simplemente
-    // notificamos para que se actualice el contador de jugadores (ej: 2/4).
+    // Se emite la actualización SIEMPRE que un jugador sale,
+    // para que el contador (ej: 3/4 -> 2/4) se actualice en tiempo real.
     broadcastRoomListUpdate(io);
 }
-// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 // ▼▼▼ FUNCIÓN PARA ACTUALIZAR LISTA DE USUARIOS ▼▼▼
 function broadcastUserListUpdate(io) {
@@ -686,18 +594,13 @@ function resetTurnState(room) {
 function resetRoomForNewGame(room) {
     if (!room) return;
 
-    // ▼▼▼ ESTE ES EL BLOQUE CLAVE ▼▼▼
-    // Se asegura de que cualquier temporizador anterior sea destruido.
+    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
     if (turnTimers[room.roomId]) {
-        // Detiene el temporizador principal que cambia de fase.
         clearTimeout(turnTimers[room.roomId].timerId);
-        // Detiene el intervalo que actualiza el contador "tick-tock" cada segundo.
         clearInterval(turnTimers[room.roomId].intervalId);
-        // Elimina por completo la referencia a este temporizador.
         delete turnTimers[room.roomId];
-        console.error(`[TIMER RESET] Temporizador para la sala ${room.roomId} ha sido destruido.`);
     }
-    // ▲▲▲ FIN DEL BLOQUE CLAVE ▲▲▲
+    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
 
     room.state = 'playing';
     room.melds = [];
@@ -1203,12 +1106,6 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io, fo
             console.log(`Jugador ${playerSeat.playerName} paga multa de ${penalty}. Nuevo bote: ${room.pot}`);
             io.to(faultingPlayerId).emit('userStateUpdated', playerInfo);
             io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
-            
-            // Persistir el cambio de créditos en la base de datos (en segundo plano)
-            updateUserCredits(playerSeat.userId, playerInfo.credits, playerInfo.currency)
-                .catch(err => {
-                    console.error(`[BG] Falla al actualizar créditos para ${playerSeat.userId} en segundo plano:`, err);
-                });
         }
         
         const playerHand = room.playerHands[faultingPlayerId] || [];
@@ -1409,18 +1306,8 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
   return scores[0].card;
 }
 
-// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN botPlay ▼▼▼
+// ▼▼▼ REEMPLAZA LA FUNCIÓN botPlay ENTERA EN SERVER.JS CON ESTA VERSIÓN ▼▼▼
 async function botPlay(room, botPlayerId, io) {
-    // --- ESTA ES LA CORRECCIÓN CLAVE ---
-    // Ahora no solo comprobamos si una sala existe en el ID, sino si es
-    // la MISMA instancia de sala con la que se inició este turno de bot.
-    // Si la sala ha sido reemplazada (ej: por una nueva partida), el bot se detiene.
-    if (!room || !room.roomId || rooms[room.roomId] !== room) {
-        console.log(`[BOT DETENIDO] La sala ha sido reemplazada o ya no existe. Bot ${botPlayerId} se detiene.`);
-        return;
-    }
-    // --- FIN DE LA CORRECCIÓN ---
-
     const botSeat = room.seats.find(s => s.playerId === botPlayerId);
     if (!botSeat || !botSeat.active) return;
 
@@ -1824,14 +1711,6 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // ▼▼▼ INICIO DE LA CORRECCIÓN DEFINITIVA ▼▼▼
-    // Se mueven las combinaciones temporales a permanentes JUSTO ANTES de cambiar el turno.
-    // Esto asegura que la actualización sea atómica y evita errores de sincronización.
-    if (room.turnMelds && room.turnMelds.length > 0) {
-        room.melds.push(...room.turnMelds);
-    }
-    // ▲▲▲ FIN DE LA CORRECCIÓN DEFINITIVA ▲▲▲
-
     // ▼▼▼ MARCAR QUE EL JUGADOR COMPLETÓ SU TURNO ▼▼▼
     const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
     if (finishedPlayerSeat && finishedPlayerSeat.haIniciadoSuTurno === false) {
@@ -1871,104 +1750,132 @@ async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, i
     // Si el siguiente jugador es un bot, se vuelve a llamar a la función botPlay
     const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
     if (nextPlayerSeat && nextPlayerSeat.isBot) {
-        setTimeout(() => {
-            // ▼▼▼ VERIFICACIÓN CRÍTICA ANTES DE EJECUTAR BOT ▼▼▼
-            // Solo ejecutamos el bot si la sala todavía existe
-            if (rooms[room.roomId]) {
-                botPlay(room, room.currentPlayerId, io);
-            } else {
-                console.log(`[BOT CANCELADO] La sala ${room.roomId} ya no existe. Bot no ejecutado.`);
-            }
-            // ▲▲▲ FIN DE LA VERIFICACIÓN ▲▲▲
-        }, 1000);
+        setTimeout(() => botPlay(room, room.currentPlayerId, io), 1000);
     }
 }
 
 // Configuración de archivos estáticos ya definida arriba
 
-// ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN handlePlayerDeparture ▼▼▼
+// ▼▼▼ AÑADE ESTA FUNCIÓN COMPLETA ▼▼▼
+// ▼▼▼ REEMPLAZA LA FUNCIÓN handlePlayerDeparture ENTERA CON ESTA VERSIÓN ▼▼▼
 async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
     const room = rooms[roomId];
 
-    if (!room) {
-        console.error(`[Abandono] La sala ${roomId} NO EXISTE. No se puede procesar la salida.`);
-        return;
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    if (room && room.isPractice) {
+        console.log(`[Práctica] El jugador humano ha salido. Eliminando la mesa de práctica ${roomId}.`);
+        delete rooms[roomId]; // Elimina la sala del servidor
+        broadcastRoomListUpdate(io); // Notifica a todos para que desaparezca del lobby
+        return; // Detiene la ejecución para no aplicar lógica de mesas reales
     }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    if (room.isPractice) {
-        // La lógica de práctica se mantiene igual
-        console.log(`[Práctica] Jugador ha salido. Eliminando la mesa de práctica ${roomId}.`);
-        if (turnTimers[roomId]) {
-            clearTimeout(turnTimers[roomId].timerId);
-            clearInterval(turnTimers[roomId].intervalId);
-            delete turnTimers[roomId];
-        }
-        delete rooms[roomId];
-        broadcastRoomListUpdate(io);
-        return;
+    if (!room) return;
+
+    console.log(`Gestionando salida del jugador ${leavingPlayerId} de la sala ${roomId}.`);
+
+    if (room.spectators) {
+        room.spectators = room.spectators.filter(s => s.id !== leavingPlayerId);
     }
 
     const seatIndex = room.seats.findIndex(s => s && s.playerId === leavingPlayerId);
+    if (seatIndex === -1) {
+        io.to(roomId).emit('spectatorListUpdated', { spectators: room.spectators });
+        checkAndCleanRoom(roomId, io);
+        return;
+    }
+    
+    const leavingPlayerSeat = { ...room.seats[seatIndex] };
+    const playerName = leavingPlayerSeat.playerName;
 
-    // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
-    // Añadimos room.state === 'post-game' a la condición.
-    // Ahora, si un jugador sale desde la pantalla de revancha, se gestiona como una salida normal sin multa.
-    if (seatIndex === -1 || room.state === 'waiting' || room.state === 'post-game' || (room.seats[seatIndex] && room.seats[seatIndex].status === 'waiting')) {
-        console.log(`[Abandono Simple] Jugador saliendo de la sala ${roomId} en estado '${room.state}'.`);
-        if (seatIndex !== -1) {
-            room.seats[seatIndex] = null; // ¡Esta es la línea crucial que ahora se ejecutará!
-        }
-        // El resto de la lógica de limpieza se ejecuta después
-    } 
-    // --- LÓGICA PARA ABANDONO EN MITAD DE PARTIDA (CON MULTA) ---
-    else if (room.state === 'playing' && room.seats[seatIndex]?.active) {
-        const leavingPlayerSeat = { ...room.seats[seatIndex] };
-        const playerName = leavingPlayerSeat.playerName;
-        console.error(`[FALTA] ¡Jugador activo ${playerName} ha abandonado la partida!`);
+    room.seats[seatIndex] = null;
 
-        // ... (Toda tu lógica de aplicar multa, devolver cartas, etc. se mantiene aquí sin cambios)
-        const penalty = room.settings.penalty || 0;
-        const playerInfo = users[leavingPlayerSeat.userId];
-        if (penalty > 0 && playerInfo) {
-            const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
-            playerInfo.credits -= penaltyInPlayerCurrency;
-            room.pot = (room.pot || 0) + penalty;
-            io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
-            io.to(roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
-            updateUserCredits(leavingPlayerSeat.userId, playerInfo.credits, playerInfo.currency).catch(err => console.error(`[BG] Falla al actualizar créditos por abandono para ${leavingPlayerSeat.userId}:`, err));
-        }
-        const playerHand = room.playerHands[leavingPlayerId] || [];
-        if (playerHand.length > 0) {
-            const topCard = room.discardPile.pop();
-            shuffle(playerHand);
-            room.discardPile.unshift(...playerHand);
-            if (topCard) room.discardPile.push(topCard);
-        }
-        room.playerHands[leavingPlayerId] = [];
-        leavingPlayerSeat.active = false;
-        room.seats[seatIndex] = null;
-        const reason = `${playerName} ha abandonado la partida.`;
-        io.to(roomId).emit('playerEliminated', { playerId: leavingPlayerId, playerName: playerName, faultData: { reason } });
-        const activePlayers = room.seats.filter(s => s && s.active !== false);
-        if (activePlayers.length === 1) {
-            await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
-            return;
-        }
-        if (room.currentPlayerId === leavingPlayerId) {
-            await advanceTurnAfterAction(room, leavingPlayerId, null, io);
+    if (room.state === 'playing') {
+        // VALIDACIÓN CLAVE: Solo aplicamos lógica de abandono si el jugador estaba ACTIVO.
+        if (leavingPlayerSeat.status !== 'waiting') {
+            // --- JUGADOR ACTIVO: Se aplica multa y se gestiona el turno ---
+            console.log(`Jugador activo ${playerName} ha abandonado. Se aplica multa.`);
+
+            const reason = `${playerName} ha abandonado la partida.`;
+            io.to(roomId).emit('playerEliminated', {
+                playerId: leavingPlayerId,
+                playerName: playerName,
+                reason: reason
+            });
+
+            if (leavingPlayerSeat && leavingPlayerSeat.userId) {
+                const penalty = room.settings.penalty || 0;
+                const playerInfo = users[leavingPlayerSeat.userId];
+                if (penalty > 0 && playerInfo) {
+                    const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
+                    playerInfo.credits -= penaltyInPlayerCurrency;
+                    room.pot = (room.pot || 0) + penalty;
+                    io.to(leavingPlayerId).emit('userStateUpdated', playerInfo);
+                    io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
+                }
+            }
+
+            const activePlayers = room.seats.filter(s => s && s.active !== false);
+            if (activePlayers.length === 1) {
+                await endGameAndCalculateScores(room, activePlayers[0], io, { name: playerName });
+                return;
+            } else if (activePlayers.length > 1) {
+                if (room.currentPlayerId === leavingPlayerId) {
+                    // ▼▼▼ LIMPIEZA DE TEMPORIZADORES ▼▼▼
+                    if (turnTimers[room.roomId]) {
+                        clearTimeout(turnTimers[room.roomId].timerId);
+                        clearInterval(turnTimers[room.roomId].intervalId);
+                        delete turnTimers[room.roomId];
+                    }
+                    // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
+                    
+                    resetTurnState(room);
+                    let oldPlayerIndex = -1;
+                    if (room.initialSeats) {
+                        oldPlayerIndex = room.initialSeats.findIndex(s => s && s.playerId === leavingPlayerId);
+                    }
+                    let nextPlayerIndex = oldPlayerIndex !== -1 ? oldPlayerIndex : 0;
+                    let attempts = 0;
+                    let nextPlayer = null;
+                    while (!nextPlayer && attempts < room.seats.length * 2) {
+                        nextPlayerIndex = (nextPlayerIndex + 1) % room.seats.length;
+                        const potentialNextPlayerSeat = room.seats[nextPlayerIndex];
+                        if (potentialNextPlayerSeat && potentialNextPlayerSeat.active) {
+                            nextPlayer = potentialNextPlayerSeat;
+                        }
+                        attempts++;
+                    }
+                    if (nextPlayer) {
+                        room.currentPlayerId = nextPlayer.playerId;
+                        io.to(roomId).emit('turnChanged', {
+                            discardedCard: null,
+                            discardingPlayerId: leavingPlayerId,
+                            newDiscardPile: room.discardPile,
+                            nextPlayerId: room.currentPlayerId,
+                            playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts,
+                            newMelds: room.melds
+                        });
+                    }
+                }
+            }
+        } else {
+            // --- JUGADOR EN ESPERA: No hay multa, solo se notifica ---
+            console.log(`Jugador ${playerName} ha salido mientras esperaba. No se aplica multa.`);
+            io.to(roomId).emit('playerAbandoned', {
+                message: `${playerName} ha abandonado la mesa antes de empezar la partida.`
+            });
         }
     }
-
-    // --- LÓGICA DE LIMPIEZA FINAL (se ejecuta para todas las salidas) ---
+    
     handleHostLeaving(room, leavingPlayerId, io);
     io.to(roomId).emit('playerLeft', getSanitizedRoomForClient(room));
-    checkAndCleanRoom(roomId, io); // Esta función ahora recibirá la información correcta
+    checkAndCleanRoom(roomId, io);
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
+// ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
-// >> FIRMA DE LA FUNCIÓN MODIFICADA
-function createAndStartPracticeGame(socket, user, io) { 
+function createAndStartPracticeGame(socket, username, io) {
     const roomId = `practice-${socket.id}`;
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -1979,8 +1886,7 @@ function createAndStartPracticeGame(socket, user, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        // >> LÍNEAS MODIFICADAS
-        { playerId: socket.id, playerName: user.username, avatar: user.avatar, active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
+        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false, haIniciadoSuTurno: false },
         { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false },
         { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true, haIniciadoSuTurno: false }
@@ -2257,20 +2163,17 @@ io.on('connection', (socket) => {
         socket.emit('admin:exchangeRates', exchangeRates);
     });
 
-    socket.on('admin:updateRates', async (newRates) => { // <-- Añade async
+    socket.on('admin:updateRates', (newRates) => {
         console.log('[Admin] Actualizando tasas de cambio:', newRates);
         // Actualizamos nuestro objeto en memoria
         exchangeRates.EUR.COP = newRates.EUR_COP || 4500;
         exchangeRates.USD.COP = newRates.USD_COP || 4500;
-        exchangeRates.EUR.USD = newRates.EUR_USD || 1.05;
+        exchangeRates.EUR.USD = newRates.EUR_USD || 1.05; // <-- NUEVA LÍNEA
 
         // Recalculamos las inversas
         exchangeRates.COP.EUR = 1 / exchangeRates.EUR.COP;
         exchangeRates.COP.USD = 1 / exchangeRates.USD.COP;
-        exchangeRates.USD.EUR = 1 / exchangeRates.EUR.USD;
-
-        // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
-        await updateExchangeRatesInDB(exchangeRates); // Guardamos en la BD
+        exchangeRates.USD.EUR = 1 / exchangeRates.EUR.USD; // <-- NUEVA LÍNEA
 
         // Notificamos a TODOS los clientes (jugadores y admins) de las nuevas tasas
         io.emit('exchangeRatesUpdate', exchangeRates);
@@ -2359,31 +2262,16 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  // ▼▼▼ REEMPLAZO DEFINITIVO Y REFORZADO ▼▼▼
-  socket.on('requestPracticeGame', (user) => { 
-    const roomId = `practice-${socket.id}`;
-
-    // --- ESTA ES LA CORRECCIÓN CLAVE Y DEFINITIVA ---
-    // 1. ANTES de hacer nada, buscamos y destruimos cualquier temporizador "zombie".
-    // Esta limpieza ahora es independiente de si la sala 'rooms[roomId]' existe.
-    if (turnTimers[roomId]) {
-        console.error(`[LIMPIEZA AGRESIVA] Detectado temporizador "zombie" para ${roomId}. Destruyendo...`);
-        clearTimeout(turnTimers[roomId].timerId);
-        clearInterval(turnTimers[roomId].intervalId);
-        delete turnTimers[roomId];
+  socket.on('requestPracticeGame', (username) => {
+    // ▼▼▼ AÑADE ESTE BLOQUE DE LIMPIEZA PREVENTIVA ▼▼▼
+    const existingRoomId = `practice-${socket.id}`;
+    if (rooms[existingRoomId]) {
+        console.log(`[Limpieza] Eliminando sala de práctica anterior ${existingRoomId} antes de crear una nueva.`);
+        delete rooms[existingRoomId];
     }
-    // --- FIN DE LA CORRECCIÓN ---
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
-    // 2. Ahora, procedemos con la limpieza de la sala, si es que aún existe.
-    if (rooms[roomId]) {
-        console.log(`[Limpieza Preventiva] Eliminando sala de práctica "zombie" ${roomId}.`);
-        delete rooms[roomId];
-        broadcastRoomListUpdate(io);
-    }
-
-    // 3. Finalmente, creamos la nueva partida sobre un estado 100% limpio.
-    console.log(`[Práctica] Creando una nueva partida para el jugador ${user.username} (${socket.id})`);
-    createAndStartPracticeGame(socket, user, io);
+    createAndStartPracticeGame(socket, username, io);
   });
 
     socket.on('joinRoom', ({ roomId, user }) => {
@@ -2526,7 +2414,7 @@ io.on('connection', (socket) => {
   });
 
 
-  socket.on('startGame', async (roomId) => {
+  socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (room && room.hostId === socket.id) {
         console.log(`Iniciando juego en la mesa ${roomId}`);
@@ -2537,7 +2425,7 @@ io.on('connection', (socket) => {
         room.melds = [];
         room.pot = 0; // <<-- AÑADE ESTA LÍNEA para inicializar el bote
         
-        for (const seat of room.seats) {
+        room.seats.forEach(seat => {
             if (seat) {
                 seat.active = true;
                 seat.doneFirstMeld = false;
@@ -2556,15 +2444,9 @@ io.on('connection', (socket) => {
                     room.pot += roomBet;
 
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
-                    
-                    // Persistir el cambio de créditos en la base de datos (en segundo plano)
-                    updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency)
-                        .catch(err => {
-                            console.error(`[BG] Falla al actualizar créditos para ${seat.userId} en segundo plano:`, err);
-                        });
                 }
             }
-        }
+        });
         
         const newDeck = buildDeck();
         shuffle(newDeck);
@@ -2887,25 +2769,28 @@ socket.on('accionDescartar', async (data) => {
         return socket.emit('fault', { reason: 'Error de sincronización, la carta no está en tu mano.' });
     }
 
-    // 1. Procesar la jugada (quitar carta de la mano y añadirla al descarte).
-    playerHand.splice(cardIndex, 1);
+    // 1. Procesar la jugada.
+    console.log(`[DEBUG] Eliminando carta de la mano...`);
+    playerHand.splice(cardIndex, 1); // La carta se elimina de la mano.
+    console.log(`[DEBUG] Agregando carta al descarte...`);
     room.discardPile.push(card);
-
-    // 2. Comprobar si hay victoria.
-    if (playerHand.length === 0) {
-        console.log(`¡VICTORIA! ${playerSeat.playerName} ha descartado su última carta.`);
-        // IMPORTANTE: Aún con victoria, las jugadas del turno deben hacerse permanentes.
-        if (room.turnMelds && room.turnMelds.length > 0) {
-            room.melds.push(...room.turnMelds);
-            room.turnMelds = [];
-        }
-        // Finaliza el juego y calcula los puntos.
-        await endGameAndCalculateScores(room, playerSeat, io);
-        return; // Detiene la ejecución aquí.
+    console.log(`[DEBUG] Descartar procesado exitosamente`);
+    if (room.turnMelds.length > 0) {
+        room.melds.push(...room.turnMelds);
     }
 
-    // 3. Si no hay victoria, se avanza el turno.
-    // La función advanceTurnAfterAction se encargará ahora de mover las combinaciones.
+    // 2. ¡NUEVA LÓGICA DE VICTORIA!
+    // Se comprueba si la mano quedó vacía DESPUÉS de descartar.
+    if (playerHand.length === 0) {
+        console.log(`¡VICTORIA! ${playerSeat.playerName} ha descartado su última carta.`);
+        // Llamamos directamente a la función que calcula los puntos y finaliza el juego.
+        await endGameAndCalculateScores(room, playerSeat, io);
+        return; // Detenemos la ejecución para no pasar el turno.
+    }
+
+    // ▼▼▼ REEMPLAZA TODO EL BLOQUE ANTERIOR CON ESTA ÚNICA LÍNEA ▼▼▼
+    
+    // 3. Si no hay victoria, delega el cambio de turno y el inicio del temporizador.
     await advanceTurnAfterAction(room, socket.id, card, io);
     
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
@@ -3079,34 +2964,21 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
-  // ▼▼▼ REEMPLAZO FINAL Y DEFINITIVO DEL LISTENER 'disconnect' ▼▼▼
+  // ▼▼▼ REEMPLAZA TU LISTENER socket.on('disconnect', ...) ENTERO CON ESTE NUEVO CÓDIGO ▼▼▼
   socket.on('disconnect', () => {
     console.log('❌ Un jugador se ha desconectado:', socket.id);
+    const roomId = socket.currentRoomId; // Obtenemos la sala de forma instantánea.
 
-    // Actualiza la lista de usuarios en el lobby (esto ya es correcto)
+    // Elimina al usuario de la lista de conectados y notifica a todos
     if (connectedUsers[socket.id]) {
         delete connectedUsers[socket.id];
         broadcastUserListUpdate(io);
     }
 
-    // --- BÚSQUEDA FORZADA Y ROBUSTA ---
-    // En lugar de confiar en socket.rooms, buscamos manualmente en nuestro estado.
-    for (const roomId in rooms) {
-        const room = rooms[roomId];
-        if (room && room.seats) {
-            // Comprobamos si el ID del socket desconectado está en algún asiento de esta sala.
-            const isPlayerInRoom = room.seats.some(seat => seat && seat.playerId === socket.id);
-            
-            if (isPlayerInRoom) {
-                console.log(`[DISCONNECT FORZADO] Jugador ${socket.id} encontrado en la mesa ${roomId}. Procesando abandono...`);
-                
-                // Si lo encontramos, llamamos a la misma función de limpieza que al salir voluntariamente.
-                // Esta función ya sabe cómo aplicar multas, eliminar al jugador y limpiar la mesa.
-                handlePlayerDeparture(roomId, socket.id, io);
-                
-                break; // Salimos del bucle una vez encontrada y procesada la sala.
-            }
-        }
+    if (roomId && rooms[roomId]) {
+        // Si el jugador estaba en una sala válida, procesamos su salida.
+        console.log(`El jugador ${socket.id} estaba en la mesa ${roomId}. Aplicando lógica de salida...`);
+        handlePlayerDeparture(roomId, socket.id, io);
     }
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
@@ -3161,7 +3033,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     }
   });
 
-  socket.on('startRematch', async (roomId) => {
+  socket.on('startRematch', (roomId) => {
     const room = rooms[roomId];
     if (!room || socket.id !== room.hostId) return;
 
@@ -3257,7 +3129,7 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
         room.pot = 0; // Se resetea el bote
         const seatedPlayersForRematch = room.seats.filter(s => s !== null);
 
-        for (const seat of seatedPlayersForRematch) {
+        seatedPlayersForRematch.forEach(seat => {
             if (seat) {
                 const playerInfo = users[seat.userId]; // Usamos el objeto 'users'
                 if (playerInfo) {
@@ -3275,15 +3147,9 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
                     // 4. Notificar al jugador su estado completo (créditos y moneda)
                     io.to(seat.playerId).emit('userStateUpdated', playerInfo);
-                    
-                    // 5. Persistir el cambio de créditos en la base de datos (en segundo plano)
-                    updateUserCredits(seat.userId, playerInfo.credits, playerInfo.currency)
-                        .catch(err => {
-                            console.error(`[BG] Falla al actualizar créditos para ${seat.userId} en segundo plano:`, err);
-                        });
                 }
             }
-        }
+        });
 
         console.log(`[Rematch] Partida iniciada. Bote inicial: ${room.pot}.`);
         // Se notifica a todos en la sala del nuevo valor del bote
@@ -3349,10 +3215,6 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   socket.on('leaveGame', (data) => {
     const { roomId } = data;
 
-    // ▼▼▼ LÍNEA DE ALERTA A AÑADIR ▼▼▼
-    console.warn(`[ALERTA SERVIDOR] Evento 'leaveGame' recibido. Sala: ${roomId}, Jugador: ${socket.id}`);
-    // ▲▲▲ FIN DE LA LÍNEA DE ALERTA ▲▲▲
-
     // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
     if (roomId) {
         socket.leave(roomId);
@@ -3377,30 +3239,21 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AL FINAL ▼▼▼
   socket.on('requestPracticeRematch', (data) => {
+    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTE BLOQUE ▼▼▼
     const oldRoomId = data.roomId;
     const oldRoom = rooms[oldRoomId];
 
     const playerSeat = oldRoom ? oldRoom.seats.find(s => s && s.playerId === socket.id) : null;
     const username = playerSeat ? playerSeat.playerName : 'Jugador';
-    const avatar = playerSeat ? playerSeat.avatar : '';
 
     if (oldRoom) {
-        // ▼▼▼ BLOQUE DE CORRECCIÓN AÑADIDO ▼▼▼
-        // Aniquilamos el temporizador "zombie" de la partida anterior.
-        if (turnTimers[oldRoomId]) {
-            clearTimeout(turnTimers[oldRoomId].timerId);
-            clearInterval(turnTimers[oldRoomId].intervalId);
-            delete turnTimers[oldRoomId];
-            console.error(`[TIMER ZOMBIE] Temporizador de práctica ${oldRoomId} destruido.`);
-        }
-        // ▲▲▲ FIN DEL BLOQUE DE CORRECCIÓN ▲▲▲
-
         delete rooms[oldRoomId];
         console.log(`[Práctica] Sala anterior ${oldRoomId} eliminada.`);
     }
 
     console.log(`[Práctica] Creando nueva partida para ${username}.`);
-    createAndStartPracticeGame(socket, { username: username, avatar: avatar }, io);
+    createAndStartPracticeGame(socket, username, io);
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
@@ -3441,31 +3294,21 @@ setTimeout(() => {
 }, 30000); // 30 segundos de espera inicial
 
 server.listen(PORT, async () => {
-  // ▼▼▼ LIMPIEZA DEFINITIVA AL INICIAR SERVIDOR ▼▼▼
-  console.error('[SERVER START] Forzando limpieza de estado al iniciar el servidor.');
-  rooms = {};
-  turnTimers = {};
-  // ▲▲▲ FIN DE LA LIMPIEZA ▲▲▲
-
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
   
-  // Verificar estructura de la tabla users (solo si hay conexión a BD)
-  if (process.env.DATABASE_URL) {
-    try {
-      const result = await pool.query(`
-        SELECT column_name, data_type, is_nullable 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' 
-        ORDER BY ordinal_position
-      `);
-      console.log('📋 Estructura de la tabla users:');
-      result.rows.forEach(row => {
-        console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
-      });
-    } catch (error) {
-      console.log('⚠️  Base de datos no disponible, saltando verificación de estructura');
-    }
-  } else {
-    console.log('⚠️  DATABASE_URL no configurada, funcionando sin base de datos');
+  // Verificar estructura de la tabla users
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      ORDER BY ordinal_position
+    `);
+    console.log('📋 Estructura de la tabla users:');
+    result.rows.forEach(row => {
+      console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
+    });
+  } catch (error) {
+    console.error('❌ Error verificando estructura de la tabla:', error);
   }
 });// Verificación de servidor - Tue Oct  7 13:42:08 WEST 2025

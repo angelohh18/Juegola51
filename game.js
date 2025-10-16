@@ -1,5 +1,4 @@
 // game.js (Archivo completo y actualizado)
-alert('🚀 GAME.JS VERSIÓN CON DEBUG CARGADA - v1.6.1');
 
 /**
  * Convierte una cantidad de una moneda a otra usando las tasas de cambio.
@@ -308,30 +307,24 @@ function showPwaInstallModal() {
 
     // ▼▼▼ AÑADE ESTE LISTENER COMPLETO ▼▼▼
     socket.on('potUpdated', (data) => {
-        alert('🔔 potUpdated recibido! Penalización: ' + data.isPenalty + ' Valor: ' + data.newPotValue);
         const potContainer = document.getElementById('game-pot-container');
-        if (!potContainer) {
-            alert('❌ ERROR: No se encontró game-pot-container');
-            return;
-        }
+        if (!potContainer) return;
 
         const potValueEl = potContainer.querySelector('.pot-value');
-        if (!potValueEl) {
-            alert('❌ ERROR: No se encontró pot-value');
-            return;
-        }
+        if (!potValueEl) return;
 
         potValueEl.textContent = data.newPotValue;
 
+        // Aplicamos la nueva animación de pulso al valor numérico
         if (data.isPenalty) {
-            alert('✅ Aplicando animación pot-updated');
             potValueEl.classList.add('pot-updated');
+
             setTimeout(() => {
                 potValueEl.classList.remove('pot-updated');
-                alert('✅ Animación pot-updated removida');
-            }, 600);
+            }, 600); // Coincide con la duración de la nueva animación
         }
     });
+    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
     socket.on('joinedAsSpectator', (gameState) => {
         console.log('Te has unido como espectador. Pasando control a la vista de juego...');
@@ -703,12 +696,8 @@ function renderRoomsOverview(rooms = []) {
         </div>
     `;
     practiceTable.querySelector('button').onclick = () => {
-        // >> LÍNEA MODIFICADA <<
-        // Ahora enviamos el objeto con los datos actuales del usuario en lugar de un string.
-        socket.emit('requestPracticeGame', { 
-            username: currentUser.username, 
-            avatar: currentUser.userAvatar 
-        });
+        const username = localStorage.getItem('username') || 'Jugador';
+        socket.emit('requestPracticeGame', username);
     };
     roomsOverviewEl.appendChild(practiceTable);
 
@@ -1582,8 +1571,7 @@ function showRoomsOverview() {
 
         if (timeLeft <= 0) return;
 
-        // ▼▼▼ LÓGICA CORREGIDA PARA ENCONTRAR EL JUGADOR CORRECTO ▼▼▼
-        // Buscar el jugador en orderedSeats (que está ordenado para cada cliente)
+        // Encontrar y actualizar solo el contador del jugador correcto
         const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === playerId);
         if (playerViewIndex !== -1) {
             const playerInfoEl = document.getElementById(`info-player${playerViewIndex}`);
@@ -1591,69 +1579,9 @@ function showRoomsOverview() {
                 const countdownEl = playerInfoEl.querySelector('.timer-countdown');
                 if (countdownEl) {
                     countdownEl.textContent = timeLeft;
-                    
-                    // ▼▼▼ INICIO DEL CÓDIGO A AÑADIR ▼▼▼
-                    // Limpia clases de color anteriores
-                    countdownEl.classList.remove('timer-green', 'timer-yellow', 'timer-red');
-
-                    // Calcula el porcentaje y aplica la clase nueva
-                    if (totalDuration > 0) {
-                        const percentage = (timeLeft / totalDuration) * 100;
-                        if (percentage <= 25) {
-                            countdownEl.classList.add('timer-red');
-                        } else if (percentage <= 50) {
-                            countdownEl.classList.add('timer-yellow');
-                        } else {
-                            countdownEl.classList.add('timer-green');
-                        }
-                    }
-                    // ▲▲▲ FIN DEL CÓDIGO A AÑADIR ▲▲▲
-                }
-            }
-        } else {
-            // ▼▼▼ FALLBACK: Si no se encuentra en orderedSeats, buscar en todos los elementos ▼▼▼
-            // Esto puede pasar si hay problemas de sincronización
-            console.log(`[Timer] No se encontró el jugador ${playerId} en orderedSeats, usando fallback`);
-            
-            // Buscar en todos los elementos info-player
-            for (let i = 0; i < 4; i++) {
-                const playerInfoEl = document.getElementById(`info-player${i}`);
-                if (playerInfoEl) {
-                    // Verificar si este elemento contiene el jugador correcto
-                    const playerNameEl = playerInfoEl.querySelector('.player-name');
-                    if (playerNameEl) {
-                        // Buscar en orderedSeats para ver si este índice corresponde al jugador
-                        const seatAtIndex = orderedSeats[i];
-                        if (seatAtIndex && seatAtIndex.playerId === playerId) {
-                            const countdownEl = playerInfoEl.querySelector('.timer-countdown');
-                            if (countdownEl) {
-                                countdownEl.textContent = timeLeft;
-                                
-                                // ▼▼▼ COLORES DINÁMICOS EN FALLBACK ▼▼▼
-                                // Limpia clases de color anteriores
-                                countdownEl.classList.remove('timer-green', 'timer-yellow', 'timer-red');
-
-                                // Calcula el porcentaje y aplica la clase nueva
-                                if (totalDuration > 0) {
-                                    const percentage = (timeLeft / totalDuration) * 100;
-                                    if (percentage <= 25) {
-                                        countdownEl.classList.add('timer-red');
-                                    } else if (percentage <= 50) {
-                                        countdownEl.classList.add('timer-yellow');
-                                    } else {
-                                        countdownEl.classList.add('timer-green');
-                                    }
-                                }
-                                // ▲▲▲ FIN DE COLORES DINÁMICOS EN FALLBACK ▲▲▲
-                                
-                                break;
-                            }
-                        }
-                    }
                 }
             }
         }
-        // ▲▲▲ FIN DE LA LÓGICA CORREGIDA ▲▲▲
     });
 
     socket.on('kickedForInactivity', ({ reason }) => {
@@ -1859,7 +1787,6 @@ function showRoomsOverview() {
 
     // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
     socket.on('deckShuffled', () => {
-        alert('📢 EVENTO deckShuffled RECIBIDO DEL SERVIDOR');
         // Al recibir la notificación del servidor, todos los clientes ejecutan la animación.
         animateShuffle();
     });
@@ -2575,27 +2502,29 @@ function updatePlayersView(seats, inGame = false) {
     }
 
     // ▼▼▼ REEMPLAZA TU FUNCIÓN window.goBackToLobby ENTERA CON ESTA VERSIÓN SIMPLIFICADA ▼▼▼
-    // ▼▼▼ REEMPLAZO DEFINITIVO DE LA FUNCIÓN goBackToLobby ▼▼▼
     window.goBackToLobby = function() {
-        // 1. Verificamos que estamos en una sala.
         if (currentGameSettings && currentGameSettings.roomId) {
-            console.log(`[ACCIÓN DECISIVA] Notificando al servidor la salida de la sala: ${currentGameSettings.roomId}`);
-            
-            // 2. Emitimos el evento 'leaveGame'. Este es el paso clave.
-            // El servidor está escuchando este evento y sabe exactamente qué hacer.
+            console.log('Notificando al servidor la salida de la sala para limpieza...');
             socket.emit('leaveGame', { roomId: currentGameSettings.roomId });
         }
 
-        // 3. Reseteamos el estado del cliente y mostramos el lobby.
-        // Esto se hace inmediatamente, sin esperar respuesta.
-        resetClientGameState();
-        currentGameSettings = null;
+        // --- EL BLOQUE DE "NUEVA IDENTIDAD" HA SIDO ELIMINADO ---
+        // Ya no se genera un nuevo userId cada vez. La identidad del jugador
+        // se mantiene estable desde que inicia sesión hasta que la cierra.
 
+        // Limpiamos las variables de la partida anterior
+        resetClientGameState();
+        currentGameSettings = null; // Limpiar configuración de la partida anterior
+
+        // ▼▼▼ AÑADE ESTE BLOQUE ▼▼▼
+        // Reseteamos visualmente el bote al salir de la partida
         const potValueEl = document.querySelector('#game-pot-container .pot-value');
         if (potValueEl) {
             potValueEl.textContent = '0';
         }
-
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+        
+        // Mostramos la vista del lobby
         showLobbyView();
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
@@ -2769,7 +2698,7 @@ function updatePlayersView(seats, inGame = false) {
         }
     }
     
-    // ▼▼▼ REEMPLAZA TU FUNCIÓN handleDrop ENTERA CON ESTA VERSIÓN ORIGINAL Y COMPLETA ▼▼▼
+    // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA (DROP) ▼▼▼
     const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2791,7 +2720,7 @@ function updatePlayersView(seats, inGame = false) {
                 const originalIndex = parseInt(targetElement.dataset.index);
 
                 targetIndex = (e.clientX > midpoint) ? originalIndex + 1 : originalIndex;
-            }
+            } 
             // CASO 2: Se suelta en un espacio vacío del CONTENEDOR de la mano
             else if (targetElement.id === 'human-hand') {
                 const firstCard = targetElement.firstElementChild;
@@ -2819,15 +2748,17 @@ function updatePlayersView(seats, inGame = false) {
             renderHands(); // Restaura la mano si algo falla
         }
     };
-    // ▲▲▲ FIN DEL CÓDIGO A PEGAR ▲▲▲
+    // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
     
     function renderHands() {
         const human = document.getElementById('human-hand');
         human.innerHTML = '';
-        const humanPlayer = players[0];
+        const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
+        // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
+            // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
             renderDiscard();
             renderMelds();
             updateActionButtons();
@@ -2835,8 +2766,9 @@ function updatePlayersView(seats, inGame = false) {
             return;
         }
       
-        const fragment = document.createDocumentFragment();
-        humanPlayer.hand.forEach((card, idx) => {
+      const fragment = document.createDocumentFragment();
+      humanPlayer.hand.forEach((card, idx) => {
+        // << --- REEMPLAZA EL CONTENIDO DEL BUCLE forEach CON ESTO --- >>
 
         const d = document.createElement('div');
         d.className = 'card';
@@ -2850,24 +2782,29 @@ function updatePlayersView(seats, inGame = false) {
 
         let longPressTimer;
 
+        // --- Lógica Original de Arrastre (Funciona en PC y Móvil) ---
+
         const startDrag = (e) => {
+            // Determina qué cartas se están arrastrando (una o un grupo seleccionado)
             const selectedElements = document.querySelectorAll('#human-hand .card.selected');
             const isGroupDrag = selectedElements.length > 1 && d.classList.contains('selected');
             let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [idx];
             const dataToTransfer = JSON.stringify(indicesToDrag);
 
+            // Para el arrastre en PC, se usa dataTransfer
             if (e.type === 'dragstart') {
                 e.dataTransfer.setData('application/json', dataToTransfer);
                 
+                // Crea una imagen customizada para el arrastre de grupo en PC
                 let dragImageContainer = document.createElement('div');
                 dragImageContainer.style.position = 'absolute';
-                dragImageContainer.style.left = '-1000px';
+                dragImageContainer.style.left = '-1000px'; // Fuera de la pantalla
                 if (isGroupDrag) {
                     dragImageContainer.style.display = 'flex';
                     selectedElements.forEach((selectedCard, index) => {
                         const clone = selectedCard.cloneNode(true);
                         clone.classList.remove('selected');
-                        if (index > 0) clone.style.marginLeft = '-35px';
+                        if (index > 0) clone.style.marginLeft = '-35px'; // Superponer
                         dragImageContainer.appendChild(clone);
                     });
                 } else {
@@ -2880,6 +2817,7 @@ function updatePlayersView(seats, inGame = false) {
                 setTimeout(() => document.body.removeChild(dragImageContainer), 0);
             }
 
+            // Añade la clase 'dragging' para el efecto visual
             setTimeout(() => {
                 indicesToDrag.forEach(i => {
                     const cardEl = document.querySelector(`#human-hand .card[data-index='${i}']`);
@@ -2887,7 +2825,7 @@ function updatePlayersView(seats, inGame = false) {
                 });
             }, 0);
 
-            return dataToTransfer;
+            return dataToTransfer; // Devuelve los datos para el manejador táctil
         };
 
         const endDrag = () => {
@@ -2895,6 +2833,10 @@ function updatePlayersView(seats, inGame = false) {
             document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
         };
 
+        // --- Lógica de Touch (Móvil) ---
+
+        // Esta es la función clave del archivo original que faltaba
+        // ▼▼▼ FUNCIÓN TOUCH CON LÓGICA DE PRECISIÓN Y EXTREMOS ▼▼▼
         const handleTouchDrag = (initialTouch, dragData) => {
             const cloneContainer = document.getElementById('drag-clone-container');
             cloneContainer.innerHTML = '';
@@ -2939,13 +2881,14 @@ function updatePlayersView(seats, inGame = false) {
                 let currentTarget = elementUnder ? dropTargets.find(dt => dt.contains(elementUnder)) : null;
 
                 if (lastTarget && lastTarget !== currentTarget) {
-                    lastTarget.classList.remove('drag-over', 'drop-zone');
+                    lastTarget.classList.remove('drag-over', 'drop-zone'); // Se elimina 'drop-zone-hand'
                 }
                 if (currentTarget && currentTarget !== lastTarget) {
                     let className = 'drop-zone';
                     if (currentTarget.classList.contains('card')) {
                         className = 'drag-over';
                     }
+                    // Ya no se necesita la clase 'drop-zone-hand'
                     currentTarget.classList.add(className);
                 }
                 lastTarget = currentTarget;
@@ -2980,6 +2923,7 @@ function updatePlayersView(seats, inGame = false) {
                         reorderHand(droppedIndices, targetIndex);
 
                     } 
+                    // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA MÓVIL ▼▼▼
                     else if (lastTarget.id === 'human-hand') {
                         const player = players[0];
                         if (!player) return;
@@ -3001,6 +2945,7 @@ function updatePlayersView(seats, inGame = false) {
                         }
                         reorderHand(droppedIndices, targetIndex);
                     } 
+                    // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
                     else if (lastTarget.id === 'discard') {
                         if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
                         if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
@@ -3028,6 +2973,9 @@ function updatePlayersView(seats, inGame = false) {
             document.addEventListener('touchend', onTouchEnd);
         };
 
+
+        // --- Asignación de Eventos (Como en el original) ---
+
         d.addEventListener('click', () => {
             if (selectedCards.has(card.id)) {
                 selectedCards.delete(card.id);
@@ -3039,30 +2987,36 @@ function updatePlayersView(seats, inGame = false) {
             updateActionButtons();
         });
 
+        // ▼▼▼ RESTAURADO: Drag & drop nativo para PC ▼▼▼
         d.addEventListener('dragstart', startDrag);
         d.addEventListener('dragend', endDrag);
+        // ▲▲▲ FIN RESTAURADO ▲▲▲
 
         d.addEventListener('touchstart', (e) => {
+            // Iniciar un temporizador para el "toque largo"
             longPressTimer = setTimeout(() => {
-                e.preventDefault();
+                e.preventDefault(); // Previene scroll solo si es un toque largo
                 const dragData = startDrag(e);
                 handleTouchDrag(e.touches[0], dragData);
             }, 200);
         }, { passive: false });
 
         d.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer);
+            clearTimeout(longPressTimer); // Si el dedo se levanta rápido, es un clic, no un arrastre
         });
         d.addEventListener('touchcancel', () => {
             clearTimeout(longPressTimer);
         });
 
+
+        // Eventos de Drop (comunes para PC y Móvil simulado)
         d.addEventListener('dragover', (e) => {
             e.preventDefault();
             d.classList.add('drag-over');
         });
         d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
 
+        // ▼▼▼ LÓGICA UNIFICADA PARA SOLTAR CARTA ▼▼▼
         d.addEventListener('drop', handleDrop);
 
         fragment.appendChild(d);
@@ -3070,11 +3024,13 @@ function updatePlayersView(seats, inGame = false) {
     
     human.appendChild(fragment);
 
+    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
     human.addEventListener('dragover', (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Crucial para permitir el 'drop'.
     });
 
     human.addEventListener('drop', handleDrop);
+    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
     renderDiscard();
     renderMelds();
@@ -3097,137 +3053,75 @@ function updatePlayersView(seats, inGame = false) {
         renderHands();
     }
     function renderDiscard() {
-        const pile = document.getElementById('discard');
-
-        // Asignamos los listeners de drag & drop una sola vez.
-        pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
-        pile.ondragleave = () => pile.classList.remove('drop-zone');
-        pile.ondrop = (e) => {
-            if (isWaitingForNextTurn) return;
-            e.preventDefault(); pile.classList.remove('drop-zone');
-            try {
-                const indices = JSON.parse(e.dataTransfer.getData('application/json'));
-                if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
-                if (canDiscardByDrag()) discardCardByIndex(indices[0]);
-            } catch(err) { console.error("Error en drop de descarte:", err); }
-        };
-
-        const topCard = discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
-
-        if (topCard) {
-            // Si hay una carta, verificamos si ya existe el elemento imagen.
-            let wrapper = pile.querySelector('.card-image-wrapper');
-            if (!wrapper) {
-                // Si no existe, lo creamos. Esto solo pasa una vez.
-                pile.innerHTML = `<div class="card-image-wrapper"><img src="" alt="" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
-                wrapper = pile.querySelector('.card-image-wrapper');
-            }
-            const img = wrapper.querySelector('img');
-            const newImageUrl = getCardImageUrl(topCard);
-            // Solo actualizamos el 'src' si ha cambiado, la operación más eficiente.
-            if (img.src !== newImageUrl) {
-                img.src = newImageUrl;
-                img.alt = `${topCard.value} of ${getSuitName(topCard.suit)}`;
-            }
-        } else {
-            // Si la pila está vacía, simplemente actualizamos el texto.
-            pile.innerHTML = 'Descarte<br>Vacío';
-        }
+      const pile = document.getElementById('discard');
+      pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
+      pile.ondragleave = () => pile.classList.remove('drop-zone');
+      pile.ondrop = (e) => {
+        if (isWaitingForNextTurn) return;
+        e.preventDefault(); pile.classList.remove('drop-zone');
+        try {
+            const indices = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+            if (canDiscardByDrag()) discardCardByIndex(indices[0]);
+        } catch(err) { console.error("Error en drop de descarte:", err); }
+      };
+      if (discardPile.length > 0) {
+        const top = discardPile[discardPile.length-1];
+        pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
+      } else { pile.innerHTML = 'Descarte<br>Vacío'; }
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
+        display.innerHTML = '';
+        
+        // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
         const combinedMelds = [...allMelds, ...turnMelds];
 
-        // 1. Mapear los grupos de jugadas que ya existen en el DOM
-        const existingMeldNodes = new Map();
-        display.querySelectorAll('.meld-group').forEach(node => {
-            if (node.dataset.meldId) {
-                existingMeldNodes.set(node.dataset.meldId, node);
-            }
-        });
+        combinedMelds.forEach(meld => {
+            const g = document.createElement('div');
+            g.className = 'meld-group';
 
-        const meldsInState = new Set();
-
-        // 2. Recorrer las jugadas que deberían estar y sincronizarlas con el DOM
-        combinedMelds.forEach((meld, meldIndex) => {
-            // ▼▼▼ CORRECCIÓN DE ERROR ▼▼▼
-            // Nos aseguramos de que la jugada y sus cartas sean válidas antes de procesar
-            if (!meld || !meld.cards) return;
-            // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
-
-            const meldId = meld.cards.map(c => c.id).join('-');
-            meldsInState.add(meldId);
-
-            let groupNode = existingMeldNodes.get(meldId);
-
-            if (!groupNode) {
-                // A. El grupo de jugada NO EXISTE, lo creamos desde cero.
-                groupNode = document.createElement('div');
-                groupNode.className = 'meld-group';
-                groupNode.dataset.meldId = meldId;
-
-                if (turnMelds.includes(meld)) {
-                    groupNode.classList.add('temporary-meld');
-                }
-
-                const permanentIndex = allMelds.indexOf(meld);
-                if (permanentIndex !== -1) {
-                    groupNode.dataset.meldIndex = permanentIndex;
-                    groupNode.ondragover = (e) => { e.preventDefault(); groupNode.classList.add('drop-zone'); };
-                    groupNode.ondragleave = () => groupNode.classList.remove('drop-zone');
-                    groupNode.ondrop = (e) => {
-                        if (isWaitingForNextTurn) return;
-                        e.preventDefault(); groupNode.classList.remove('drop-zone');
-                        try {
-                            const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
-                            if (cardIndices.length === 1) attemptAddCardToMeld(cardIndices[0], permanentIndex);
-                            else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
-                        } catch(err) { console.error("Error al añadir carta a combinación:", err); }
-                    };
-                    const handleMeldGroupClick = (event) => {
-                        event.preventDefault();
-                        if (currentPlayer !== 0 || !gameStarted) return;
-                        const selected = document.querySelectorAll('#human-hand .card.selected');
-                        if (selected.length === 1) {
-                            attemptAddCardToMeld(parseInt(selected[0].dataset.index), permanentIndex);
-                        }
-                    };
-                    groupNode.addEventListener('click', handleMeldGroupClick);
-                    groupNode.addEventListener('touchend', handleMeldGroupClick);
-                }
-                display.appendChild(groupNode);
+            // Añadimos una clase especial si la combinación es temporal para poder darle un estilo diferente
+            if (turnMelds.includes(meld)) {
+                g.classList.add('temporary-meld');
             }
 
-            // B. Sincronizar las CARTAS dentro del grupo (existente o nuevo)
-            const existingCardNodes = new Map();
-            groupNode.querySelectorAll('.card').forEach(node => {
-                if (node.dataset.cardId) existingCardNodes.set(node.dataset.cardId, node);
-            });
-
-            meld.cards.forEach(card => {
-                if (existingCardNodes.has(card.id)) {
-                    // La carta ya existe, la movemos al final para asegurar el orden
-                    groupNode.appendChild(existingCardNodes.get(card.id));
-                    existingCardNodes.delete(card.id);
-                } else {
-                    // La carta es nueva en este grupo, la creamos
-                    const cardNode = document.createElement('div');
-                    cardNode.className = 'card';
-                    cardNode.dataset.cardId = card.id;
-                    cardNode.innerHTML = `<img src="${getCardImageUrl(card)}" alt="${card.value} of ${getSuitName(card.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
-                    groupNode.appendChild(cardNode);
-                }
-            });
-
-            // Eliminar cartas que ya no pertenecen a este grupo
-            existingCardNodes.forEach(node => node.remove());
-        });
-
-        // 3. Eliminar los grupos de jugadas que ya no existen en el estado del juego
-        existingMeldNodes.forEach((node, meldId) => {
-            if (!meldsInState.has(meldId)) {
-                node.remove();
+            // El 'drop' para añadir cartas solo debe funcionar en combinaciones permanentes
+            const permanentIndex = allMelds.indexOf(meld);
+            if (permanentIndex !== -1) {
+                g.dataset.meldIndex = permanentIndex;
+        g.ondragover = (e) => { e.preventDefault(); g.classList.add('drop-zone'); };
+        g.ondragleave = () => g.classList.remove('drop-zone');
+        g.ondrop = (e) => {
+            if (isWaitingForNextTurn) return;
+            e.preventDefault(); g.classList.remove('drop-zone');
+            try {
+                const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
+                        if (cardIndices.length === 1) attemptAddCardToMeld(cardIndices[0], permanentIndex);
+                else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+            } catch(err) { console.error("Error al añadir carta a combinación:", err); }
+        };
+        const handleMeldGroupClick = (event) => {
+            event.preventDefault();
+            if (currentPlayer !== 0 || !gameStarted) return;
+            const selected = document.querySelectorAll('#human-hand .card.selected');
+            if (selected.length === 1) {
+                        attemptAddCardToMeld(parseInt(selected[0].dataset.index), permanentIndex);
             }
+        };
+        g.addEventListener('click', handleMeldGroupClick);
+        // ▼▼▼ LÍNEA AÑADIDA PARA COMPATIBILIDAD MÓVIL ▼▼▼
+        g.addEventListener('touchend', handleMeldGroupClick);
+            }
+            
+        for (let c of meld.cards) {
+                const cd = document.createElement('div');
+                cd.className = `card`;
+            cd.dataset.cardId = c.id;
+            cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+            g.appendChild(cd);
+        }
+        display.appendChild(g);
         });
     }
     // ▼▼▼ REEMPLAZA TU FUNCIÓN animateCardMovement ENTERA CON ESTA VERSIÓN CORREGIDA ▼▼▼
@@ -3328,10 +3222,6 @@ function updatePlayersView(seats, inGame = false) {
 
     // Reemplaza la función showEliminationMessage entera
     function showEliminationMessage(playerName, faultData) {
-        // ▼▼▼ LÍNEA DE SEGURIDAD PARA FAULTDATA ▼▼▼
-        faultData = faultData || {};
-        // ▲▲▲ FIN DE LA LÍNEA DE SEGURIDAD ▲▲▲
-
         const el = document.getElementById('elimination-message');
         const faultDetailsContainer = document.getElementById('fault-details-container');
         const invalidComboContainer = document.getElementById('invalid-combo-container');
@@ -3412,15 +3302,12 @@ function updatePlayersView(seats, inGame = false) {
     */
     // ▲▲▲ FIN DE LA FUNCIÓN A ELIMINAR ▲▲▲
     async function animateShuffle() {
-      alert('🔀 INICIANDO ANIMACIÓN DE BARAJADO');
       return new Promise(resolve => {
         const centerArea = document.querySelector('.center-area');
         if (!centerArea) {
-          alert('❌ ERROR: No se encontró center-area para barajado');
           resolve();
           return;
         }
-        alert('✅ center-area encontrado, creando animación');
         showToast('Mazo vacío. Barajando el descarte...', 5000);
         const container = document.createElement('div');
         container.className = 'shuffling-animation-container';
@@ -3431,10 +3318,8 @@ function updatePlayersView(seats, inGame = false) {
           container.appendChild(card);
         }
         centerArea.appendChild(container);
-        alert('✅ Contenedor de barajado añadido al DOM');
         setTimeout(() => {
           container.remove();
-          alert('✅ Animación de barajado completada');
           resolve();
         }, 5000);
       });
@@ -3489,7 +3374,7 @@ function updatePlayersView(seats, inGame = false) {
                     meldsContainer.removeChild(placeholder);
                 }
                 isAnimatingLocalMeld = false; // Desactivamos la bandera
-                // renderHands(); // <<-- LÍNEA ELIMINADA. AHORA EL REDIBUJADO DEPENDE DEL SERVIDOR.
+                renderHands(); // Forzamos el redibujado final y limpio
             });
         }
 
