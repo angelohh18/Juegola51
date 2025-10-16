@@ -2704,20 +2704,12 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
+        human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
-
-        // --- SOLUCIÓN ANTI-PARPADEO: ESCALAR A 0 EN LUGAR DE BORRAR ---
-        const originalTransform = human.style.transform;
-        human.style.transform = 'scale(0)';
-        human.style.transition = 'transform 0.1s ease-out';
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
         // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
-            // Limpiar y restaurar
-            human.innerHTML = '';
-            human.style.transform = originalTransform || '';
-            human.style.transition = '';
             // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
             renderDiscard();
             renderMelds();
@@ -2991,12 +2983,6 @@ function updatePlayersView(seats, inGame = false) {
     });
     
     human.appendChild(fragment);
-
-    // --- RESTAURAR TRANSFORMACIÓN DESPUÉS DE CONSTRUIR TODO ---
-    setTimeout(() => {
-        human.style.transform = originalTransform || '';
-        human.style.transition = '';
-    }, 50);
 
     // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
     human.addEventListener('dragover', (e) => {
