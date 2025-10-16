@@ -1350,13 +1350,12 @@ function showRoomsOverview() {
     });
 
     // Versión definitiva de 'turnChanged'
-    socket.on('turnChanged', (data) => {
+    socket.on('turnChanged', async (data) => {
         console.log('Server broadcast: El turno ha cambiado.', data);
-    
-        // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
+
         isWaitingForNextTurn = false;
-        
-        // --- INICIO: Bloque para animar el descarte de oponentes ---
+
+        // --- 1. Animación de descarte de oponentes (SIN CAMBIOS) ---
         if (data.discardingPlayerId && data.discardingPlayerId !== socket.id && data.discardedCard) {
             const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.discardingPlayerId);
             if (playerViewIndex !== -1) {
@@ -1368,52 +1367,75 @@ function showRoomsOverview() {
                         startElement,
                         endElement,
                         isBack: false,
-                        duration: 900 // <-- CAMBIA 600 POR 900
+                        duration: 900
                     });
                 }
             }
         }
-        // --- FIN: Bloque para animar el descarte ---
-        
+
+        // --- 2. Actualización del estado de los datos (SIN CAMBIOS) ---
         allMelds = data.newMelds || [];
         turnMelds = [];
         discardPile = data.newDiscardPile;
 
-        // 2. Si el descarte fue mío, AHORA es cuando se elimina la carta de la mano.
+        // --- 3. LÓGICA DE "BISTURÍ": Si el descarte fue mío, eliminamos SOLO esa carta. ---
         const humanPlayer = players[0];
         if (data.discardingPlayerId === socket.id && humanPlayer && data.discardedCard) {
-            const cardIndex = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
-            if (cardIndex !== -1) {
-                humanPlayer.hand.splice(cardIndex, 1);
+
+            // a) Actualizamos el array de datos interno.
+            const cardIndexInHand = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
+            if (cardIndexInHand !== -1) {
+                humanPlayer.hand.splice(cardIndexInHand, 1);
             }
             selectedCards.clear();
+
+            // b) Actualizamos la VISTA de forma precisa, sin redibujar todo.
+            const cardElementToRemove = document.querySelector(`#human-hand .card[data-card-id='${data.discardedCard.id}']`);
+            if (cardElementToRemove) {
+                cardElementToRemove.remove(); // Eliminamos solo el elemento de la carta.
+                // Re-indexamos las cartas restantes para que el drag-and-drop no se rompa.
+                const remainingCards = document.querySelectorAll('#human-hand .card');
+                remainingCards.forEach((card, index) => {
+                    card.dataset.index = index;
+                });
+            }
         }
 
-        // 3. Se determina el siguiente jugador.
+        // --- 4. Lógica para avanzar el turno y contadores (SIN CAMBIOS) ---
         const newCurrentPlayerIndex = orderedSeats.findIndex(s => s && s.playerId === data.nextPlayerId);
         if (newCurrentPlayerIndex !== -1) {
             currentPlayer = newCurrentPlayerIndex;
         }
-        
-        // 4. Se resetean los estados del turno.
+
         hasDrawn = false;
         mustDiscard = false;
-        
-        // 5. Se actualizan los contadores de cartas.
+
         if (data.playerHandCounts) {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // 6. Se renderiza TODA la interfaz con el nuevo estado oficial.
-        // OPTIMIZACIÓN: Aplicamos requestAnimationFrame solo al descarte para evitar parpadeo
-        renderHands();
-        requestAnimationFrame(() => {
-            renderDiscard();
-        });
+        // --- 5. SOLUCIÓN FINAL ANTI-PARPADEO ---
+        // Aplicamos la transición suave SOLO a la zona de descarte.
+        const discardEl = document.getElementById('discard');
+        if (discardEl) {
+            discardEl.classList.add('updating'); // La hacemos invisible.
+            await new Promise(r => setTimeout(r, 150)); // Esperamos a que la animación de CSS termine.
+        }
+
+        // ¡¡LA CORRECCIÓN MÁS IMPORTANTE!!
+        // YA NO LLAMAMOS A renderHands() NI A renderMelds() aquí.
+        // Solo redibujamos lo que cambió: el descarte.
+        renderDiscard(); 
+
+        if (discardEl) {
+            discardEl.classList.remove('updating'); // La volvemos a hacer visible.
+        }
+        // --- FIN DE LA SOLUCIÓN FINAL ---
+
+        // --- 6. Actualizamos el resto de la UI que no causa parpadeo (SIN CAMBIOS) ---
         updateTurnIndicator();
         updateActionButtons();
-    
-        // 7. Se muestra la notificación de turno.
+
         const newCurrentPlayerSeat = orderedSeats[currentPlayer];
         if (newCurrentPlayerSeat) {
             if (newCurrentPlayerSeat.playerId === socket.id) {
