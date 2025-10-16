@@ -2915,7 +2915,11 @@ function updatePlayersView(seats, inGame = false) {
                         if (finalTouch.clientX > midpoint) {
                             targetIndex = originalIndex + 1;
                         }
-                        reorderHand(droppedIndices, targetIndex);
+                        
+                        // Verificar que el reordenamiento es válido
+                        if (targetIndex >= 0 && targetIndex <= players[0].hand.length) {
+                            reorderHand(droppedIndices, targetIndex);
+                        }
 
                     } 
                     // ▼▼▼ INICIO DEL BLOQUE MODIFICADO PARA MÓVIL ▼▼▼
@@ -2934,11 +2938,15 @@ function updatePlayersView(seats, inGame = false) {
 
                             if (finalTouch.clientX < firstCardRect.left + (firstCardRect.width / 2)) {
                                 targetIndex = 0;
-                            } else if (finalTouch.clientX > lastCardRect.left + (lastCardRect.width / 2)) {
+                            } else if (finalTouch.clientX > lastCardRect.right - (lastCardRect.width / 2)) {
                                 targetIndex = player.hand.length;
                             }
                         }
-                        reorderHand(droppedIndices, targetIndex);
+                        
+                        // Verificar que el reordenamiento es válido
+                        if (targetIndex >= 0 && targetIndex <= player.hand.length) {
+                            reorderHand(droppedIndices, targetIndex);
+                        }
                     } 
                     // ▲▲▲ FIN DEL BLOQUE MODIFICADO ▲▲▲
                     else if (lastTarget.id === 'discard') {
@@ -2998,8 +3006,19 @@ function updatePlayersView(seats, inGame = false) {
             // Iniciar un temporizador para el "toque largo"
             longPressTimer = setTimeout(() => {
                 e.preventDefault(); // Previene scroll solo si es un toque largo
-                const dragData = startDrag(e);
-                handleTouchDrag(e.touches[0], dragData);
+                
+                // Crear un evento sintético que funcione mejor en móviles
+                const syntheticEvent = {
+                    currentTarget: d,
+                    target: d,
+                    touches: e.touches,
+                    type: 'touchstart'
+                };
+                
+                const dragData = startDrag(syntheticEvent);
+                if (dragData) {
+                    handleTouchDrag(e.touches[0], dragData);
+                }
             }, 200);
         }, { passive: false });
 
