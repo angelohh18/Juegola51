@@ -2703,6 +2703,14 @@ function updatePlayersView(seats, inGame = false) {
     // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
     
     function renderHands() {
+        // ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼
+
+        // 1. OBTENEMOS EL CONTENEDOR PRINCIPAL DEL JUEGO
+        const centerArea = document.querySelector('.center-area'); 
+        
+        // 2. LO HACEMOS INVISIBLE (PERO MANTENIENDO SU ESPACIO)
+        if (centerArea) centerArea.style.visibility = 'hidden'; 
+
         const human = document.getElementById('human-hand');
         human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
@@ -2992,8 +3000,16 @@ function updatePlayersView(seats, inGame = false) {
     human.addEventListener('drop', handleDrop);
     // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
-    renderDiscard();
-    renderMelds();
+    // Estas funciones ahora se ejecutarán mientras el área es invisible
+    renderDiscard(); 
+    renderMelds(); 
+
+    // 3. UNA VEZ TODO ESTÁ LISTO, LO VOLVEMOS A MOSTRAR DE GOLPE
+    if (centerArea) centerArea.style.visibility = 'visible'; 
+    
+    // ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲
+
+    // Estas funciones solo actualizan botones, no causan parpadeo
     updateActionButtons();
     updateDebugInfo();
 }
