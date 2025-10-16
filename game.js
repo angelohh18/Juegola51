@@ -2758,11 +2758,15 @@ function updatePlayersView(seats, inGame = false) {
 
         // --- Lógica Original de Arrastre (Funciona en PC y Móvil) ---
 
+        // --- INICIO DE LA CORRECCIÓN CLAVE ---
+        // La función 'startDrag' ahora lee la posición actual de la carta desde el propio elemento,
+        // en lugar de usar una variable 'idx' que podría estar desactualizada.
         const startDrag = (e) => {
-            // Determina qué cartas se están arrastrando (una o un grupo seleccionado)
+            const currentIdx = parseInt(e.currentTarget.dataset.index);
             const selectedElements = document.querySelectorAll('#human-hand .card.selected');
-            const isGroupDrag = selectedElements.length > 1 && d.classList.contains('selected');
-            let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [idx];
+            const isGroupDrag = selectedElements.length > 1 && e.currentTarget.classList.contains('selected');
+
+            let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [currentIdx];
             const dataToTransfer = JSON.stringify(indicesToDrag);
 
             // Para el arrastre en PC, se usa dataTransfer
@@ -2801,6 +2805,7 @@ function updatePlayersView(seats, inGame = false) {
 
             return dataToTransfer; // Devuelve los datos para el manejador táctil
         };
+        // --- FIN DE LA CORRECCIÓN CLAVE ---
 
         const endDrag = () => {
             clearTimeout(longPressTimer);
