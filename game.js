@@ -1375,7 +1375,7 @@ function showRoomsOverview() {
 
         // --- 2. Actualización del estado de los datos (SIN CAMBIOS) ---
         allMelds = data.newMelds || [];
-        turnMelds = [];
+        turnMelds = []; // <<-- Se resetean los melds temporales
         discardPile = data.newDiscardPile;
 
         // --- 3. LÓGICA DE "BISTURÍ": Si el descarte fue mío, eliminamos SOLO esa carta. ---
@@ -1414,23 +1414,25 @@ function showRoomsOverview() {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // --- 5. SOLUCIÓN FINAL ANTI-PARPADEO ---
-        // Aplicamos la transición suave SOLO a la zona de descarte.
+        // --- 5. SOLUCIÓN ANTI-PARPADEO COMBINADA ---
         const discardEl = document.getElementById('discard');
-        if (discardEl) {
-            discardEl.classList.add('updating'); // La hacemos invisible.
-            await new Promise(r => setTimeout(r, 150)); // Esperamos a que la animación de CSS termine.
-        }
+        const meldsContainer = document.getElementById('melds-display');
 
-        // ¡¡LA CORRECCIÓN MÁS IMPORTANTE!!
-        // YA NO LLAMAMOS A renderHands() NI A renderMelds() aquí.
-        // Solo redibujamos lo que cambió: el descarte.
-        renderDiscard(); 
+        // 1. Hacemos invisibles AMBAS zonas que se van a redibujar.
+        if (discardEl) discardEl.classList.add('updating');
+        if (meldsContainer) meldsContainer.classList.add('updating');
 
-        if (discardEl) {
-            discardEl.classList.remove('updating'); // La volvemos a hacer visible.
-        }
-        // --- FIN DE LA SOLUCIÓN FINAL ---
+        // 2. Esperamos un instante para que la animación de CSS termine.
+        await new Promise(r => setTimeout(r, 150));
+
+        // 3. ¡RESTAURAMOS LA LÓGICA! Redibujamos ambas zonas mientras están invisibles.
+        renderDiscard();
+        renderMelds(); // <<-- ESTA ES LA LLAMADA QUE RESTAURA LA LÓGICA DE turnMelds
+
+        // 4. Las volvemos a hacer visibles para una aparición suave.
+        if (discardEl) discardEl.classList.remove('updating');
+        if (meldsContainer) meldsContainer.classList.remove('updating');
+        // --- FIN DE LA SOLUCIÓN ANTI-PARPADEO ---
 
         // --- 6. Actualizamos el resto de la UI que no causa parpadeo (SIN CAMBIOS) ---
         updateTurnIndicator();
@@ -1532,7 +1534,7 @@ function showRoomsOverview() {
         }
     });
 
-    // ▼▼▼ REEMPLAZA socket.on('meldUpdate', ...) CON ESTA VERSIÓN ▼▼▼
+    // ▼▼▼ ASEGÚRATE DE QUE socket.on('meldUpdate', ...) TENGA ESTE CÓDIGO ▼▼▼
     socket.on('meldUpdate', async (data) => {
         console.log("Actualización de jugada recibida del servidor:", data);
 
@@ -1550,18 +1552,17 @@ function showRoomsOverview() {
 
         const meldsContainer = document.getElementById('melds-display');
         if (meldsContainer) {
-            // Hacemos que la zona de juegos se desvanezca.
-            meldsContainer.style.transition = 'opacity 0.15s ease-out';
-            meldsContainer.style.opacity = '0';
+            // Hacemos que la zona de juegos se desvanezca usando la clase CSS.
+            meldsContainer.classList.add('updating');
 
             // Esperamos un instante a que la animación de fade-out termine.
             await new Promise(r => setTimeout(r, 150));
 
             // Redibujamos los conjuntos MIENTRAS están invisibles.
-            renderMelds(); // Ahora esta función funciona como esperamos.
+            renderMelds();
 
-            // Los hacemos reaparecer suavemente.
-            meldsContainer.style.opacity = '1';
+            // La volvemos a hacer visible.
+            meldsContainer.classList.remove('updating');
         }
 
         if (data.highlight) {
