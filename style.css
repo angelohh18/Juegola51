@@ -9,6 +9,10 @@ body, html {
     background: #211e18; /* Cambiado de gradiente a sólido */
     color: #e0d3b6;
     overflow: hidden; /* Prevenir movimiento de layout al arrastrar elementos */
+    /* --- OPTIMIZACIÓN GLOBAL ANTI-PARPADEO PARA MÓVILES --- */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeSpeed;
 }
 
 /* Tipografía fluida para responsividad */
@@ -1223,6 +1227,11 @@ body.game-active {
     position: relative;
     display: flex;
     justify-content: center;
+    /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
+    will-change: contents;
+    contain: layout style paint;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
     align-items: center;
     overflow-x: hidden; /* <-- CAMBIO 1: Ocultamos el scroll nativo */
     touch-action: none; /* <-- ESTA ES LA CORRECCIÓN DEFINITIVA */
@@ -1343,6 +1352,12 @@ body.game-active {
     cursor: pointer;
     transition: all 0.18s ease;
     flex-shrink: 0;
+    /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
     box-shadow: 0 2px 4px rgba(0,0,0,0.5); 
 }
 
