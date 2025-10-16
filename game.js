@@ -2730,6 +2730,11 @@ function updatePlayersView(seats, inGame = false) {
 
         // 3. Recorremos los datos de la mano del jugador (el estado correcto).
         humanPlayer.hand.forEach((card, idx) => {
+            // Verificar que la carta existe antes de acceder a sus propiedades
+            if (!card || !card.id) {
+                console.warn('Carta undefined o sin id en índice:', idx, card);
+                return;
+            }
             let cardElement = cardElementMap.get(card.id);
 
             if (cardElement) {
@@ -2880,7 +2885,11 @@ function updatePlayersView(seats, inGame = false) {
                             } else if (lastTarget.classList.contains('center-area')) {
                                 if (droppedIndices.length >= 3) {
                                     const p = players[0];
-                                    const cardIds = droppedIndices.map(index => p.hand[index]?.id).filter(Boolean);
+                                    if (!p || !p.hand) return;
+                                    const cardIds = droppedIndices.map(index => {
+                                        const card = p.hand[index];
+                                        return card && card.id ? card.id : null;
+                                    }).filter(Boolean);
                                     if (cardIds.length === droppedIndices.length) {
                                         socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
                                     }
@@ -3286,9 +3295,12 @@ function updatePlayersView(seats, inGame = false) {
                 const indices = JSON.parse(e.dataTransfer.getData('application/json'));
                 if (Array.isArray(indices) && indices.length >= 3) {
                     const p = players[0];
-                    if (!p) return;
+                    if (!p || !p.hand) return;
 
-                    const cardIds = indices.map(index => p.hand[index]?.id).filter(Boolean);
+                    const cardIds = indices.map(index => {
+                        const card = p.hand[index];
+                        return card && card.id ? card.id : null;
+                    }).filter(Boolean);
                     if (cardIds.length !== indices.length) return;
 
                     // --- INICIO DE LA LÓGICA DE ANIMACIÓN AÑADIDA ---
