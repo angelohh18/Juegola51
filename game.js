@@ -1405,8 +1405,11 @@ function showRoomsOverview() {
         }
 
         // 6. Se renderiza TODA la interfaz con el nuevo estado oficial.
+        // OPTIMIZACIÓN: Aplicamos requestAnimationFrame solo al descarte para evitar parpadeo
         renderHands();
-        renderDiscard();
+        requestAnimationFrame(() => {
+            renderDiscard();
+        });
         updateTurnIndicator();
         updateActionButtons();
     
