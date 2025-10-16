@@ -1439,9 +1439,10 @@ async function botPlay(room, botPlayerId, io) {
     if (botHand.length > 0) {
         const cardToDiscard = findWorstCardToDiscard(botHand, room.melds);
 
-        // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN COMPLETO AQUÍ ▼▼▼
+        // ▼▼▼ REEMPLAZA ESTE BLOQUE ▼▼▼
         // VALIDACIÓN DE FALTA: Comprobamos si el descarte del bot es ilegal.
-        if (cardToDiscard) {
+        // ESTA REGLA SE OMITE SI ES LA ÚLTIMA CARTA PARA GANAR.
+        if (botHand.length > 1 && cardToDiscard) {
             for (const meld of room.melds) {
                 if (canBeAddedToServerMeld(cardToDiscard, meld)) {
                     const reason = `Descarte ilegal del bot. La carta ${cardToDiscard.value}${getSuitIcon(cardToDiscard.suit)} se podía añadir a un juego en mesa.`;
@@ -1451,6 +1452,7 @@ async function botPlay(room, botPlayerId, io) {
                 }
             }
         }
+        // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
         // ▲▲▲ FIN DEL BLOQUE DE VALIDACIÓN ▲▲▲
 
         if (cardToDiscard) {
