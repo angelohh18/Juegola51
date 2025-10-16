@@ -2704,8 +2704,11 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
+
+        // --- SOLUCIÓN ANTI-PARPADEO: USAR requestAnimationFrame PARA TRANSICIÓN SUAVE ---
+        requestAnimationFrame(() => {
+            human.innerHTML = '';
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
         // Esto es especialmente importante para la vista del espectador.
@@ -2992,11 +2995,12 @@ function updatePlayersView(seats, inGame = false) {
     human.addEventListener('drop', handleDrop);
     // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
 
-    renderDiscard();
-    renderMelds();
-    updateActionButtons();
-    updateDebugInfo();
-}
+            renderDiscard();
+            renderMelds();
+            updateActionButtons();
+            updateDebugInfo();
+        });
+    }
     function reorderHand(draggedIndices, targetDropIndex) {
         const player = players[0];
         if (!player || draggedIndices.includes(targetDropIndex)) {
