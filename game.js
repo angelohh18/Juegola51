@@ -3325,10 +3325,24 @@ function reorderHand(draggedIndices, targetDropIndex) {
         d.addEventListener('dragend', endDrag);
 
         d.addEventListener('touchstart', (e) => {
+            // Asegurar que el evento se asocia correctamente con este elemento
+            e.stopPropagation();
+            
             longPressTimer = setTimeout(() => {
                 e.preventDefault();
-                const dragData = startDrag(e);
-                handleTouchDrag(e.touches[0], dragData);
+                
+                // Crear un evento sintético que funcione mejor en móviles
+                const syntheticEvent = {
+                    currentTarget: d,
+                    target: d,
+                    touches: e.touches,
+                    type: 'touchstart'
+                };
+                
+                const dragData = startDrag(syntheticEvent);
+                if (dragData) {
+                    handleTouchDrag(e.touches[0], dragData);
+                }
             }, 200);
         }, { passive: false });
 
