@@ -2762,15 +2762,25 @@ function updatePlayersView(seats, inGame = false) {
         // La función 'startDrag' ahora lee la posición actual de la carta desde el propio elemento,
         // en lugar de usar una variable 'idx' que podría estar desactualizada.
         const startDrag = (e) => {
-            // Verificación de seguridad para evitar el error "Cannot read properties of null"
-            if (!e.currentTarget || !e.currentTarget.dataset) {
-                console.warn('startDrag: currentTarget o dataset es null/undefined');
-                return JSON.stringify([0]); // Fallback seguro
+            // Mejor detección del elemento correcto para móviles
+            let targetElement = e.currentTarget || e.target;
+            
+            // Si currentTarget es null, intentamos encontrar el elemento carta más cercano
+            if (!targetElement || !targetElement.dataset) {
+                // Buscar el elemento carta más cercano al punto de toque
+                const touch = e.touches ? e.touches[0] : e;
+                const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                targetElement = elementAtPoint?.closest('.card');
+                
+                if (!targetElement || !targetElement.dataset) {
+                    console.warn('startDrag: No se pudo encontrar elemento carta válido');
+                    return JSON.stringify([0]);
+                }
             }
             
-            const currentIdx = parseInt(e.currentTarget.dataset.index);
+            const currentIdx = parseInt(targetElement.dataset.index);
             const selectedElements = document.querySelectorAll('#human-hand .card.selected');
-            const isGroupDrag = selectedElements.length > 1 && e.currentTarget.classList.contains('selected');
+            const isGroupDrag = selectedElements.length > 1 && targetElement.classList.contains('selected');
 
             let indicesToDrag = isGroupDrag ? Array.from(selectedElements).map(el => parseInt(el.dataset.index)) : [currentIdx];
             const dataToTransfer = JSON.stringify(indicesToDrag);
@@ -2982,6 +2992,9 @@ function updatePlayersView(seats, inGame = false) {
         // ▲▲▲ FIN RESTAURADO ▲▲▲
 
         d.addEventListener('touchstart', (e) => {
+            // Asegurar que el evento se asocia correctamente con este elemento
+            e.stopPropagation();
+            
             // Iniciar un temporizador para el "toque largo"
             longPressTimer = setTimeout(() => {
                 e.preventDefault(); // Previene scroll solo si es un toque largo
