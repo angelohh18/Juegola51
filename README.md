@@ -58,4 +58,4 @@ JuegoLa51/
 Las contribuciones son bienvenidas. Por favor, abre un issue o pull request.
 
 ## Licencia
-MIT License
+MIT License# Optimización anti-parpadeo - Thu Oct 16 18:54:30 WEST 2025
