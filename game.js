@@ -3342,21 +3342,36 @@ function reorderHand(draggedIndices, targetDropIndex) {
 
     function renderDiscard() {
       const pile = document.getElementById('discard');
-      pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
-      pile.ondragleave = () => pile.classList.remove('drop-zone');
-      pile.ondrop = (e) => {
-        if (isWaitingForNextTurn) return;
-        e.preventDefault(); pile.classList.remove('drop-zone');
-        try {
-            const indices = JSON.parse(e.dataTransfer.getData('application/json'));
-            if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
-            if (canDiscardByDrag()) discardCardByIndex(indices[0]);
-        } catch(err) { console.error("Error en drop de descarte:", err); }
-      };
+      
+      // --- OPTIMIZACIÓN: Solo configuramos los listeners si no existen ---
+      if (!pile.dataset.listenersConfigured) {
+        pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
+        pile.ondragleave = () => pile.classList.remove('drop-zone');
+        pile.ondrop = (e) => {
+          if (isWaitingForNextTurn) return;
+          e.preventDefault(); pile.classList.remove('drop-zone');
+          try {
+              const indices = JSON.parse(e.dataTransfer.getData('application/json'));
+              if (indices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
+              if (canDiscardByDrag()) discardCardByIndex(indices[0]);
+          } catch(err) { console.error("Error en drop de descarte:", err); }
+        };
+        pile.dataset.listenersConfigured = 'true';
+      }
+      
+      // --- OPTIMIZACIÓN: Solo actualizamos si el contenido cambió ---
+      let newContent;
       if (discardPile.length > 0) {
         const top = discardPile[discardPile.length-1];
-        pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
-      } else { pile.innerHTML = 'Descarte<br>Vacío'; }
+        newContent = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
+      } else { 
+        newContent = 'Descarte<br>Vacío'; 
+      }
+      
+      // Solo actualizamos si realmente cambió el contenido
+      if (pile.innerHTML !== newContent) {
+        pile.innerHTML = newContent;
+      }
     }
     // ▼▼▼ REEMPLAZA TU FUNCIÓN renderMelds ENTERA CON ESTA VERSIÓN ▼▼▼
     function renderMelds() {
