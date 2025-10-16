@@ -1349,14 +1349,13 @@ function showRoomsOverview() {
         modal.style.display = 'flex';
     });
 
-    // Versión definitiva de 'turnChanged'
+    // ▼▼▼ VERSIÓN OPTIMIZADA CON ELIMINACIÓN PRECISA ▼▼▼
     socket.on('turnChanged', (data) => {
         console.log('Server broadcast: El turno ha cambiado.', data);
-    
-        // 1. El cliente deja de esperar y actualiza su estado con los datos del servidor.
+
         isWaitingForNextTurn = false;
-        
-        // --- INICIO: Bloque para animar el descarte de oponentes ---
+
+        // --- Animación de descarte de oponentes (sin cambios) ---
         if (data.discardingPlayerId && data.discardingPlayerId !== socket.id && data.discardedCard) {
             const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.discardingPlayerId);
             if (playerViewIndex !== -1) {
@@ -1368,49 +1367,65 @@ function showRoomsOverview() {
                         startElement,
                         endElement,
                         isBack: false,
-                        duration: 900 // <-- CAMBIA 600 POR 900
+                        duration: 900
                     });
                 }
             }
         }
-        // --- FIN: Bloque para animar el descarte ---
-        
+
+        // --- Actualización de estado del juego (sin cambios) ---
         allMelds = data.newMelds || [];
         turnMelds = [];
         discardPile = data.newDiscardPile;
 
-        // 2. Si el descarte fue mío, AHORA es cuando se elimina la carta de la mano.
+        // ▼▼▼ INICIO DE LA CORRECCIÓN: LÓGICA DE ELIMINACIÓN PRECISA ▼▼▼
         const humanPlayer = players[0];
         if (data.discardingPlayerId === socket.id && humanPlayer && data.discardedCard) {
-            const cardIndex = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
-            if (cardIndex !== -1) {
-                humanPlayer.hand.splice(cardIndex, 1);
+
+            // 1. Buscamos el elemento específico de la carta en el DOM.
+            const cardElementToRemove = document.querySelector(`#human-hand .card[data-card-id='${data.discardedCard.id}']`);
+
+            if (cardElementToRemove) {
+                // 2. Lo eliminamos suavemente en lugar de redibujar todo.
+                cardElementToRemove.style.opacity = '0';
+                cardElementToRemove.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    cardElementToRemove.remove();
+                    // 3. Re-indexamos las cartas restantes para que el drag-and-drop no se rompa.
+                    const remainingCards = document.querySelectorAll('#human-hand .card');
+                    remainingCards.forEach((card, index) => {
+                        card.dataset.index = index;
+                    });
+                }, 200); // Esperamos a que la animación de desaparición termine.
+            }
+
+            // 4. Actualizamos el array de datos interno.
+            const cardIndexInHand = humanPlayer.hand.findIndex(c => c.id === data.discardedCard.id);
+            if (cardIndexInHand !== -1) {
+                humanPlayer.hand.splice(cardIndexInHand, 1);
             }
             selectedCards.clear();
         }
+        // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
 
-        // 3. Se determina el siguiente jugador.
+        // El resto de la lógica se mantiene igual...
         const newCurrentPlayerIndex = orderedSeats.findIndex(s => s && s.playerId === data.nextPlayerId);
         if (newCurrentPlayerIndex !== -1) {
             currentPlayer = newCurrentPlayerIndex;
         }
-        
-        // 4. Se resetean los estados del turno.
+
         hasDrawn = false;
         mustDiscard = false;
-        
-        // 5. Se actualizan los contadores de cartas.
+
         if (data.playerHandCounts) {
             updatePlayerHandCounts(data.playerHandCounts);
         }
 
-        // 6. Se renderiza TODA la interfaz con el nuevo estado oficial.
-        renderHands();
-        renderDiscard();
+        // ¡YA NO LLAMAMOS A renderHands()!
+        renderDiscard(); // Solo actualizamos lo que cambió.
         updateTurnIndicator();
         updateActionButtons();
-    
-        // 7. Se muestra la notificación de turno.
+
         const newCurrentPlayerSeat = orderedSeats[currentPlayer];
         if (newCurrentPlayerSeat) {
             if (newCurrentPlayerSeat.playerId === socket.id) {
@@ -1420,6 +1435,7 @@ function showRoomsOverview() {
             }
         }
     });
+    // ▲▲▲ FIN DEL CÓDIGO OPTIMIZADO ▲▲▲
 
     socket.on('cardDrawn', async (data) => {
         console.log("Carta recibida del servidor:", data.card);
@@ -2988,9 +3004,7 @@ function updatePlayersView(seats, inGame = false) {
 
     parent.replaceChild(newHuman, human); // 4. Reemplazamos el viejo por el nuevo de un solo golpe
 
-    // ▼▼▼ LÍNEA ELIMINADA PARA EVITAR PARPADEO ▼▼▼
-    // renderDiscard();
-    // ▲▲▲ FIN DE LA LÍNEA ELIMINADA ▲▲▲
+    renderDiscard();
     renderMelds();
     updateActionButtons();
     updateDebugInfo();
