@@ -1603,7 +1603,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
 function createAndStartPracticeGame(socket, username, avatar, io) { // <-- Se añade 'avatar'
-    const roomId = `practice-${socket.id}`;
+    const roomId = generateRoomId(); // Usamos un ID único y aleatorio
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
     const newRoom = {
