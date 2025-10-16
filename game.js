@@ -1965,20 +1965,29 @@ function showRoomsOverview() {
 // ▼▼▼ REEMPLAZO COMPLETO Y DEFINITIVO ▼▼▼
 socket.on('gameStarted', (initialState) => {
     
-    // CORRECCIÓN: Si es una partida de práctica, usamos directamente los datos del servidor
+    // CORRECCIÓN CLAVE: Si es una partida de práctica, inicializamos manualmente
+    // las configuraciones que las mesas reales inicializan por otra vía.
     if (initialState.isPractice) {
+        
+        // 1. Creamos el objeto de configuración que estaba ausente y causaba el error.
+        currentGameSettings = {
+            isPractice: true,
+            roomId: `practice-${socket.id}`,
+            settings: {
+                username: 'Práctica', // Nombre placeholder para la mesa
+                bet: 0,
+                penalty: 0
+            }
+        };
 
-        // 1. USAMOS DIRECTAMENTE LOS DATOS DEL SERVIDOR
-        // El objeto 'initialState' ya contiene el 'roomId' correcto y único.
-        currentGameSettings = initialState;
-
-        // 2. Ahora que la configuración es correcta, podemos mostrar la vista y activar los botones.
+        // 2. Ahora que la configuración existe, podemos mostrar la vista y activar los botones sin errores.
         document.body.classList.add('game-active');
         document.getElementById('lobby-overlay').style.display = 'none';
         document.getElementById('game-container').style.display = 'block';
         setupChat();
         setupInGameLeaveButton();
-
+        
+        // ▼▼▼ AÑADIR ESTA LÍNEA PARA MOSTRAR EL MODAL EN PRÁCTICA ▼▼▼
         showFunctionsModalOnce();
     }
 

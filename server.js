@@ -1282,12 +1282,6 @@ function findWorstCardToDiscard(hand, allMeldsOnTable) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN botPlay ENTERA EN SERVER.JS CON ESTA VERSIÓN ▼▼▼
 async function botPlay(room, botPlayerId, io) {
-    // VALIDACIÓN ANTI-ZOMBIE: Si la sala ya no existe, detenemos la ejecución del bot.
-    if (!rooms[room.roomId]) {
-        console.log(`[Bot-Stop] El bot ${botPlayerId} detiene su jugada porque la sala ${room.roomId} ya no existe.`);
-        return;
-    }
-
     const botSeat = room.seats.find(s => s.playerId === botPlayerId);
     if (!botSeat || !botSeat.active) return;
 
@@ -1462,12 +1456,6 @@ async function botPlay(room, botPlayerId, io) {
 }
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
-    // VALIDACIÓN ANTI-ZOMBIE: Si la sala fue eliminada durante la jugada, no se avanza el turno.
-    if (!rooms[room.roomId]) {
-        console.log(`[Turn-Stop] No se avanza el turno porque la sala ${room.roomId} ya no existe.`);
-        return;
-    }
-
     if (await checkVictoryCondition(room, room.roomId, io)) return;
 
     resetTurnState(room);
