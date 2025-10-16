@@ -2704,8 +2704,8 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        
-        human.style.display = 'none'; // <<-- 1. AÑADE ESTA LÍNEA para ocultar la mano
+
+        human.style.visibility = 'hidden'; // <<-- 1. AÑADE ESTA LÍNEA
 
         human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
@@ -2986,6 +2986,8 @@ function updatePlayersView(seats, inGame = false) {
     });
     
     human.appendChild(fragment);
+    
+    human.style.visibility = 'visible'; // <<-- 2. AÑADE ESTA LÍNEA
 
     // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
     human.addEventListener('dragover', (e) => {
@@ -2994,12 +2996,6 @@ function updatePlayersView(seats, inGame = false) {
 
     human.addEventListener('drop', handleDrop);
     // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
-
-    // <<-- 2. AÑADE ESTE BLOQUE COMPLETO para volver a mostrar la mano
-    requestAnimationFrame(() => {
-        human.style.display = 'flex';
-    });
-    // <<-- FIN DEL BLOQUE
 
     renderDiscard();
     renderMelds();
