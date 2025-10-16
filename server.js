@@ -1824,6 +1824,14 @@ function startPhase3Timer(room, playerId, io) {
 // ▲▲▲ FIN DEL SISTEMA DE TEMPORIZADORES ▲▲▲
 
 async function advanceTurnAfterAction(room, discardingPlayerId, discardedCard, io) {
+    // ▼▼▼ INICIO DE LA CORRECCIÓN DEFINITIVA ▼▼▼
+    // Se mueven las combinaciones temporales a permanentes JUSTO ANTES de cambiar el turno.
+    // Esto asegura que la actualización sea atómica y evita errores de sincronización.
+    if (room.turnMelds && room.turnMelds.length > 0) {
+        room.melds.push(...room.turnMelds);
+    }
+    // ▲▲▲ FIN DE LA CORRECCIÓN DEFINITIVA ▲▲▲
+
     // ▼▼▼ MARCAR QUE EL JUGADOR COMPLETÓ SU TURNO ▼▼▼
     const finishedPlayerSeat = room.seats.find(s => s && s.playerId === discardingPlayerId);
     if (finishedPlayerSeat && finishedPlayerSeat.haIniciadoSuTurno === false) {
@@ -2879,29 +2887,25 @@ socket.on('accionDescartar', async (data) => {
         return socket.emit('fault', { reason: 'Error de sincronización, la carta no está en tu mano.' });
     }
 
-    // 1. Procesar la jugada.
+    // 1. Procesar la jugada (quitar carta de la mano y añadirla al descarte).
     playerHand.splice(cardIndex, 1);
     room.discardPile.push(card);
 
-    // Se procesan las combinaciones del turno: se mueven de temporales a permanentes.
-    if (room.turnMelds.length > 0) {
-        room.melds.push(...room.turnMelds);
-        // IMPORTANTE: Se limpia el array de jugadas temporales AHORA.
-        room.turnMelds = []; 
-    }
-
-    // 2. ¡NUEVA LÓGICA DE VICTORIA!
-    // Se comprueba si la mano quedó vacía DESPUÉS de descartar.
+    // 2. Comprobar si hay victoria.
     if (playerHand.length === 0) {
         console.log(`¡VICTORIA! ${playerSeat.playerName} ha descartado su última carta.`);
-        // Llamamos directamente a la función que calcula los puntos y finaliza el juego.
+        // IMPORTANTE: Aún con victoria, las jugadas del turno deben hacerse permanentes.
+        if (room.turnMelds && room.turnMelds.length > 0) {
+            room.melds.push(...room.turnMelds);
+            room.turnMelds = [];
+        }
+        // Finaliza el juego y calcula los puntos.
         await endGameAndCalculateScores(room, playerSeat, io);
-        return; // Detenemos la ejecución para no pasar el turno.
+        return; // Detiene la ejecución aquí.
     }
 
-    // ▼▼▼ REEMPLAZA TODO EL BLOQUE ANTERIOR CON ESTA ÚNICA LÍNEA ▼▼▼
-    
-    // 3. Si no hay victoria, delega el cambio de turno y el inicio del temporizador.
+    // 3. Si no hay victoria, se avanza el turno.
+    // La función advanceTurnAfterAction se encargará ahora de mover las combinaciones.
     await advanceTurnAfterAction(room, socket.id, card, io);
     
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
