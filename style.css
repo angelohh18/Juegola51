@@ -1353,8 +1353,6 @@ body.game-active {
     flex-shrink: 0;
     /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
     will-change: transform, opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     box-shadow: 0 2px 4px rgba(0,0,0,0.5); 

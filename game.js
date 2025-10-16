@@ -2704,6 +2704,9 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
+        
+        human.style.display = 'none'; // <<-- 1. AÑADE ESTA LÍNEA para ocultar la mano
+
         human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
@@ -2991,6 +2994,12 @@ function updatePlayersView(seats, inGame = false) {
 
     human.addEventListener('drop', handleDrop);
     // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
+
+    // <<-- 2. AÑADE ESTE BLOQUE COMPLETO para volver a mostrar la mano
+    requestAnimationFrame(() => {
+        human.style.display = 'flex';
+    });
+    // <<-- FIN DEL BLOQUE
 
     renderDiscard();
     renderMelds();
