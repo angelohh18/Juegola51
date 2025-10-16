@@ -3009,21 +3009,49 @@ function updatePlayersView(seats, inGame = false) {
     updateActionButtons();
     updateDebugInfo();
 }
-    function reorderHand(draggedIndices, targetDropIndex) {
-        const player = players[0];
-        if (!player || draggedIndices.includes(targetDropIndex)) {
-            renderHands();
-            return;
-        }
-        const sortedDraggedIndices = [...draggedIndices].sort((a, b) => a - b);
-        const draggedCards = sortedDraggedIndices.map(index => player.hand[index]);
-        const remainingHand = player.hand.filter((_, index) => !sortedDraggedIndices.includes(index));
-        const itemsRemovedBeforeTarget = sortedDraggedIndices.filter(i => i < targetDropIndex).length;
-        remainingHand.splice(targetDropIndex - itemsRemovedBeforeTarget, 0, ...draggedCards);
-        player.hand = remainingHand;
-        selectedCards.clear();
-        renderHands();
+// ▼▼▼ REEMPLAZA TU FUNCIÓN reorderHand ENTERA CON ESTA VERSIÓN ▼▼▼
+function reorderHand(draggedIndices, targetDropIndex) {
+    const player = players[0];
+    const handContainer = document.getElementById('human-hand');
+    if (!player || !handContainer) return;
+
+    // 1. DATA: Actualizamos el array de datos interno para mantener la consistencia.
+    // Esta lógica es la misma que ya tenías, pero es fundamental mantenerla.
+    const sortedDraggedIndices = [...draggedIndices].sort((a, b) => b - a); // Orden descendente para no alterar índices al borrar
+    const cardsToMoveData = sortedDraggedIndices.map(index => player.hand.splice(index, 1)[0]);
+    cardsToMoveData.reverse(); // Restaurar el orden original del grupo arrastrado
+
+    const insertionIndex = targetDropIndex - draggedIndices.filter(i => i < targetDropIndex).length;
+    player.hand.splice(insertionIndex, 0, ...cardsToMoveData);
+
+    // 2. VIEW (DOM): Movemos los elementos de las cartas directamente, sin redibujar.
+    const cardsToMoveElements = draggedIndices.map(index => handContainer.querySelector(`.card[data-index='${index}']`)).filter(Boolean);
+    const allCardElements = Array.from(handContainer.children);
+    const referenceNode = allCardElements[targetDropIndex]; // El nodo antes del cual insertaremos
+
+    if (referenceNode) {
+        // Si hay un nodo de referencia, insertamos las cartas antes de él.
+        cardsToMoveElements.forEach(el => handContainer.insertBefore(el, referenceNode));
+    } else {
+        // Si no hay (se suelta al final), simplemente las añadimos.
+        cardsToMoveElements.forEach(el => handContainer.appendChild(el));
     }
+
+    // 3. SYNC: Re-indexamos los atributos 'data-index' de todas las cartas en el DOM.
+    // Esto es crucial para que los siguientes arrastres funcionen correctamente.
+    const finalCardElements = Array.from(handContainer.children);
+    finalCardElements.forEach((card, index) => {
+        card.dataset.index = index;
+        card.classList.remove('dragging', 'selected'); // Limpiamos clases residuales
+    });
+
+    // 4. Limpiamos la selección y actualizamos los botones.
+    selectedCards.clear();
+    updateActionButtons();
+
+    // ¡NO SE LLAMA A renderHands()! Este es el cambio clave.
+}
+// ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function renderDiscard() {
       const pile = document.getElementById('discard');
       pile.ondragover = (e) => { e.preventDefault(); if (canDiscardByDrag()) pile.classList.add('drop-zone'); };
