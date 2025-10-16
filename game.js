@@ -2926,8 +2926,11 @@ function updatePlayersView(seats, inGame = false) {
                 document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
 
                 try {
-                    const droppedIndices = JSON.parse(dragData);
+                    // ▼▼▼ AÑADE ESTA LÍNEA DE SEGURIDAD AQUÍ ▼▼▼
                     if (!lastTarget) return;
+                    // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
+
+                    const droppedIndices = JSON.parse(dragData);
 
                     if (lastTarget.classList.contains('card')) {
                         const finalTouch = e.changedTouches[0];
@@ -3239,8 +3242,11 @@ function reorderHand(draggedIndices, targetDropIndex) {
                 }
                 document.querySelectorAll('#human-hand .card.dragging').forEach(c => c.classList.remove('dragging'));
                 try {
-                    const droppedIndices = JSON.parse(dragData);
+                    // ▼▼▼ AÑADE ESTA LÍNEA DE SEGURIDAD AQUÍ ▼▼▼
                     if (!lastTarget) return;
+                    // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
+
+                    const droppedIndices = JSON.parse(dragData);
                     if (lastTarget.classList.contains('card')) {
                         const finalTouch = e.changedTouches[0];
                         const rect = lastTarget.getBoundingClientRect();
