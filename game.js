@@ -2704,19 +2704,25 @@ function updatePlayersView(seats, inGame = false) {
     
     function renderHands() {
         const human = document.getElementById('human-hand');
-        human.innerHTML = '';
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
         // Esto es especialmente importante para la vista del espectador.
         if (!humanPlayer || !gameStarted || !humanPlayer.hand) {
             // Nos aseguramos de que otras partes de la UI se refresquen, pero no se renderizan cartas.
+            human.innerHTML = '';
             renderDiscard();
             renderMelds();
             updateActionButtons();
             updateDebugInfo();
             return;
         }
+
+        // --- SOLUCIÓN ANTI-PARPADEO PARA MÓVILES ---
+        // Crear el nuevo contenido en un contenedor temporal
+        const tempContainer = document.createElement('div');
+        tempContainer.style.display = 'none'; // Oculto durante la construcción
+        document.body.appendChild(tempContainer);
       
       const fragment = document.createDocumentFragment();
       humanPlayer.hand.forEach((card, idx) => {
@@ -2982,20 +2988,32 @@ function updatePlayersView(seats, inGame = false) {
         fragment.appendChild(d);
     });
     
-    human.appendChild(fragment);
+    // Construir el nuevo contenido en el contenedor temporal
+    tempContainer.appendChild(fragment);
+    
+    // --- TRANSICIÓN SUAVE SIN PARPADEO ---
+    // Usar requestAnimationFrame para una transición suave
+    requestAnimationFrame(() => {
+        // Reemplazar el contenido de forma atómica
+        human.innerHTML = '';
+        human.appendChild(tempContainer.firstChild);
+        
+        // Limpiar el contenedor temporal
+        document.body.removeChild(tempContainer);
+        
+        // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
+        human.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Crucial para permitir el 'drop'.
+        });
 
-    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
-    human.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Crucial para permitir el 'drop'.
+        human.addEventListener('drop', handleDrop);
+        // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
+
+        renderDiscard();
+        renderMelds();
+        updateActionButtons();
+        updateDebugInfo();
     });
-
-    human.addEventListener('drop', handleDrop);
-    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
-
-    renderDiscard();
-    renderMelds();
-    updateActionButtons();
-    updateDebugInfo();
 }
     function reorderHand(draggedIndices, targetDropIndex) {
         const player = players[0];
