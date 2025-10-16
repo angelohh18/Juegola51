@@ -1523,8 +1523,8 @@ function showRoomsOverview() {
         }
     });
 
-    // ▼▼▼ REEMPLAZA socket.on('meldUpdate', ...) CON ESTO ▼▼▼
-    socket.on('meldUpdate', async (data) => { // 1. Convertimos la función en async
+    // ▼▼▼ REEMPLAZA socket.on('meldUpdate', ...) CON ESTA VERSIÓN ▼▼▼
+    socket.on('meldUpdate', async (data) => {
         console.log("Actualización de jugada recibida del servidor:", data);
 
         allMelds = data.newMelds || [];
@@ -1539,23 +1539,21 @@ function showRoomsOverview() {
             return;
         }
 
-        // --- INICIO DE LA LÓGICA ANTI-PESTAÑEO ---
         const meldsContainer = document.getElementById('melds-display');
         if (meldsContainer) {
-            // 2. Hacemos que la zona de juegos se desvanezca.
+            // Hacemos que la zona de juegos se desvanezca.
             meldsContainer.style.transition = 'opacity 0.15s ease-out';
             meldsContainer.style.opacity = '0';
 
-            // 3. Esperamos un instante a que la animación de fade-out termine.
+            // Esperamos un instante a que la animación de fade-out termine.
             await new Promise(r => setTimeout(r, 150));
 
-            // 4. Redibujamos los conjuntos MIENTRAS están invisibles.
-            renderMelds();
+            // Redibujamos los conjuntos MIENTRAS están invisibles.
+            renderMelds(); // Ahora esta función funciona como esperamos.
 
-            // 5. Los hacemos reaparecer suavemente.
+            // Los hacemos reaparecer suavemente.
             meldsContainer.style.opacity = '1';
         }
-        // --- FIN DE LA LÓGICA ANTI-PESTAÑEO ---
 
         if (data.highlight) {
             const { cardId, meldIndex } = data.highlight;
@@ -3376,63 +3374,66 @@ function reorderHand(draggedIndices, targetDropIndex) {
         pile.innerHTML = `<div class="card-image-wrapper"><img src="${getCardImageUrl(top)}" alt="${top.value} of ${getSuitName(top.suit)}" style="width: 100%; height: 100%; border-radius: inherit;"></div>`;
       } else { pile.innerHTML = 'Descarte<br>Vacío'; }
     }
+    // ▼▼▼ REEMPLAZA TU FUNCIÓN renderMelds ENTERA CON ESTA VERSIÓN ▼▼▼
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        const parent = display.parentNode; // 1. Obtenemos el padre
-        const newDisplay = display.cloneNode(false); // 2. Creamos un nuevo contenedor en memoria
-        
-        // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
+        if (!display) return; // Comprobación de seguridad
+
+        // 1. Limpiamos el contenido del contenedor en lugar de reemplazarlo.
+        display.innerHTML = '';
+
         const combinedMelds = [...allMelds, ...turnMelds];
+        const fragment = document.createDocumentFragment(); // Usamos un fragmento para mejor rendimiento
 
         combinedMelds.forEach(meld => {
             const g = document.createElement('div');
             g.className = 'meld-group';
 
-            // Añadimos una clase especial si la combinación es temporal para poder darle un estilo diferente
             if (turnMelds.includes(meld)) {
                 g.classList.add('temporary-meld');
             }
 
-            // El 'drop' para añadir cartas solo debe funcionar en combinaciones permanentes
             const permanentIndex = allMelds.indexOf(meld);
             if (permanentIndex !== -1) {
                 g.dataset.meldIndex = permanentIndex;
-        g.ondragover = (e) => { e.preventDefault(); g.classList.add('drop-zone'); };
-        g.ondragleave = () => g.classList.remove('drop-zone');
-        g.ondrop = (e) => {
-            if (isWaitingForNextTurn) return;
-            e.preventDefault(); g.classList.remove('drop-zone');
-            try {
-                const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
+                g.ondragover = (e) => { e.preventDefault(); g.classList.add('drop-zone'); };
+                g.ondragleave = () => g.classList.remove('drop-zone');
+                g.ondrop = (e) => {
+                    if (isWaitingForNextTurn) return;
+                    e.preventDefault(); g.classList.remove('drop-zone');
+                    try {
+                        const cardIndices = JSON.parse(e.dataTransfer.getData('application/json'));
                         if (cardIndices.length === 1) attemptAddCardToMeld(cardIndices[0], permanentIndex);
-                else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
-            } catch(err) { console.error("Error al añadir carta a combinación:", err); }
-        };
-        const handleMeldGroupClick = (event) => {
-            event.preventDefault();
-            if (currentPlayer !== 0 || !gameStarted) return;
-            const selected = document.querySelectorAll('#human-hand .card.selected');
-            if (selected.length === 1) {
+                        else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
+                    } catch(err) { console.error("Error al añadir carta a combinación:", err); }
+                };
+                const handleMeldGroupClick = (event) => {
+                    event.preventDefault();
+                    if (currentPlayer !== 0 || !gameStarted) return;
+                    const selected = document.querySelectorAll('#human-hand .card.selected');
+                    if (selected.length === 1) {
                         attemptAddCardToMeld(parseInt(selected[0].dataset.index), permanentIndex);
+                    }
+                };
+                g.addEventListener('click', handleMeldGroupClick);
+                g.addEventListener('touchend', handleMeldGroupClick);
             }
-        };
-        g.addEventListener('click', handleMeldGroupClick);
-        // ▼▼▼ LÍNEA AÑADIDA PARA COMPATIBILIDAD MÓVIL ▼▼▼
-        g.addEventListener('touchend', handleMeldGroupClick);
-            }
-            
-        for (let c of meld.cards) {
+
+            for (let c of meld.cards) {
                 const cd = document.createElement('div');
                 cd.className = `card`;
-            cd.dataset.cardId = c.id;
-            cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
-            g.appendChild(cd);
-        }
-        newDisplay.appendChild(g); // 3. Añadimos los melds al NUEVO contenedor
+                cd.dataset.cardId = c.id;
+                cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
+                g.appendChild(cd);
+            }
+            // 2. Añadimos el nuevo conjunto al fragmento.
+            fragment.appendChild(g);
         });
 
-        parent.replaceChild(newDisplay, display); // 4. Reemplazamos de un solo golpe
+        // 3. Añadimos todo el contenido nuevo de una sola vez al contenedor existente.
+        display.appendChild(fragment);
     }
+    // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     function animateCardMovement({
         cardsData = [],
         startElement,
