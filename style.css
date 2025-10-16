@@ -661,7 +661,9 @@ html {
 #pwa-install-modal .modal-content,
 #change-password-modal .modal-content,
 #functions-modal .modal-content,
-#bot-info-modal .modal-content {
+#bot-info-modal .modal-content,
+#register-modal .modal-content,
+#elimination-overlay .content {
     width: 90vw; /* Usa ancho de viewport */
     max-width: 550px; /* Ancho máximo reducido */
     max-height: 85vh; /* Alto máximo para evitar desbordamiento vertical */
@@ -670,9 +672,25 @@ html {
     text-align: left;
     line-height: 1.6;
 }
-#rules-modal .modal-content::-webkit-scrollbar { width: 8px; }
-#rules-modal .modal-content::-webkit-scrollbar-track { background: #6d2932; border-radius: 10px; }
-#rules-modal .modal-content::-webkit-scrollbar-thumb { background: #c5a56a; border-radius: 10px; }
+#rules-modal .modal-content::-webkit-scrollbar,
+#register-modal .modal-content::-webkit-scrollbar,
+#elimination-overlay .content::-webkit-scrollbar {
+    width: 8px;
+}
+
+#rules-modal .modal-content::-webkit-scrollbar-track,
+#register-modal .modal-content::-webkit-scrollbar-track,
+#elimination-overlay .content::-webkit-scrollbar-track {
+    background: #6d2932;
+    border-radius: 10px;
+}
+
+#rules-modal .modal-content::-webkit-scrollbar-thumb,
+#register-modal .modal-content::-webkit-scrollbar-thumb,
+#elimination-overlay .content::-webkit-scrollbar-thumb {
+    background: #c5a56a;
+    border-radius: 10px;
+}
 
 /* --- INICIO: Estilos para el modal de Créditos con Scroll --- */
 #credit-modal .modal-content {
@@ -2491,5 +2509,16 @@ body.game-active {
 }
 
 /* ▲▲▲ FIN MEDIA QUERIES ADICIONALES ▲▲▲ */
+
+/* --- OPTIMIZACIÓN ANTI-PARPADEO: Transiciones suaves --- */
+/* 1. Habilita la transición de opacidad en los elementos afectados */
+#discard, .meld-display {
+    transition: opacity 0.15s ease-in-out;
+}
+
+/* 2. Clase de utilidad que los hará invisibles durante la actualización */
+.updating {
+    opacity: 0;
+}
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
