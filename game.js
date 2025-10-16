@@ -315,16 +315,13 @@ function showPwaInstallModal() {
 
         potValueEl.textContent = data.newPotValue;
 
-        // Aplicamos la nueva animación de pulso al valor numérico
         if (data.isPenalty) {
             potValueEl.classList.add('pot-updated');
-
             setTimeout(() => {
                 potValueEl.classList.remove('pot-updated');
-            }, 600); // Coincide con la duración de la nueva animación
+            }, 600);
         }
     });
-    // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
     socket.on('joinedAsSpectator', (gameState) => {
         console.log('Te has unido como espectador. Pasando control a la vista de juego...');
