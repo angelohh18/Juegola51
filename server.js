@@ -1602,7 +1602,7 @@ async function handlePlayerDeparture(roomId, leavingPlayerId, io) {
 // ▲▲▲ FIN DE LA NUEVA FUNCIÓN ▲▲▲
 
 // ▼▼▼ AÑADE LA NUEVA FUNCIÓN COMPLETA AQUÍ ▼▼▼
-function createAndStartPracticeGame(socket, username, io) {
+function createAndStartPracticeGame(socket, username, avatar, io) { // <-- Se añade 'avatar'
     const roomId = `practice-${socket.id}`;
     const botAvatars = [ 'https://i.pravatar.cc/150?img=52', 'https://i.pravatar.cc/150?img=51', 'https://i.pravatar.cc/150?img=50' ];
 
@@ -1613,7 +1613,7 @@ function createAndStartPracticeGame(socket, username, io) {
       state: 'playing',
       isPractice: true,
       seats: [
-        { playerId: socket.id, playerName: username, avatar: '', active: true, doneFirstMeld: false, isBot: false },
+        { playerId: socket.id, playerName: username, avatar: avatar, active: true, doneFirstMeld: false, isBot: false },
         { playerId: 'bot_1', playerName: 'Bot 1', avatar: botAvatars[0], active: true, doneFirstMeld: false, isBot: true },
         { playerId: 'bot_2', playerName: 'Bot 2', avatar: botAvatars[1], active: true, doneFirstMeld: false, isBot: true },
         { playerId: 'bot_3', playerName: 'Bot 3', avatar: botAvatars[2], active: true, doneFirstMeld: false, isBot: true }
@@ -1979,9 +1979,9 @@ io.on('connection', (socket) => {
     console.log(`Mesa creada: ${roomId} por ${settings.username}`);
   });
 
-  socket.on('requestPracticeGame', (username) => {
-    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTA LÍNEA ▼▼▼
-    createAndStartPracticeGame(socket, username, io);
+  socket.on('requestPracticeGame', ({ username, avatar }) => { // <--- Recibimos un objeto
+    // Llamamos a la función con los nuevos datos
+    createAndStartPracticeGame(socket, username, avatar, io);
   });
 
     socket.on('joinRoom', ({ roomId, user }) => {
@@ -2930,12 +2930,13 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
 
   // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AL FINAL ▼▼▼
   socket.on('requestPracticeRematch', (data) => {
-    // ▼▼▼ REEMPLAZA EL CONTENIDO CON ESTE BLOQUE ▼▼▼
     const oldRoomId = data.roomId;
     const oldRoom = rooms[oldRoomId];
 
     const playerSeat = oldRoom ? oldRoom.seats.find(s => s && s.playerId === socket.id) : null;
+    // Obtenemos nombre Y avatar del asiento anterior
     const username = playerSeat ? playerSeat.playerName : 'Jugador';
+    const avatar = playerSeat ? playerSeat.avatar : ''; // <-- Nueva línea
 
     if (oldRoom) {
         delete rooms[oldRoomId];
@@ -2943,7 +2944,8 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
     }
 
     console.log(`[Práctica] Creando nueva partida para ${username}.`);
-    createAndStartPracticeGame(socket, username, io);
+    // Pasamos ambos datos a la función
+    createAndStartPracticeGame(socket, username, avatar, io); // <-- Línea modificada
     // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
   });
   // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
