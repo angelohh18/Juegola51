@@ -2703,16 +2703,10 @@ function updatePlayersView(seats, inGame = false) {
     // ▲▲▲ FIN LÓGICA UNIFICADA DROP ▲▲▲
     
     function renderHands() {
-        // ▼▼▼ INICIO DE LA MODIFICACIÓN ▼▼▼
-
-        // 1. OBTENEMOS EL CONTENEDOR PRINCIPAL DEL JUEGO
-        const centerArea = document.querySelector('.center-area'); 
-        
-        // 2. LO HACEMOS INVISIBLE (PERO MANTENIENDO SU ESPACIO)
-        if (centerArea) centerArea.style.visibility = 'hidden'; 
-
         const human = document.getElementById('human-hand');
-        human.innerHTML = '';
+        const parent = human.parentNode; // 1. Obtenemos el contenedor padre
+        const newHuman = human.cloneNode(false); // 2. Creamos un nuevo 'human-hand' vacío en memoria
+
         const humanPlayer = players[0]; // Jugador local (puede ser espectador con mano vacía)
 
         // Si no hay un jugador local o la partida no ha comenzado, no hay mano que renderizar.
@@ -2990,26 +2984,12 @@ function updatePlayersView(seats, inGame = false) {
         fragment.appendChild(d);
     });
     
-    human.appendChild(fragment);
+    newHuman.appendChild(fragment); // 3. Añadimos las cartas al NUEVO contenedor
 
-    // ▼▼▼ LISTENERS DEL CONTENEDOR DE LA MANO (PC) ▼▼▼
-    human.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Crucial para permitir el 'drop'.
-    });
+    parent.replaceChild(newHuman, human); // 4. Reemplazamos el viejo por el nuevo de un solo golpe
 
-    human.addEventListener('drop', handleDrop);
-    // ▲▲▲ FIN LISTENERS DEL CONTENEDOR ▲▲▲
-
-    // Estas funciones ahora se ejecutarán mientras el área es invisible
-    renderDiscard(); 
-    renderMelds(); 
-
-    // 3. UNA VEZ TODO ESTÁ LISTO, LO VOLVEMOS A MOSTRAR DE GOLPE
-    if (centerArea) centerArea.style.visibility = 'visible'; 
-    
-    // ▲▲▲ FIN DE LA MODIFICACIÓN ▲▲▲
-
-    // Estas funciones solo actualizan botones, no causan parpadeo
+    renderDiscard();
+    renderMelds();
     updateActionButtons();
     updateDebugInfo();
 }
@@ -3048,7 +3028,8 @@ function updatePlayersView(seats, inGame = false) {
     }
     function renderMelds() {
         const display = document.getElementById('melds-display');
-        display.innerHTML = '';
+        const parent = display.parentNode; // 1. Obtenemos el padre
+        const newDisplay = display.cloneNode(false); // 2. Creamos un nuevo contenedor en memoria
         
         // Unimos las combinaciones permanentes y las temporales del turno actual para dibujarlas todas
         const combinedMelds = [...allMelds, ...turnMelds];
@@ -3097,8 +3078,10 @@ function updatePlayersView(seats, inGame = false) {
             cd.innerHTML = `<img src="${getCardImageUrl(c)}" alt="${c.value} of ${getSuitName(c.suit)}" style="width: 100%; height: 100%; border-radius: inherit; display: block;">`;
             g.appendChild(cd);
         }
-        display.appendChild(g);
+        newDisplay.appendChild(g); // 3. Añadimos los melds al NUEVO contenedor
         });
+
+        parent.replaceChild(newDisplay, display); // 4. Reemplazamos de un solo golpe
     }
     function animateCardMovement({
         cardsData = [],
