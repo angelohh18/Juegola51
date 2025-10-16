@@ -2880,13 +2880,14 @@ socket.on('accionDescartar', async (data) => {
     }
 
     // 1. Procesar la jugada.
-    console.log(`[DEBUG] Eliminando carta de la mano...`);
-    playerHand.splice(cardIndex, 1); // La carta se elimina de la mano.
-    console.log(`[DEBUG] Agregando carta al descarte...`);
+    playerHand.splice(cardIndex, 1);
     room.discardPile.push(card);
-    console.log(`[DEBUG] Descartar procesado exitosamente`);
+
+    // Se procesan las combinaciones del turno: se mueven de temporales a permanentes.
     if (room.turnMelds.length > 0) {
         room.melds.push(...room.turnMelds);
+        // IMPORTANTE: Se limpia el array de jugadas temporales AHORA.
+        room.turnMelds = []; 
     }
 
     // 2. ¡NUEVA LÓGICA DE VICTORIA!
