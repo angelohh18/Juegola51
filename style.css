@@ -1226,7 +1226,7 @@ body.game-active {
 .hand.human {
     position: relative;
     display: flex;
-    /* justify-content: center; */ /* <<-- ELIMINA ESTA LÍNEA */
+    justify-content: center;
     /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
     will-change: contents;
     transform: translateZ(0);
@@ -1346,10 +1346,11 @@ body.game-active {
     background-color: transparent; /* El fondo lo da la imagen */
     border-radius: 8px; 
     border: 1px solid #ccc; 
-    position: absolute; /* <<-- AÑADE ESTA LÍNEA */
+    position: relative;
     font-family: "Georgia", serif;
     cursor: pointer;
-    transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0); /* <<-- TRANSICIÓN SUAVE */
+    transition: all 0.18s ease;
+    flex-shrink: 0;
     /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
     will-change: transform, opacity;
     transform: translateZ(0);
@@ -1361,12 +1362,9 @@ body.game-active {
 .card.drag-over { border: 2px dashed #00ff00; }
 .card.dragging { opacity: 0.4; transform: scale(0.9); }
 
-/* <<-- YA NO NECESITAS ESTA REGLA, LA PUEDES BORRAR -->> */
-/*
 .hand.human .card:not(:first-child) {
   margin-left: -45px;
 }
-*/
 
 .melds {
     width:100%;
