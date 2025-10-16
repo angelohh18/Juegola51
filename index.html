@@ -91,15 +91,14 @@
 </div>
 
 <div id="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
-    <div class="modal-content">
+<div class="modal-content">
     <span class="close-modal-btn">&times;</span>
     <h3>Reglas Completas de La 51</h3>
 
     <h4>1. El Objetivo</h4>
     <p>
-        El objetivo es ser el primer jugador en quedarse sin cartas en la mano. Para ganar, un jugador debe bajar o acomodar todas sus cartas y descartar su última carta en el montón de descarte.
+        El objetivo es ser el primer jugador en quedarse sin cartas en la mano. Para ganar, es <strong>ABSOLUTAMENTE OBLIGATORIO</strong> descartar tu última carta en el montón de descarte.
     </p>
-
     <h4>2. Las Combinaciones (Bajadas)</h4>
     <p>Para deshacerte de tus cartas, debes "bajarlas" a la mesa en combinaciones válidas. Hay tres acciones posibles:</p>
     
@@ -163,13 +162,15 @@
         Cometer cualquiera de las siguientes faltas resulta en la <strong>eliminación inmediata</strong> del jugador, quien deberá pagar la apuesta más la multa.
     </p>
     <ol>
-      
         <li>
-            <strong>No usar la carta del descarte en la primera bajada:</strong> Si robas del descarte, estás obligado a usar esa carta en la primera combinación que bajes en ese mismo turno.
-            <div class="example">Falta: Robas un 8♠ del descarte. Luego, intentas bajar un trío de Reyes (K-K-K). Es falta, porque tu primera jugada debía incluir obligatoriamente el 8♠.</div>
+            <strong>No ganar descartando:</strong> Si después de bajar o añadir cartas tu mano queda con 0 cartas, has cometido una falta. Es <strong>obligatorio</strong> terminar tu turno descartando tu última carta para poder ganar.
         </li>
         <li>
-            <strong>Robar del descarte y no bajar:</strong> Si robas del descarte, es obligatorio bajar al menos una combinación. No puedes robar del descarte y simplemente tirar otra carta de tu mano.
+            <strong>Orden incorrecto al usar la carta del descarte:</strong> Si robas del descarte, estás obligado a usar esa carta en un <strong>nuevo conjunto</strong> y bajarlo a la mesa <strong>antes que cualquier otra acción</strong> (como añadir a otros juegos o bajar otros conjuntos).
+            <div class="example">Falta: Robas un 8♠ del descarte. En la mesa hay un trío de Reyes (K-K-K) al que podrías añadir otro Rey que tienes. Si intentas añadir tu Rey a ese trío ANTES de bajar un nuevo juego con el 8♠, es falta.</div>
+        </li>
+        <li>
+            <strong>Robar del descarte y no bajar:</strong> Si robas del descarte, es obligatorio bajar al menos una combinación que incluya esa carta. No puedes robar del descarte y simplemente tirar otra carta de tu mano.
         </li>
         <li>
             <strong>Bajar una jugada inválida:</strong> Presentar una combinación que no cumpla las reglas de Grupo o Escalera.
@@ -179,18 +180,16 @@
         </li>
         <li>
             <strong>Bajar y no ganar (Regla del Mazo):</strong> Si robas del <strong>mazo</strong> (no del descarte) y decides bajar una combinación, estás <strong>obligado a ganar</strong> en ese mismo turno.
-            <div class="example">Falta: Robas del mazo. Bajas una escalera 5-6-7. Todavía te quedan más cartas en la mano y descartas una para terminar tu turno, serás eliminado.</div>
         </li>
         <li>
             <strong>Descarte Ilegal:</strong> Descartar una carta que podría ser añadida a una combinación ya existente en la mesa. Esta regla no aplica si es tu última carta para ganar.
-             <div class="example">Falta: En la mesa hay una escalera 4♥-5♥-6♥. Intentas descartar el 7♥ de tu mano. Es falta, porque esa carta se podía añadir a la escalera.</div>
         </li>
         <li>
             <strong>Abandonar la partida:</strong> Salir del juego voluntariamente mientras está en curso.
         </li>
     </ol>
     <button id="btn-close-rules-modal" class="secondary">Entendido</button>
-    </div>
+</div>
 </div>
   
 

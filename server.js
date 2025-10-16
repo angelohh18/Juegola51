@@ -1044,17 +1044,22 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
+// ▼▼▼ REEMPLAZA ESTA FUNCIÓN ▼▼▼
 async function checkVictoryCondition(room, roomId, io) {
   if (!room || room.state !== 'playing') return false;
+
+  // La condición AHORA es: ¿a algún jugador le queda CERO cartas DESPUÉS de descartar?
+  // Esta función se llamará DESPUÉS de un descarte válido.
   const winnerSeat = room.seats.find(s => s && s.active !== false && room.playerHands[s.playerId]?.length === 0);
   
   if (winnerSeat) {
-    console.log(`¡VICTORIA! ${winnerSeat.playerName} se ha quedado sin cartas y gana la partida.`);
+    console.log(`¡VICTORIA! ${winnerSeat.playerName} ha descartado su última carta y gana la partida.`);
     await endGameAndCalculateScores(room, winnerSeat, io);
-    return true;
+    return true; // Se encontró un ganador
   }
-  return false;
+  return false; // El juego continúa
 }
+// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
     if (!room) return;
@@ -1413,6 +1418,14 @@ async function botPlay(room, botPlayerId, io) {
                     botHand = botHand.filter(card => !allMeldedCardIds.has(card.id));
                     room.playerHands[botPlayerId] = botHand;
                 }
+
+                // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN PARA EL BOT AQUÍ ▼▼▼
+                if (botHand.length === 0) {
+                    const reason = `El bot ${botSeat.playerName} se quedó sin cartas al bajar, cometiendo una falta.`;
+                    console.log(`FALTA GRAVE BOT: ${reason}`);
+                    return handlePlayerElimination(room, botPlayerId, reason, io);
+                }
+                // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
                 botSeat.doneFirstMeld = true;
                 io.to(room.roomId).emit('meldUpdate', { newMelds: room.melds, turnMelds: [], playerHandCounts: getSanitizedRoomForClient(room).playerHandCounts });
@@ -2233,6 +2246,17 @@ io.on('connection', (socket) => {
 
     // --- LÓGICA PARA AÑADIR A UN MELD EXISTENTE (PERMANENTE) ---
     if (typeof targetMeldIndex !== 'undefined') {
+
+        // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN AQUÍ ▼▼▼
+        // NUEVA REGLA: Si robó del descarte, no puede añadir a un juego existente
+        // antes de haber bajado un nuevo juego con la carta robada.
+        if (room.drewFromDiscard && room.discardCardRequirementMet === false) {
+            const reason = 'Robó del descarte pero intentó añadir una carta a un juego existente antes de bajar la combinación obligatoria.';
+            console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
+            return handlePlayerElimination(room, socket.id, reason, io);
+        }
+        // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
         if (cards.length !== 1) {
             return io.to(socket.id).emit('fault', { reason: 'Solo puedes añadir una carta a la vez.' });
         }
@@ -2327,6 +2351,16 @@ io.on('connection', (socket) => {
     // --- LÓGICA COMÚN: ACTUALIZAR MANO Y NOTIFICAR ---
     const meldedCardIds = new Set(cardIds);
     room.playerHands[socket.id] = playerHand.filter(card => !meldedCardIds.has(card.id));
+
+    // ▼▼▼ AÑADE ESTE BLOQUE DE VALIDACIÓN AQUÍ ▼▼▼
+    // NUEVA REGLA: Si un jugador se queda sin cartas después de bajar, es una falta.
+    if (room.playerHands[socket.id].length === 0) {
+        const reason = 'Se quedó sin cartas al bajar y no puede descartar para ganar. Es obligatorio ganar descartando la última carta.';
+        console.log(`FALTA GRAVE: Jugador ${socket.id} - ${reason}`);
+        // Detenemos la ejecución aquí y eliminamos al jugador.
+        return handlePlayerElimination(room, socket.id, reason, io);
+    }
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
 
     const playerHandCounts = {};
     room.seats.filter(s => s).forEach(p => {
