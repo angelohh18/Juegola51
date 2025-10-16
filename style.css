@@ -1228,7 +1228,7 @@ body.game-active {
     display: flex;
     justify-content: center;
     /* --- OPTIMIZACIÓN ANTI-PARPADEO PARA MÓVILES --- */
-    contain: layout style paint;
+    will-change: contents;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     align-items: center;
