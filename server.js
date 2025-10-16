@@ -1061,31 +1061,38 @@ async function checkVictoryCondition(room, roomId, io) {
 }
 // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
+// ▼▼▼ REEMPLAZA ESTA FUNCIÓN COMPLETA ▼▼▼
 async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
     if (!room) return;
     const roomId = room.roomId;
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
 
-    // Estandarizamos el objeto de la falta
     const finalFaultData = typeof faultData === 'string' ? { reason: faultData } : faultData;
 
-    if (room.isPractice) {
-        console.log(`[Práctica] Falta cometida por ${playerSeat.playerName}.`);
-        const humanPlayer = room.seats.find(s => s && !s.isBot);
-        if (humanPlayer) {
-            io.to(humanPlayer.playerId).emit('playerEliminated', {
-                playerId: faultingPlayerId,
-                playerName: playerSeat.playerName,
-                faultData: finalFaultData // Enviamos el objeto completo
-            });
-            io.to(humanPlayer.playerId).emit('practiceGameFaultEnd');
-        }
+    // --- INICIO DE LA NUEVA LÓGICA ESPECÍFICA ---
+    if (room.isPractice && playerSeat && !playerSeat.isBot) {
+        // CASO ESPECIAL: Es una partida de práctica Y la falta la cometió el jugador humano.
+        console.log(`[Práctica] Falta del jugador humano. Terminando la partida.`);
+        
+        // 1. Notificamos al jugador de su eliminación para que vea el modal de la falta.
+        io.to(faultingPlayerId).emit('playerEliminated', {
+            playerId: faultingPlayerId,
+            playerName: playerSeat.playerName,
+            faultData: finalFaultData
+        });
+        
+        // 2. Enviamos un evento SEPARADO para indicarle al cliente que debe mostrar el modal de reinicio.
+        io.to(faultingPlayerId).emit('practiceGameHumanFaultEnd');
+        
+        // 3. Detenemos la ejecución aquí. La partida para este jugador ha terminado.
         return;
     }
+    // --- FIN DE LA NUEVA LÓGICA ---
 
     if (playerSeat && playerSeat.active) {
         const penalty = room.settings.penalty || 0;
         const playerInfo = users[playerSeat.userId];
+        
         if (penalty > 0 && playerInfo) {
             const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
             playerInfo.credits -= penaltyInPlayerCurrency;
@@ -1111,7 +1118,7 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
         io.to(roomId).emit('playerEliminated', {
             playerId: faultingPlayerId,
             playerName: playerSeat.playerName,
-            faultData: finalFaultData // Enviamos el objeto completo
+            faultData: finalFaultData
         });
     }
 
@@ -1122,29 +1129,24 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
         if (winnerSeat) {
             await endGameAndCalculateScores(room, winnerSeat, io);
         }
-        return; // Detiene la ejecución para no pasar el turno
+        return;
     }
     
-    // Si el juego continúa y era el turno del jugador eliminado, avanzamos el turno.
     if (room.currentPlayerId === faultingPlayerId) {
-        resetTurnState(room); // Reseteamos contadores de turno
-
+        resetTurnState(room);
         const seatedPlayers = room.seats.filter(s => s !== null);
         const currentPlayerIndex = seatedPlayers.findIndex(p => p.playerId === faultingPlayerId);
-        
         let nextPlayerIndex = (currentPlayerIndex + 1) % seatedPlayers.length;
         let attempts = 0;
         while (!seatedPlayers[nextPlayerIndex] || seatedPlayers[nextPlayerIndex].active === false) {
              nextPlayerIndex = (nextPlayerIndex + 1) % seatedPlayers.length;
-             if (++attempts > seatedPlayers.length) { // Evitar bucle infinito
+             if (++attempts > seatedPlayers.length) {
                  console.log("Error: No se encontró un siguiente jugador activo.");
                  return;
              }
         }
-        
         const nextPlayer = seatedPlayers[nextPlayerIndex];
         room.currentPlayerId = nextPlayer.playerId;
-
         const playerHandCounts = {};
         seatedPlayers.forEach(p => { playerHandCounts[p.playerId] = room.playerHands[p.playerId]?.length || 0; });
 
@@ -1156,8 +1158,14 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
             playerHandCounts: playerHandCounts,
             newMelds: room.melds
         });
+
+        const nextPlayerSeat = room.seats.find(s => s && s.playerId === room.currentPlayerId);
+        if (nextPlayerSeat && nextPlayerSeat.isBot) {
+            setTimeout(() => botPlay(room, room.currentPlayerId, io), 1000);
+        }
     }
 }
+// ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
 function getCombinations(arr, size) {
   if (size > arr.length) return [];
@@ -1300,7 +1308,9 @@ async function botPlay(room, botPlayerId, io) {
 
     // 1. --- LÓGICA DE ROBO (INTELIGENTE) ---
     const topDiscard = room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null;
-    if (topDiscard) {
+    // ▼▼▼ REEMPLAZA ESTA LÍNEA ▼▼▼
+    if (botHand.length > 2 && topDiscard) {
+    // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
         const canAddToExisting = botSeat.doneFirstMeld && room.melds.some(m => canBeAddedToServerMeld(topDiscard, m));
         const potentialHand = [...botHand, topDiscard];
         const potentialNewMelds = findOptimalMelds(potentialHand);
@@ -1385,6 +1395,13 @@ async function botPlay(room, botPlayerId, io) {
     }
 
     // 3. --- LÓGICA PARA BAJAR NUEVOS JUEGOS ---
+    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
+    // NUEVA REGLA: Si al bot solo le quedan 3 cartas, NO puede bajar un nuevo trío.
+    // Esto le obliga a añadir a juegos existentes o a seguir robando hasta poder ganar legalmente.
+    if (botHand.length === 3) {
+        console.log(`[Bot Logic] ${botSeat.playerName} tiene 3 cartas. Se salta la fase de bajar nuevos juegos para evitar una falta.`);
+    } else {
+    // ▲▲▲ FIN DEL BLOQUE A AÑADIR (Solo la apertura del 'else') ▲▲▲
     const meldsToPlay = findOptimalMelds(botHand);
     if (meldsToPlay.length > 0) {
         const totalPoints = meldsToPlay.reduce((sum, meld) => sum + meld.points, 0);
@@ -1434,6 +1451,9 @@ async function botPlay(room, botPlayerId, io) {
             }
         }
     }
+    // ▼▼▼ AÑADE ESTA LLAVE DE CIERRE '}' AL FINAL DE LA SECCIÓN 3 ▼▼▼
+    } 
+    // ▲▲▲ FIN DE LA LLAVE A AÑADIR ▲▲▲
 
     // 4. --- LÓGICA DE DESCARTE (INTELIGENTE) ---
     if (botHand.length > 0) {

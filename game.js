@@ -1871,10 +1871,10 @@ function showRoomsOverview() {
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
     // ▼▼▼ AÑADE ESTE LISTENER COMPLETO AQUÍ ▼▼▼
-    socket.on('practiceGameFaultEnd', () => {
-        // Activamos la bandera que indica que el juego de práctica terminó por una falta.
-        // El modal de eliminación se mostrará gracias al evento 'playerEliminated' que se recibe primero.
-        practiceGameEndedByFault = true;
+    socket.on('practiceGameHumanFaultEnd', () => {
+        // Cuando el servidor confirma que la partida terminó por nuestra falta,
+        // activamos la bandera.
+        practiceGameEndedByHumanFault = true;
     });
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
@@ -1944,7 +1944,9 @@ function showRoomsOverview() {
     let unreadMessages = 0;
     let isWaitingForNextTurn = false;
     let isAnimatingLocalMeld = false; // <<-- AÑADE ESTA LÍNEA
-    let practiceGameEndedByFault = false; // <<-- AÑADE ESTA LÍNEA
+    // ▼▼▼ AÑADE ESTA LÍNEA ▼▼▼
+    let practiceGameEndedByHumanFault = false;
+    // ▲▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲▲
     let penaltyAmount, requiredMeld, hasDrawn, drewFromDiscard, discardCardUsed, mustDiscard, strictRules, drewFromDeckToWin, selectedCards, isDrawing;
 
     // ▼▼▼ PEGA EL BLOQUE COMPLETO AQUÍ ▼▼▼
@@ -3622,13 +3624,14 @@ function reorderHand(draggedIndices, targetDropIndex) {
         showOverlay('elimination-overlay');
     }
     // ▼▼▼ REEMPLAZA LA FUNCIÓN ENTERA CON ESTA VERSIÓN ▼▼▼
+    // ▼▼▼ REEMPLAZA ESTA FUNCIÓN COMPLETA ▼▼▼
     window.closeEliminationOverlay = function() { 
         hideOverlay('elimination-overlay'); 
         
-        // Si la partida de práctica terminó por una falta, mostramos el modal de reinicio.
-        if (practiceGameEndedByFault) {
-            practiceGameEndedByFault = false; // Reseteamos la bandera
-            showOverlay('practice-restart-modal');
+        // Verificamos si la partida de práctica terminó por nuestra falta.
+        if (practiceGameEndedByHumanFault) {
+            practiceGameEndedByHumanFault = false; // Reseteamos la bandera para futuras partidas.
+            showOverlay('practice-restart-modal'); // Mostramos el modal de reinicio.
         }
     }
     // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
