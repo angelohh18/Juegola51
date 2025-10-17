@@ -1536,19 +1536,32 @@ body.game-active {
     flex-direction: column;
     align-items: flex-end;
 }
+/* ▼▼▼ REEMPLAZA EL BLOQUE .top-controls-wrapper ENTERO CON ESTE ▼▼▼ */
 .top-controls-wrapper {
     display: grid;
-    grid-template-columns: auto auto; /* Dos columnas de ancho automático */
-    row-gap: 4px; /* Mantiene el espacio vertical */
-    column-gap: 2px; /* Reduce el espacio horizontal para juntar más los botones */
-    justify-items: end; /* Alinea los botones a la derecha de su celda */
+    grid-template-columns: 1fr 1fr; /* Dos columnas principales 50/50 */
+    grid-template-rows: auto auto;    /* Dos filas */
+    grid-template-areas:
+        "rules lobby"
+        "sub-rules chat";
+    gap: 4px 10px; /* Espacio vertical y horizontal */
+    width: 300px; /* Un ancho fijo para controlar la distribución */
 }
-/* AÑADE ESTA NUEVA REGLA */
-#chat-toggle-btn {
-    grid-column: 3; /* <-- CAMBIA 2 POR 3 */
-    grid-row: 1 / span 2; /* <-- CAMBIA 2 POR '1 / span 2' */
-    align-self: center; /* <-- AÑADE ESTA LÍNEA para centrarlo verticalmente */
+#game-rules-btn { grid-area: rules; justify-self: start; }
+#btn-back-to-lobby-ingame { grid-area: lobby; justify-self: end; }
+
+/* Contenedor para los botones de abajo a la izquierda */
+.top-controls-wrapper::before {
+    content: "";
+    grid-area: sub-rules;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
 }
+#btn-show-functions { grid-area: sub-rules; justify-self: start; }
+#btn-toggle-sound { grid-area: sub-rules; justify-self: end; }
+#chat-toggle-btn { grid-area: chat; justify-self: end; }
+/* ▲▲▲ FIN DEL REEMPLAZO ▲▲▲ */
 .top-controls-wrapper button {
     margin: 0;
 }
@@ -1927,23 +1940,25 @@ body.game-active {
     }
     /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
     .top-controls-wrapper button {
-        padding: 0.26vw 0.52vw;  /* Reducido de 0.35vw 0.7vw */
-        font-size: 0.64vw;      /* Reducido de 0.85vw */
-        border-radius: 0.5vw;
+        padding: 0.19vw 0.39vw;  /* Reducido 25% adicional */
+        font-size: 0.48vw;      /* Reducido 25% adicional */
+        border-radius: 0.37vw;
     }
     
     /* --- INICIO: Ajustes de tamaño para el Bote en móviles --- */
     #game-pot-container {
-        padding: 4px 10px; /* Reducido */
-        min-width: 85px;   /* Reducido */
-        top: 10px;         /* Más pegado a la esquina */
-        left: 10px;        /* Más pegado a la esquina */
+        padding: 3px 7px;  /* Reducido 25% adicional */
+        min-width: 64px;   /* Reducido 25% adicional */
+        top: 7px;
+        left: 7px;
+        transform: scale(0.75); /* Reducción general del 25% */
+        transform-origin: top left;
     }
     .pot-title {
-        font-size: 0.7rem; /* Reducido */
+        font-size: 0.52rem; /* Reducido 25% adicional */
     }
     .pot-value {
-        font-size: 1.3rem; /* Reducido */
+        font-size: 0.97rem; /* Reducido 25% adicional */
     }
     /* --- FIN: Ajustes de tamaño para el Bote --- */
     
@@ -2537,19 +2552,9 @@ body.game-active {
 }
 /* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
 
-/* ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE TU CSS ▼▼▼ */
-
-#btn-toggle-sound {
-    grid-column: 2; /* <-- CAMBIA 3 POR 2 */
-    grid-row: 2;    /* Lo posiciona en la segunda fila */
-    margin: 0;
-    font-size: 1.2rem; /* Hacemos el icono un poco más grande */
-}
-
 /* Estilo para cuando el sonido esté silenciado */
 #btn-toggle-sound.muted {
     opacity: 0.5;
 }
-/* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
 
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */
