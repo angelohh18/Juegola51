@@ -3785,8 +3785,15 @@ function reorderHand(draggedIndices, targetDropIndex) {
             }
         });
         const handleMeldZoneClick = (event) => {
-            event.preventDefault();
-            window.attemptMeld();
+            event.preventDefault(); // Prevenimos cualquier comportamiento por defecto
+            
+            // Buscamos el botón "Bajar Conjunto"
+            const meldBtn = document.getElementById('meld-btn');
+            
+            // Si el botón existe y NO está deshabilitado, lo "clickeamos"
+            if (meldBtn && !meldBtn.disabled) {
+                meldBtn.click();
+            }
         };
         meldZone.addEventListener('click', handleMeldZoneClick);
         meldZone.addEventListener('touchend', handleMeldZoneClick);
