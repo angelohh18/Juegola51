@@ -1545,8 +1545,9 @@ body.game-active {
 }
 /* AÑADE ESTA NUEVA REGLA */
 #chat-toggle-btn {
-    grid-column: 2; /* Posiciona este botón en la columna 2 */
-    grid-row: 2;    /* Posiciona este botón en la fila 2 */
+    grid-column: 3; /* <-- CAMBIA 2 POR 3 */
+    grid-row: 1 / span 2; /* <-- CAMBIA 2 POR '1 / span 2' */
+    align-self: center; /* <-- AÑADE ESTA LÍNEA para centrarlo verticalmente */
 }
 .top-controls-wrapper button {
     margin: 0;
@@ -1926,8 +1927,8 @@ body.game-active {
     }
     /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
     .top-controls-wrapper button {
-        padding: 0.35vw 0.7vw;  /* Reducido */
-        font-size: 0.85vw;      /* Reducido */
+        padding: 0.26vw 0.52vw;  /* Reducido de 0.35vw 0.7vw */
+        font-size: 0.64vw;      /* Reducido de 0.85vw */
         border-radius: 0.5vw;
     }
     
@@ -2539,7 +2540,7 @@ body.game-active {
 /* ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE TU CSS ▼▼▼ */
 
 #btn-toggle-sound {
-    grid-column: 3; /* Lo posiciona en la tercera columna */
+    grid-column: 2; /* <-- CAMBIA 3 POR 2 */
     grid-row: 2;    /* Lo posiciona en la segunda fila */
     margin: 0;
     font-size: 1.2rem; /* Hacemos el icono un poco más grande */

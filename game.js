@@ -1622,7 +1622,6 @@ function showRoomsOverview() {
 
     // Reemplaza el listener socket.on('playerEliminated',...)
     socket.on('playerEliminated', (data) => {
-        playSound('fault'); // <--- AÑADE ESTA LÍNEA
         console.log('Jugador eliminado:', data);
         showEliminationMessage(data.playerName, data.faultData); // Pasamos el objeto faultData
 
@@ -1651,7 +1650,6 @@ function showRoomsOverview() {
 
     // ▼▼▼ REEMPLAZA TU LISTENER socket.on('gameEnd', ...) CON ESTE ▼▼▼
     socket.on('gameEnd', (data) => {
-        playSound('victory'); // <--- AÑADE ESTA LÍNEA
         console.log('PARTIDA FINALIZADA.', data);
 
         resetClientGameState(); 
@@ -1728,6 +1726,12 @@ function showRoomsOverview() {
         }
         addChatMessage(data.sender, data.message, 'player');
     });
+
+    // ▼▼▼ AÑADE ESTE NUEVO LISTENER ▼▼▼
+    socket.on('playSound', (soundId) => {
+        playSound(soundId);
+    });
+    // ▲▲▲ FIN DEL LISTENER ▲▲▲
 
     socket.on('rematchUpdate', (data) => {
         const statusEl = document.getElementById('rematch-status');
@@ -1922,7 +1926,6 @@ function showRoomsOverview() {
     // ▼▼▼ REEMPLAZA TUS LISTENERS 'practiceGameHumanWin' y 'practiceGameEnded' CON ESTOS DOS ▼▼▼
 
     socket.on('practiceGameHumanWin', () => {
-        playSound('victory'); // <--- AÑADE ESTA LÍNEA
         // Obtenemos los elementos del modal de victoria
         const victoryModal = document.getElementById('practice-victory-modal');
         const title = victoryModal.querySelector('h2');
@@ -3719,7 +3722,6 @@ function reorderHand(draggedIndices, targetDropIndex) {
     }
     window.attemptMeld = function() {
         if (isWaitingForNextTurn || currentPlayer !== 0 || !gameStarted) return;
-        playSound('meld'); // <--- AÑADE ESTA LÍNEA
         const selectedElements = document.querySelectorAll('#human-hand .card.selected');
         if (selectedElements.length < 3) {
             showToast('Selecciona al menos 3 cartas para bajar.', 1800);
@@ -3871,7 +3873,6 @@ function reorderHand(draggedIndices, targetDropIndex) {
 
     function attemptAddCardToMeld(cardIndex, meldIndex) {
         if (isWaitingForNextTurn || currentPlayer !== 0 || !gameStarted) return;
-        playSound('add'); // <--- AÑADE ESTA LÍNEA
         const p = players[0];
         if (!p || cardIndex < 0 || cardIndex >= p.hand.length) return;
 

@@ -884,6 +884,7 @@ function canBeAddedToServerMeld(card, meld) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN endGameAndCalculateScores ENTERA CON ESTA VERSIÓN ▼▼▼
 async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
+    io.to(room.roomId).emit('playSound', 'victory'); // <--- AÑADE ESTA LÍNEA AQUÍ
     if (room.isPractice) {
         const humanPlayer = room.seats.find(s => s && !s.isBot);
         if (!humanPlayer) return;
@@ -1019,6 +1020,7 @@ async function checkVictoryCondition(room, roomId, io) {
 // ▼▼▼ REEMPLAZA ESTA FUNCIÓN COMPLETA ▼▼▼
 async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
     if (!room) return;
+    io.to(room.roomId).emit('playSound', 'fault'); // <--- AÑADE ESTA LÍNEA AQUÍ
     const roomId = room.roomId;
     const playerSeat = room.seats.find(s => s && s.playerId === faultingPlayerId);
 
@@ -2250,6 +2252,7 @@ io.on('connection', (socket) => {
             targetMeldIndex: targetMeldIndex
         });
 
+        io.to(roomId).emit('playSound', 'add'); // <--- AÑADE ESTA LÍNEA AQUÍ
         const targetMeld = room.melds[targetMeldIndex];
         
         // --- INICIO DE LA CORRECCIÓN ---
@@ -2308,6 +2311,7 @@ io.on('connection', (socket) => {
             return handlePlayerElimination(room, socket.id, faultDetails, io);
         }
 
+        io.to(roomId).emit('playSound', 'meld'); // <--- AÑADE ESTA LÍNEA AQUÍ
         io.to(roomId).emit('animateNewMeld', {
             melderId: socket.id,
             cards: cards
