@@ -2490,6 +2490,7 @@ function updatePlayersView(seats, inGame = false) {
 // ▲▲▲ FIN DEL CÓDIGO DE REEMPLAZO ▲▲▲
     
     async function animateDealing(initialState) {
+        playSound('deal'); // <--- AÑADE ESTA LÍNEA AQUÍ
         const deckEl = document.getElementById('deck');
         const seatedPlayers = initialState.seats.filter(s => s !== null);
 
