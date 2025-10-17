@@ -4058,4 +4058,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲
+
+// ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE game.js ▼▼▼
+
+/**
+ * Configura el registro del Service Worker y el sistema de notificación de actualizaciones.
+ */
+function setupPwaUpdateNotifications() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registrado exitosamente:', registration.scope);
+
+            // 1. Escuchamos si se encuentra una nueva versión del SW
+            registration.addEventListener('updatefound', () => {
+                console.log('Nueva versión del Service Worker encontrada.');
+                const newWorker = registration.installing;
+
+                // 2. Esperamos a que el nuevo SW termine de instalarse
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // 3. El nuevo SW está instalado y "en espera". ¡Es hora de notificar al usuario!
+                        const notification = document.getElementById('update-notification');
+                        const reloadButton = document.getElementById('btn-reload-update');
+
+                        if (notification && reloadButton) {
+                            notification.style.display = 'flex'; // Mostramos el aviso
+
+                            // 4. Le decimos al nuevo SW que se active cuando el usuario haga clic
+                            reloadButton.addEventListener('click', () => {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            });
+                        }
+                    }
+                });
+            });
+        }).catch(error => {
+            console.log('Error al registrar SW:', error);
+        });
+
+        // 5. Recargamos la página una vez que el nuevo SW toma el control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('Nuevo Service Worker activado. Recargando página...');
+            window.location.reload();
+        });
+    }
+}
+
+// Ejecutamos la configuración cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', setupPwaUpdateNotifications);
+
 // ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲// Cache bust: Tue Oct  7 11:46:02 WEST 2025

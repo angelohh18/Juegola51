@@ -2558,4 +2558,32 @@ body.game-active {
     opacity: 0.5;
 }
 
+/* ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE TU CSS ▼▼▼ */
+#update-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--casino-gold);
+    color: var(--casino-dark-panel);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-weight: bold;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+#update-notification button {
+    padding: 8px 12px;
+    background: #6D2932;
+    color: #e0d3b6;
+    border: 1px solid #211e18;
+    border-radius: 5px;
+    cursor: pointer;
+}
+/* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
+
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

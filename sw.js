@@ -1,6 +1,6 @@
 // sw.js (Service Worker para PWA - La 51)
 
-const CACHE_NAME = 'la51-v1.1.3';
+const CACHE_NAME = 'la51-v1.2.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -19,8 +19,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Cacheando archivos');
-        // Forzar la activación inmediata del nuevo Service Worker
-        self.skipWaiting();
         return cache.addAll(urlsToCache);
       })
       .catch((error) => {

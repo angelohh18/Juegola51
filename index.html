@@ -695,31 +695,6 @@
 <script src="game.js?v=1.3"></script>
 
 <script>
-// Registrar Service Worker para PWA
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-                console.log('SW registrado exitosamente:', registration.scope);
-                
-                // Verificar si hay actualizaciones
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // Hay una nueva versión disponible
-                            console.log('Nueva versión disponible');
-                            // Opcional: mostrar notificación al usuario
-                        }
-                    });
-                });
-            })
-            .catch((error) => {
-                console.log('Error al registrar SW:', error);
-            });
-    });
-}
-
 // Manejar instalación de PWA
 let deferredPrompt; // <-- Hazla global
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -746,6 +721,11 @@ window.addEventListener('appinstalled', (evt) => {
     <audio id="sound-victory" src="/sounds/victory.mp3" preload="auto"></audio>
     <audio id="sound-fault" src="/sounds/fault.mp3" preload="auto"></audio>
     <audio id="sound-deal" src="/sounds/deal.mp3" preload="auto"></audio>
+</div>
+
+<div id="update-notification" style="display: none;">
+    <span>¡Nueva versión disponible!</span>
+    <button id="btn-reload-update">Actualizar</button>
 </div>
 
 </body>
