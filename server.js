@@ -2962,25 +2962,24 @@ function getSuitIcon(s) { if(s==='hearts')return'♥'; if(s==='diamonds')return'
   socket.on('leaveGame', (data) => {
     const { roomId } = data;
 
-    // 1. (LÍNEA AÑADIDA) Damos de baja la conexión de la sala a nivel de red.
+    // 1. (ORDEN CORREGIDO) Primero, ejecuta toda la lógica de estado del juego.
+    // Esto asegura que el asiento se libere, se apliquen multas y el juego avance
+    // antes de limpiar el estado del socket.
+    handlePlayerDeparture(roomId, socket.id, io);
+
+    // 2. (ORDEN CORREGIDO) AHORA, con la lógica del juego ya resuelta,
+    // limpiamos el estado del socket de forma segura.
     if (roomId) {
         socket.leave(roomId);
         console.log(`Socket ${socket.id} ha salido de la sala Socket.IO: ${roomId}`);
     }
-
-    // 2. (Línea existente) Limpiamos nuestra variable de seguimiento personalizada.
     delete socket.currentRoomId;
 
-    // ▼▼▼ CAMBIAR ESTADO DE VUELTA A "EN EL LOBBY" ▼▼▼
-    // Cambia el estado del usuario de vuelta a "En el Lobby"
+    // 3. Finalmente, actualizamos el estado del usuario a "En el Lobby".
     if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].status = 'En el Lobby';
         broadcastUserListUpdate(io);
     }
-    // ▲▲▲ FIN: BLOQUE AÑADIDO ▲▲▲
-    
-    // 3. (Línea existente) Ejecutamos la lógica para liberar el asiento y limpiar la mesa.
-    handlePlayerDeparture(roomId, socket.id, io);
   });
   // ▲▲▲ FIN DEL REEMPLAZO ▲▲▲
 
