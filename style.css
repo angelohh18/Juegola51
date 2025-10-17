@@ -1545,7 +1545,7 @@ body.game-active {
         "rules lobby"
         "sub-rules chat";
     gap: 4px 10px; /* Espacio vertical y horizontal */
-    width: 300px; /* Un ancho fijo para controlar la distribución */
+    width: 250px; /* Un ancho fijo para controlar la distribución */
 }
 #game-rules-btn { grid-area: rules; justify-self: start; }
 #btn-back-to-lobby-ingame { grid-area: lobby; justify-self: end; }
@@ -1937,6 +1937,7 @@ body.game-active {
     }
     .top-controls-wrapper {
         gap: 0.5vw;
+        width: 150px; /* <-- AÑADE ESTA LÍNEA */
     }
     /* Selector modificado para incluir TODOS los botones y reducir su tamaño */
     .top-controls-wrapper button {
