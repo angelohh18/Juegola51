@@ -1030,6 +1030,8 @@ async function handlePlayerElimination(room, faultingPlayerId, faultData, io) {
     if (room.isPractice && playerSeat && !playerSeat.isBot) {
         // CASO ESPECIAL: Es una partida de práctica Y la falta la cometió el jugador humano.
         console.log(`[Práctica] Falta del jugador humano. Terminando la partida.`);
+
+        io.to(room.roomId).emit('playSound', 'fault'); // <--- AÑADE ESTA LÍNEA AQUÍ
         
         // 1. Notificamos al jugador de su eliminación para que vea el modal de la falta.
         io.to(faultingPlayerId).emit('playerEliminated', {
@@ -1339,6 +1341,7 @@ async function botPlay(room, botPlayerId, io) {
             }
             if (cardToAdd) {
                 io.to(room.roomId).emit('animateCardAdd', { melderId: botPlayerId, card: cardToAdd, targetMeldIndex: targetMeldIndex });
+                io.to(room.roomId).emit('playSound', 'add'); // <--- AÑADE ESTA LÍNEA AQUÍ
                 const addPosition = canBeAddedToServerMeld(cardToAdd, room.melds[targetMeldIndex]);
                 if (addPosition === 'prepend') room.melds[targetMeldIndex].cards.unshift(cardToAdd);
                 else room.melds[targetMeldIndex].cards.push(cardToAdd);
@@ -1380,6 +1383,7 @@ async function botPlay(room, botPlayerId, io) {
 
             if (shouldProceedWithMeld) {
                 // El bot cumple las reglas, procede a bajar las combinaciones.
+                io.to(room.roomId).emit('playSound', 'meld'); // <--- AÑADE ESTA LÍNEA AQUÍ
                 const allMeldedCardIds = new Set();
 
                 for (const meld of meldsToPlay) {
