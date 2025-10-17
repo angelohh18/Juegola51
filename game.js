@@ -1623,7 +1623,18 @@ function showRoomsOverview() {
     // Reemplaza el listener socket.on('playerEliminated',...)
     socket.on('playerEliminated', (data) => {
         console.log('Jugador eliminado:', data);
-        showEliminationMessage(data.playerName, data.faultData); // Pasamos el objeto faultData
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Normalizamos el objeto de falta para que siempre tenga la misma estructura.
+        let faultInfo = data.faultData;
+        if (!faultInfo && data.reason) {
+            // Si 'faultData' no existe pero 'reason' sí (caso de abandono),
+            // creamos el objeto que la función espera.
+            faultInfo = { reason: data.reason };
+        }
+        // --- FIN DE LA CORRECCIÓN ---
+
+        showEliminationMessage(data.playerName, faultInfo); // Ahora 'faultInfo' nunca será undefined
 
         const playerViewIndex = orderedSeats.findIndex(s => s && s.playerId === data.playerId);
         if (playerViewIndex !== -1) {
