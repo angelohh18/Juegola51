@@ -2521,4 +2521,18 @@ body.game-active {
     opacity: 0;
 }
 
+/* ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE TU CSS ▼▼▼ */
+.pile#deck.deck-shuffling {
+    opacity: 0.6;
+    cursor: wait; /* Cambia el cursor para indicar que está ocupado */
+    pointer-events: none; /* ¡Esta es la línea clave que bloquea cualquier clic o toque! */
+    animation: slow-pulse 1s infinite;
+}
+
+@keyframes slow-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+/* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
+
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

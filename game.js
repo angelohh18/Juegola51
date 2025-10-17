@@ -1821,8 +1821,23 @@ function showRoomsOverview() {
 
     // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
     socket.on('deckShuffled', () => {
-        // Al recibir la notificación del servidor, todos los clientes ejecutan la animación.
+        const deckEl = document.getElementById('deck');
+
+        // 1. Bloqueamos el mazo inmediatamente
+        if (deckEl) {
+            deckEl.classList.add('deck-shuffling');
+        }
+
+        // 2. Ejecutamos la animación de barajado como antes
         animateShuffle();
+
+        // 3. Programamos el desbloqueo para que ocurra exactamente
+        //    cuando la animación termine (dura 5000ms).
+        setTimeout(() => {
+            if (deckEl) {
+                deckEl.classList.remove('deck-shuffling');
+            }
+        }, 5000);
     });
     // ▲▲▲ FIN DEL NUEVO LISTENER ▲▲▲
 
@@ -3009,19 +3024,13 @@ function updatePlayersView(seats, inGame = false) {
                         if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
                         if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
                     } else if (lastTarget.classList.contains('center-area')) {
-                         if (droppedIndices.length >= 3) {
-                             const p = players[0];
-                             if (!p || !p.hand) return;
-                             const cardIds = droppedIndices.map(index => {
-                                 const card = p.hand[index];
-                                 return card && card.id ? card.id : null;
-                             }).filter(Boolean);
-                             if (cardIds.length === droppedIndices.length) {
-                                 socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
-                             }
-                         } else {
-                             showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
-                         }
+                        if (droppedIndices.length >= 3) {
+                            // ¡Solución! Llamamos a la función que ya contiene la animación.
+                            // Esto asegura un comportamiento idéntico al del botón.
+                            window.attemptMeld();
+                        } else {
+                            showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
+                        }
                     } else if (lastTarget.classList.contains('meld-group')) {
                         if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
                         else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
@@ -3312,19 +3321,13 @@ function reorderHand(draggedIndices, targetDropIndex) {
                         if (droppedIndices.length !== 1) { showToast('Solo puedes descartar una carta a la vez.', 2000); return; }
                         if (canDiscardByDrag()) discardCardByIndex(droppedIndices[0]);
                     } else if (lastTarget.classList.contains('center-area')) {
-                         if (droppedIndices.length >= 3) {
-                             const p = players[0];
-                             if (!p || !p.hand) return;
-                             const cardIds = droppedIndices.map(index => {
-                                 const card = p.hand[index];
-                                 return card && card.id ? card.id : null;
-                             }).filter(Boolean);
-                             if (cardIds.length === droppedIndices.length) {
-                                 socket.emit('meldAction', { roomId: currentGameSettings.roomId, cardIds: cardIds });
-                             }
-                         } else {
-                             showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
-                         }
+                        if (droppedIndices.length >= 3) {
+                            // ¡Solución! Llamamos a la función que ya contiene la animación.
+                            // Esto asegura un comportamiento idéntico al del botón.
+                            window.attemptMeld();
+                        } else {
+                            showToast("Arrastra un grupo de 3 o más cartas para bajar.", 2000);
+                        }
                     } else if (lastTarget.classList.contains('meld-group')) {
                         if (droppedIndices.length === 1) attemptAddCardToMeld(droppedIndices[0], parseInt(lastTarget.dataset.meldIndex));
                         else showToast("Arrastra solo una carta para añadir a una combinación existente.", 2500);
