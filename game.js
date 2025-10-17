@@ -22,6 +22,24 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
     return amount; 
 }
 
+// ▼▼▼ AÑADE ESTA FUNCIÓN AL PRINCIPIO DE game.js ▼▼▼
+// La variable 'isMuted' la definiremos más abajo
+function playSound(soundId) {
+    // ¡Línea clave! Si está silenciado, no hace nada.
+    if (isMuted) return;
+
+    try {
+        const soundElement = document.getElementById(`sound-${soundId}`);
+        if (soundElement) {
+            soundElement.currentTime = 0;
+            soundElement.play();
+        }
+    } catch (error) {
+        console.warn(`No se pudo reproducir el sonido: ${soundId}`, error);
+    }
+}
+// ▲▲▲ FIN DE LA FUNCIÓN A AÑADIR ▲▲▲
+
 // SOLUCIÓN AL ERROR: El error muestra "convertcurrency" en minúsculas, 
 // lo que probablemente es una errata en alguna parte del código. 
 // Para solucionarlo de forma segura, creamos un alias que apunta a la función correcta.
@@ -1459,6 +1477,7 @@ function showRoomsOverview() {
         const newCurrentPlayerSeat = orderedSeats[currentPlayer];
         if (newCurrentPlayerSeat) {
             if (newCurrentPlayerSeat.playerId === socket.id) {
+                playSound('turn'); // <--- AÑADE ESTA LÍNEA
                 showToast("¡Es tu turno!", 2500);
             } else {
                 showToast(`Turno de ${newCurrentPlayerSeat.playerName}.`, 2000);
@@ -1468,6 +1487,7 @@ function showRoomsOverview() {
 
     // ▼▼▼ REEMPLAZA socket.on('cardDrawn', ...) CON ESTO ▼▼▼
     socket.on('cardDrawn', async (data) => {
+        playSound('draw'); // <--- AÑADE ESTA LÍNEA
         console.log("Carta recibida del servidor:", data.card);
         const p = players[0];
         if (!p) return;
@@ -1508,6 +1528,7 @@ function showRoomsOverview() {
 
     // ▼▼▼ REEMPLAZA socket.on('discardCardDrawn', ...) CON ESTO ▼▼▼
     socket.on('discardCardDrawn', async (data) => {
+        playSound('draw'); // <--- AÑADE ESTA LÍNEA
         console.log("Carta del descarte recibida del servidor:", data.card);
         const p = players[0];
         if (!p) return;
@@ -1601,6 +1622,7 @@ function showRoomsOverview() {
 
     // Reemplaza el listener socket.on('playerEliminated',...)
     socket.on('playerEliminated', (data) => {
+        playSound('fault'); // <--- AÑADE ESTA LÍNEA
         console.log('Jugador eliminado:', data);
         showEliminationMessage(data.playerName, data.faultData); // Pasamos el objeto faultData
 
@@ -1629,6 +1651,7 @@ function showRoomsOverview() {
 
     // ▼▼▼ REEMPLAZA TU LISTENER socket.on('gameEnd', ...) CON ESTE ▼▼▼
     socket.on('gameEnd', (data) => {
+        playSound('victory'); // <--- AÑADE ESTA LÍNEA
         console.log('PARTIDA FINALIZADA.', data);
 
         resetClientGameState(); 
@@ -1698,6 +1721,7 @@ function showRoomsOverview() {
         
         // Si el chat no está visible, incrementa el contador
         if (chatWindow && !chatWindow.classList.contains('visible')) {
+            playSound('notify'); // <--- AÑADE ESTA LÍNEA
             unreadMessages++;
             badge.textContent = unreadMessages;
             badge.style.display = 'flex';
@@ -1821,6 +1845,7 @@ function showRoomsOverview() {
 
     // ▼▼▼ AÑADE ESTE NUEVO LISTENER COMPLETO ▼▼▼
     socket.on('deckShuffled', () => {
+        playSound('shuffle'); // <--- AÑADE ESTA LÍNEA
         const deckEl = document.getElementById('deck');
 
         // 1. Bloqueamos el mazo inmediatamente
@@ -1897,6 +1922,7 @@ function showRoomsOverview() {
     // ▼▼▼ REEMPLAZA TUS LISTENERS 'practiceGameHumanWin' y 'practiceGameEnded' CON ESTOS DOS ▼▼▼
 
     socket.on('practiceGameHumanWin', () => {
+        playSound('victory'); // <--- AÑADE ESTA LÍNEA
         // Obtenemos los elementos del modal de victoria
         const victoryModal = document.getElementById('practice-victory-modal');
         const title = victoryModal.querySelector('h2');
@@ -2694,6 +2720,7 @@ function updatePlayersView(seats, inGame = false) {
     // Versión definitiva de discardCardByIndex
     async function discardCardByIndex(index) {
         if (isWaitingForNextTurn) return;
+        playSound('discard'); // <--- AÑADE ESTA LÍNEA
         const p = players[0];
         if (!p) return;
 
@@ -3692,6 +3719,7 @@ function reorderHand(draggedIndices, targetDropIndex) {
     }
     window.attemptMeld = function() {
         if (isWaitingForNextTurn || currentPlayer !== 0 || !gameStarted) return;
+        playSound('meld'); // <--- AÑADE ESTA LÍNEA
         const selectedElements = document.querySelectorAll('#human-hand .card.selected');
         if (selectedElements.length < 3) {
             showToast('Selecciona al menos 3 cartas para bajar.', 1800);
@@ -3843,7 +3871,7 @@ function reorderHand(draggedIndices, targetDropIndex) {
 
     function attemptAddCardToMeld(cardIndex, meldIndex) {
         if (isWaitingForNextTurn || currentPlayer !== 0 || !gameStarted) return;
-
+        playSound('add'); // <--- AÑADE ESTA LÍNEA
         const p = players[0];
         if (!p || cardIndex < 0 || cardIndex >= p.hand.length) return;
 
@@ -3978,4 +4006,54 @@ function reorderHand(draggedIndices, targetDropIndex) {
 
     console.log('Script de juego cargado.');
 })();
-// --- FIN: SCRIPT DEL JUEGO ---// Cache bust: Tue Oct  7 11:46:02 WEST 2025
+// --- FIN: SCRIPT DEL JUEGO ---
+
+// ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AL FINAL DE game.js ▼▼▼
+
+// Variable global para controlar el estado del sonido
+let isMuted = false;
+
+/**
+ * Cambia el estado de silencio, actualiza el icono y guarda la preferencia.
+ */
+function toggleMute() {
+    isMuted = !isMuted; // Invierte el estado (true -> false, false -> true)
+    localStorage.setItem('la51_sound_muted', isMuted); // Guarda la preferencia
+    updateSoundButtonUI();
+}
+
+/**
+ * Actualiza la apariencia del botón según el estado de 'isMuted'.
+ */
+function updateSoundButtonUI() {
+    const soundButton = document.getElementById('btn-toggle-sound');
+    if (soundButton) {
+        if (isMuted) {
+            soundButton.textContent = '🔇'; // Icono de silenciado
+            soundButton.title = 'Activar Sonidos';
+            soundButton.classList.add('muted');
+        } else {
+            soundButton.textContent = '🔊'; // Icono de sonido activo
+            soundButton.title = 'Silenciar Sonidos';
+            soundButton.classList.remove('muted');
+        }
+    }
+}
+
+// Lógica de inicialización que se ejecuta cuando la página carga
+document.addEventListener('DOMContentLoaded', () => {
+    const soundButton = document.getElementById('btn-toggle-sound');
+    if (soundButton) {
+        // 1. Cargar la preferencia guardada del usuario
+        const savedMutePreference = localStorage.getItem('la51_sound_muted') === 'true';
+        isMuted = savedMutePreference;
+
+        // 2. Actualizar el botón para que refleje el estado inicial
+        updateSoundButtonUI();
+
+        // 3. Asignar la función de 'toggle' al clic del botón
+        soundButton.addEventListener('click', toggleMute);
+    }
+});
+
+// ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲// Cache bust: Tue Oct  7 11:46:02 WEST 2025

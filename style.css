@@ -2536,4 +2536,19 @@ body.game-active {
 }
 /* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
 
+/* ▼▼▼ AÑADE ESTE BLOQUE AL FINAL DE TU CSS ▼▼▼ */
+
+#btn-toggle-sound {
+    grid-column: 3; /* Lo posiciona en la tercera columna */
+    grid-row: 2;    /* Lo posiciona en la segunda fila */
+    margin: 0;
+    font-size: 1.2rem; /* Hacemos el icono un poco más grande */
+}
+
+/* Estilo para cuando el sonido esté silenciado */
+#btn-toggle-sound.muted {
+    opacity: 0.5;
+}
+/* ▲▲▲ FIN DEL BLOQUE A AÑADIR ▲▲▲ */
+
 /* ▲▲▲ FIN DEL BLOQUE CSS ▲▲▲ */

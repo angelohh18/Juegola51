@@ -457,6 +457,7 @@
                 <button id="btn-back-to-lobby-ingame">🚪 Volver al Lobby</button>
                 <button id="chat-toggle-btn">💬 Chat <span id="chat-notification-badge" style="display: none;"></span></button>
                 <button id="btn-show-functions" title="Guía de Funciones">ℹ️</button>
+                <button id="btn-toggle-sound" title="Silenciar Sonidos">🔊</button>
             </div>
             <div id="chat-window">
             <div id="chat-ui-content"></div>
@@ -733,6 +734,18 @@ window.addEventListener('appinstalled', (evt) => {
     deferredPrompt = null;
 });
 </script>
+
+<div id="game-sounds" style="display: none;">
+    <audio id="sound-draw" src="/sounds/draw.mp3" preload="auto"></audio>
+    <audio id="sound-discard" src="/sounds/discard.mp3" preload="auto"></audio>
+    <audio id="sound-meld" src="/sounds/meld.mp3" preload="auto"></audio>
+    <audio id="sound-add" src="/sounds/add.mp3" preload="auto"></audio>
+    <audio id="sound-turn" src="/sounds/turn.mp3" preload="auto"></audio>
+    <audio id="sound-shuffle" src="/sounds/shuffle.mp3" preload="auto"></audio>
+    <audio id="sound-notify" src="/sounds/notify.mp3" preload="auto"></audio>
+    <audio id="sound-victory" src="/sounds/victory.mp3" preload="auto"></audio>
+    <audio id="sound-fault" src="/sounds/fault.mp3" preload="auto"></audio>
+</div>
 
 </body>
 </html>

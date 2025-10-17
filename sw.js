@@ -1,6 +1,6 @@
 // sw.js (Service Worker para PWA - La 51)
 
-const CACHE_NAME = 'la51-v1.0.7';
+const CACHE_NAME = 'la51-v1.0.8';
 const urlsToCache = [
   '/',
   '/index.html',
