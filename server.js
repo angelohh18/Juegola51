@@ -884,33 +884,19 @@ function canBeAddedToServerMeld(card, meld) {
 
 // ▼▼▼ REEMPLAZA LA FUNCIÓN endGameAndCalculateScores ENTERA CON ESTA VERSIÓN ▼▼▼
 async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo = null) {
-
-    // ▼▼▼ AÑADE ESTE BLOQUE COMPLETO AQUÍ ▼▼▼
-    // ▼▼▼ REEMPLAZA EL BLOQUE DE 'isPractice' ENTERO CON ESTE ▼▼▼
-    // ▼▼▼ REEMPLAZA EL BLOQUE 'isPractice' ENTERO CON ESTE ▼▼▼
     if (room.isPractice) {
         const humanPlayer = room.seats.find(s => s && !s.isBot);
-        if (!humanPlayer) return; // Si no hay humano, no hacemos nada
-
-        // ▼▼▼ REEMPLAZA ESTE BLOQUE 'if/else' CON EL NUEVO ▼▼▼
+        if (!humanPlayer) return;
         if (winnerSeat.isBot) {
-            // Si gana un bot, ahora enviamos un evento CON el nombre del ganador.
-            console.log(`[Práctica] Un bot ha ganado. Notificando al jugador.`);
             io.to(humanPlayer.playerId).emit('practiceGameBotWin', { winnerName: winnerSeat.playerName });
         } else {
-            // Si gana el humano, el evento se mantiene igual.
-            console.log(`[Práctica] El jugador humano ha ganado. Enviando señal de victoria.`);
             io.to(humanPlayer.playerId).emit('practiceGameHumanWin');
         }
-        // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
-        // Detenemos la ejecución para no aplicar la lógica de mesas reales.
         return;
     }
-    // ▲▲▲ FIN DEL BLOQUE DE REEMPLAZO ▲▲▲
 
     if (!room || !winnerSeat || room.state !== 'playing') return;
 
-    // (Esta parte que procesa multas por no bajar no cambia y es correcta)
     if (room.initialSeats) {
         for (const seat of room.initialSeats) {
             if (!seat || seat.playerId === winnerSeat.playerId) continue;
@@ -922,15 +908,7 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
                     const penaltyInPlayerCurrency = convertCurrency(penalty, room.settings.betCurrency, playerInfo.currency, exchangeRates);
                     playerInfo.credits -= penaltyInPlayerCurrency;
                     room.pot = (room.pot || 0) + penalty;
-                    console.log(`Jugador ${finalSeatState.playerName} paga multa de ${penalty} por no bajar. Nuevo bote: ${room.pot}`);
-                    
-                    // Actualizar en la base de datos
-                    try {
-                        await updateUserCredits(finalSeatState.userId, playerInfo.credits, playerInfo.currency);
-                    } catch (error) {
-                        console.error('Error actualizando créditos en BD:', error);
-                    }
-                    
+                    await updateUserCredits(finalSeatState.userId, playerInfo.credits, playerInfo.currency);
                     io.to(finalSeatState.playerId).emit('userStateUpdated', playerInfo);
                     io.to(room.roomId).emit('potUpdated', { newPotValue: room.pot, isPenalty: true });
                 }
@@ -938,92 +916,70 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
         }
     }
 
-    console.log(`Partida finalizada. Ganador: ${winnerSeat.playerName}. Bote final (tras multas): ${room.pot}`);
     room.state = 'post-game';
     room.lastWinnerId = winnerSeat.playerId;
     room.hostId = winnerSeat.playerId;
 
     const totalPot = room.pot || 0;
-    const commissionInRoomCurrency = totalPot * 0.10; // Comisión en la moneda de la mesa (EUR, USD, etc.)
-    const netWinnings = totalPot - commissionInRoomCurrency; // Las ganancias netas para el jugador siguen en la moneda de la mesa.
-
-    // Convertimos la comisión a COP para el registro del admin
+    const commissionInRoomCurrency = totalPot * 0.10;
+    const netWinnings = totalPot - commissionInRoomCurrency;
     const commissionInCOP = convertCurrency(commissionInRoomCurrency, room.settings.betCurrency, 'COP', exchangeRates);
-
-    // Guardamos en el log el valor YA CONVERTIDO a COP.
-    commissionLog.push({ amount: commissionInCOP, timestamp: Date.now() }); // Añade el registro al historial
-    io.to('admin-room').emit('admin:commissionData', commissionLog); // Notifica al admin con el historial completo
+    await saveCommission(commissionInCOP, 'COP');
 
     const winnerInfo = users[winnerSeat.userId];
     if (winnerInfo) {
         const winningsInWinnerCurrency = convertCurrency(netWinnings, room.settings.betCurrency, winnerInfo.currency, exchangeRates);
         winnerInfo.credits += winningsInWinnerCurrency;
-        
-        // Actualizar en la base de datos
-        try {
-            await updateUserCredits(winnerSeat.userId, winnerInfo.credits, winnerInfo.currency);
-        } catch (error) {
-            console.error('Error actualizando créditos del ganador en BD:', error);
-        }
-        
+        await updateUserCredits(winnerSeat.userId, winnerInfo.credits, winnerInfo.currency);
         io.to(winnerSeat.playerId).emit('userStateUpdated', winnerInfo);
     }
 
-    let losersInfo = [];
+    // --- INICIO DE LA MODIFICACIÓN ---
     const bet = room.settings.bet || 0;
     const penalty = room.settings.penalty || 0;
+    const currencySymbol = room.settings.betCurrency || 'USD';
+    let detailsInfo = [];
+
+    // 1. Añadimos la apuesta del ganador a la lista de detalles.
+    detailsInfo.push(`<p><strong style="color:#6bff6b;">${winnerSeat.playerName} (Ganador)</strong> | Aportó apuesta = ${bet.toFixed(2)} ${currencySymbol}</p>`);
 
     if (room.initialSeats) {
         room.initialSeats.forEach(seat => {
-            // Asegurarse de que el asiento exista y no sea el del ganador
             if (!seat || seat.playerId === winnerSeat.playerId) return;
 
-        const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
-        let statusText = '';
-        let amountPaid = 0;
+            const finalSeatState = room.seats.find(s => s && s.playerId === seat.playerId);
+            let statusText = '';
+            let amountPaid = 0;
+            let baseText = 'Pagó apuesta';
+            let reasonText = '';
+            amountPaid = bet;
+            let color = '#ffff00';
 
-        // Empezamos con el caso por defecto: el jugador perdió pagando solo la apuesta.
-        let baseText = 'Pagó apuesta';
-        let reasonText = '';
-        amountPaid = bet;
-        let color = '#ffff00'; // Amarillo para una pérdida normal
+            if (!finalSeatState) reasonText = 'por abandonar';
+            else if (finalSeatState.active === false) reasonText = 'por falta';
+            else if (!finalSeatState.doneFirstMeld) reasonText = 'por no bajar';
+            
+            if (reasonText) {
+                baseText = 'Pagó apuesta y multa';
+                amountPaid = bet + penalty;
+                color = '#ff4444';
+            }
 
-        // Ahora, verificamos si se debe aplicar una multa, lo que sobreescribe el estado por defecto.
-        if (!finalSeatState) {
-            reasonText = 'por abandonar';
-        } else if (finalSeatState.active === false) {
-            reasonText = 'por falta';
-        } else if (!finalSeatState.doneFirstMeld) {
-            reasonText = 'por no bajar';
-        }
-
-        // Si hay un motivo de multa, actualizamos el texto y el monto.
-        if (reasonText) {
-            baseText = 'Pagó apuesta y multa';
-            amountPaid = bet + penalty;
-            color = '#ff4444'; // Rojo para indicar una penalización
-        }
-
-        // Construimos el texto final y lo añadimos a la lista.
-        statusText = `<span style="color:${color};">${baseText} ${reasonText}</span>`.trim();
-        losersInfo.push(`<p>${seat.playerName} | ${statusText} = ${amountPaid.toFixed(2)}</p>`);
+            statusText = `<span style="color:${color};">${baseText} ${reasonText}</span>`.trim();
+            detailsInfo.push(`<p>${seat.playerName} | ${statusText} = ${amountPaid.toFixed(2)} ${currencySymbol}</p>`);
         });
     }
 
-    // --- CORRECCIÓN CLAVE ---
-    // Construimos UN SOLO HTML universal para todos los jugadores.
-    // La línea "GANANCIA" ahora es clara para todos.
     let winningsSummary = `<div style="border-top: 1px solid #c5a56a; margin-top: 15px; padding-top: 10px; text-align: left;">
-                            <p><strong>Bote Total Recaudado:</strong> ${totalPot.toFixed(2)}</p>
-                            <p><strong>Comisión Admin (10%):</strong> -${commissionInRoomCurrency.toFixed(2)}</p>
-                            <p style="color: #6bff6b; font-size: 1.2rem;"><strong>GANANCIA: ${netWinnings.toFixed(2)}</strong></p>
+                            <p><strong>Bote Total Recaudado:</strong> ${totalPot.toFixed(2)} ${currencySymbol}</p>
+                            <p><strong>Comisión Admin (10%):</strong> -${commissionInRoomCurrency.toFixed(2)} ${currencySymbol}</p>
+                            <p style="color: #6bff6b; font-size: 1.2rem;"><strong>GANANCIA NETA: ${netWinnings.toFixed(2)} ${currencySymbol}</strong></p>
                            </div>`;
 
-    const scoresHTML = `<div style="text-align: left;"><p style="color:#c5a56a; font-weight:bold;">Detalle:</p>${losersInfo.join('')}</div>` + winningsSummary;
+    const scoresHTML = `<div style="text-align: left;"><p style="color:#c5a56a; font-weight:bold;">Detalle:</p>${detailsInfo.join('')}</div>` + winningsSummary;
+    // --- FIN DE LA MODIFICACIÓN ---
 
     const finalSanitizedState = getSanitizedRoomForClient(room);
-
-    // Enviamos el mismo evento con el mismo HTML a TODOS en la sala.
     io.to(room.roomId).emit('gameEnd', {
         winnerName: winnerSeat.playerName,
         scoresHTML: scoresHTML,
@@ -1037,7 +993,6 @@ async function endGameAndCalculateScores(room, winnerSeat, io, abandonmentInfo =
             currency: room.settings.betCurrency
         }
     });
-    // --- FIN DE LA CORRECCIÓN ---
 
     room.rematchRequests.clear();
     broadcastRoomListUpdate(io);

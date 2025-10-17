@@ -671,6 +671,7 @@ html {
     padding: clamp(15px, 3vw, 25px); /* Padding fluido */
     text-align: left;
     line-height: 1.6;
+    position: relative; /* <-- AÑADE ESTA LÍNEA */
 }
 #rules-modal .modal-content::-webkit-scrollbar,
 #register-modal .modal-content::-webkit-scrollbar,
