@@ -22,7 +22,7 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
     return amount; 
 }
 
-// ▼▼▼ REEMPLAZA TU FUNCIÓN playSound CON ESTA VERSIÓN HÍBRIDA ▼▼▼
+// ▼▼▼ REEMPLAZA TU FUNCIÓN playSound CON ESTA VERSIÓN REFORZADA ▼▼▼
 function playSound(soundId) {
     // 1. Si está silenciado, no hace nada.
     if (isMuted) return;
@@ -33,27 +33,26 @@ function playSound(soundId) {
         
         if (soundElement) {
             
-            // --- INICIO DE LA MODIFICACIÓN (LA SOLUCIÓN DEFINITIVA) ---
+            // --- INICIO DEL REFUERZO (Pausa explícita) ---
 
-            // 3. FORZAMOS el reinicio del sonido.
-            // Esto soluciona el problema de "no siempre suena".
-            // Si el sonido ya estaba sonando, lo interrumpe y lo reinicia desde 0.
+            // 3. (REFUERZO) Hacemos una pausa explícita primero.
+            // Esto "limpia" cualquier reproducción anterior y evita
+            // la condición de carrera si el sonido se llama dos veces rápido.
+            soundElement.pause();
+            
+            // 4. FORZAMOS el reinicio del sonido.
             soundElement.currentTime = 0;
             
-            // 4. Reproducimos el sonido.
+            // 5. Reproducimos el sonido.
             const playPromise = soundElement.play();
             
-            // 5. MANTENEMOS la captura de errores.
-            // Esto es VITAL para que iOS no detenga el script si
-            // el audio no está desbloqueado (NotAllowedError).
+            // 6. MANTENEMOS la captura de errores.
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    // Esto es un "error" esperado en iOS si el audio no está desbloqueado.
-                    // Lo registramos en la consola pero no rompemos la app.
                     console.warn(`[Audio] No se pudo reproducir '${soundId}' (Error esperado en iOS):`, error.name);
                 });
             }
-            // --- FIN DE LA MODIFICACIÓN ---
+            // --- FIN DEL REFUERZO ---
         }
     } catch (error) {
         console.warn(`No se pudo reproducir el sonido: ${soundId}`, error);
@@ -990,6 +989,8 @@ function showRoomsOverview() {
 
 
     function doLogin() {
+        initAudioContext(); // <-- AÑADE ESTA LÍNEA (REFUERZO)
+
         const username = loginUsernameInput.value.trim();
         const password = loginPasswordInput.value.trim();
         loginError.style.display = 'none';
@@ -1223,6 +1224,17 @@ function showRoomsOverview() {
     (function init() {
         console.log('--- INICIANDO VERSIÓN CON LOGIN EN SERVIDOR ---');
         initCountries();
+
+        // --- INICIO DEL BLOQUE DE REFUERZO DE AUDIO ---
+        // Asignamos los listeners para la primera interacción del usuario
+        // (tanto en el documento como en el botón de login).
+        document.addEventListener('click', initAudioContext, true);
+        document.addEventListener('touchend', initAudioContext, true);
+        const btnLogin = document.getElementById('btn-login');
+        if(btnLogin) {
+            btnLogin.addEventListener('click', initAudioContext);
+        }
+        // --- FIN DEL BLOQUE DE REFUERZO ---
         
         // Como la sesión ya no se guarda en el navegador,
         // siempre mostramos el modal de login al iniciar.
@@ -4062,8 +4074,13 @@ function initAudioContext() {
         console.log(`[Audio] Intentando desbloquear ${audioElements.length} sonidos para iOS...`);
         
         audioElements.forEach(audio => {
+            
+            // --- INICIO DEL REFUERZO ---
+            // (REFUERZO) Forzamos la carga del audio primero.
+            audio.load();
+            // --- FIN DEL REFUERZO ---
+
             // Intentamos reproducir y pausar inmediatamente.
-            // Esto es necesario para que iOS "confíe" en estos elementos de audio.
             const promise = audio.play();
             if (promise !== undefined) {
                 promise.then(() => {
@@ -4074,8 +4091,6 @@ function initAudioContext() {
                     // pero el simple intento de .play() suele ser suficiente.
                 });
             }
-            // Adicionalmente, llamamos a .load() por si acaso.
-            audio.load();
         });
     }
     
@@ -4084,6 +4099,12 @@ function initAudioContext() {
     // Eliminamos los listeners para que no se ejecuten más
     document.removeEventListener('click', initAudioContext, true);
     document.removeEventListener('touchend', initAudioContext, true);
+    
+    // (REFUERZO) Quitamos los listeners de los botones también
+    const btnLogin = document.getElementById('btn-login');
+    if(btnLogin) {
+        btnLogin.removeEventListener('click', initAudioContext);
+    }
 }
 
 // Asignamos los listeners para la primera interacción del usuario
