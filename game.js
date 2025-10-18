@@ -31,8 +31,28 @@ function playSound(soundId) {
     try {
         const soundElement = document.getElementById(`sound-${soundId}`);
         if (soundElement) {
-            soundElement.currentTime = 0;
-            soundElement.play();
+            
+            // --- INICIO DE LA MODIFICACIÓN PARA iOS ---
+
+            // Si el sonido ya está sonando, no lo reiniciamos.
+            // La principal causa de error en iOS es interrumpir un sonido
+            // para reproducir otro (o el mismo) muy rápido.
+            if (soundElement.paused) {
+                soundElement.currentTime = 0;
+                
+                // .play() devuelve una "Promesa". Debemos manejarla.
+                const playPromise = soundElement.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        // Esto es un "error" esperado en iOS si el audio no está desbloqueado.
+                        // Lo registramos en la consola pero no rompemos la app.
+                        // El error más común aquí es: NotAllowedError
+                        console.warn(`[Audio] No se pudo reproducir '${soundId}' (Error esperado en iOS):`, error.name);
+                    });
+                }
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
         }
     } catch (error) {
         console.warn(`No se pudo reproducir el sonido: ${soundId}`, error);
@@ -4025,6 +4045,51 @@ function reorderHand(draggedIndices, targetDropIndex) {
 
 // Variable global para controlar el estado del sonido
 let isMuted = false;
+let audioInitialized = false; // <-- NUEVA LÍNEA
+
+/**
+ * Desbloquea el contexto de audio para iOS.
+ * Debe ser llamado por la primera interacción del usuario.
+ */
+function initAudioContext() {
+    // Si ya se inicializó, no hacemos nada.
+    if (audioInitialized) return;
+
+    const soundContainer = document.getElementById('game-sounds');
+    if (soundContainer) {
+        const audioElements = soundContainer.querySelectorAll('audio');
+        console.log(`[Audio] Intentando desbloquear ${audioElements.length} sonidos para iOS...`);
+        
+        audioElements.forEach(audio => {
+            // Intentamos reproducir y pausar inmediatamente.
+            // Esto es necesario para que iOS "confíe" en estos elementos de audio.
+            const promise = audio.play();
+            if (promise !== undefined) {
+                promise.then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }).catch(error => {
+                    // Es normal que esto falle si el navegador lo bloquea,
+                    // pero el simple intento de .play() suele ser suficiente.
+                });
+            }
+            // Adicionalmente, llamamos a .load() por si acaso.
+            audio.load();
+        });
+    }
+    
+    audioInitialized = true;
+    
+    // Eliminamos los listeners para que no se ejecuten más
+    document.removeEventListener('click', initAudioContext, true);
+    document.removeEventListener('touchend', initAudioContext, true);
+}
+
+// Asignamos los listeners para la primera interacción del usuario
+// Usamos 'true' (captura) para asegurarnos de que se ejecute
+// antes que cualquier otro evento de clic (como el del botón de login).
+document.addEventListener('click', initAudioContext, true);
+document.addEventListener('touchend', initAudioContext, true);
 
 /**
  * Cambia el estado de silencio, actualiza el icono y guarda la preferencia.
@@ -4092,15 +4157,39 @@ function setupPwaUpdateNotifications() {
                         // 3. El nuevo SW está instalado y "en espera". ¡Es hora de notificar al usuario!
                         const notification = document.getElementById('update-notification');
                         const reloadButton = document.getElementById('btn-reload-update');
+                        // Seleccionamos el texto dentro de la notificación (tu <span>)
+                        const notificationText = notification.querySelector('span'); 
 
-                        if (notification && reloadButton) {
-                            notification.style.display = 'flex'; // Mostramos el aviso
+                        // --- INICIO DE LA MODIFICACIÓN PARA iOS ---
+                        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-                            // 4. Le decimos al nuevo SW que se active cuando el usuario haga clic
-                            reloadButton.addEventListener('click', () => {
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                            });
+                        if (notification && reloadButton && notificationText) {
+                            
+                            if (isIOS) {
+                                // LÓGICA PARA iOS: Pedir al usuario que reinicie la app.
+                                notificationText.textContent = '¡Nueva versión lista! Cierra y reabre la app para actualizar.';
+                                reloadButton.textContent = 'Entendido';
+                                
+                                // En iOS, el botón solo ocultará la notificación.
+                                // Usamos .onclick para asegurarnos de que solo tenga esta acción.
+                                reloadButton.onclick = () => {
+                                    notification.style.display = 'none';
+                                };
+
+                            } else {
+                                // LÓGICA ORIGINAL PARA ANDROID/CHROME:
+                                notificationText.textContent = '¡Nueva versión disponible!'; // Texto original
+                                reloadButton.textContent = 'Actualizar'; // Texto original
+                                
+                                // Usamos .onclick para asegurar una sola acción.
+                                reloadButton.onclick = () => {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                };
+                            }
+                            
+                            notification.style.display = 'flex'; // Mostramos el aviso (ahora al final)
                         }
+                        // --- FIN DE LA MODIFICACIÓN ---
                     }
                 });
             });
