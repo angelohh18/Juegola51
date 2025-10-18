@@ -22,43 +22,46 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
     return amount; 
 }
 
-// ▼▼▼ AÑADE ESTA FUNCIÓN AL PRINCIPIO DE game.js ▼▼▼
-// La variable 'isMuted' la definiremos más abajo
+// ▼▼▼ REEMPLAZA TU FUNCIÓN playSound CON ESTA ▼▼▼
 function playSound(soundId) {
-    // ¡Línea clave! Si está silenciado, no hace nada.
+    // 1. Si está silenciado, no hace nada.
     if (isMuted) return;
 
     try {
-        const soundElement = document.getElementById(`sound-${soundId}`);
-        if (soundElement) {
+        // 2. Buscamos el elemento de audio ORIGINAL (la plantilla).
+        const originalSoundElement = document.getElementById(`sound-${soundId}`);
+        
+        if (originalSoundElement) {
             
-            // --- INICIO DE LA MODIFICACIÓN PARA iOS ---
-
-            // Si el sonido ya está sonando, no lo reiniciamos.
-            // La principal causa de error en iOS es interrumpir un sonido
-            // para reproducir otro (o el mismo) muy rápido.
-            if (soundElement.paused) {
-                soundElement.currentTime = 0;
-                
-                // .play() devuelve una "Promesa". Debemos manejarla.
-                const playPromise = soundElement.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        // Esto es un "error" esperado en iOS si el audio no está desbloqueado.
-                        // Lo registramos en la consola pero no rompemos la app.
-                        // El error más común aquí es: NotAllowedError
-                        console.warn(`[Audio] No se pudo reproducir '${soundId}' (Error esperado en iOS):`, error.name);
-                    });
-                }
+            // --- INICIO DE LA MODIFICACIÓN (Clonación de Audio) ---
+            
+            // 3. Clonamos el elemento de audio.
+            // Esto nos permite reproducir múltiples instancias del mismo sonido
+            // sin que interfieran entre sí (la solución definitiva para iOS).
+            const soundClone = originalSoundElement.cloneNode(true);
+            
+            // 4. Aseguramos que el clon no esté silenciado (por si acaso).
+            soundClone.muted = false; 
+            
+            // 5. Reproducimos el CLON.
+            // No necesitamos 'currentTime = 0' porque es un clon fresco.
+            const playPromise = soundClone.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    // Seguimos capturando cualquier error de "NotAllowedError"
+                    // que iOS pueda lanzar si el audio no se desbloqueó bien.
+                    console.warn(`[Audio] No se pudo reproducir el clon de '${soundId}':`, error.name);
+                });
             }
             // --- FIN DE LA MODIFICACIÓN ---
         }
     } catch (error) {
-        console.warn(`No se pudo reproducir el sonido: ${soundId}`, error);
+        // Este error podría ocurrir si falla el .cloneNode()
+        console.warn(`No se pudo clonar o reproducir el sonido: ${soundId}`, error);
     }
 }
-// ▲▲▲ FIN DE LA FUNCIÓN A AÑADIR ▲▲▲
+// ▲▲▲ FIN DE LA FUNCIÓN A REEMPLAZAR ▲▲▲
 
 // SOLUCIÓN AL ERROR: El error muestra "convertcurrency" en minúsculas, 
 // lo que probablemente es una errata en alguna parte del código. 
